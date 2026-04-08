@@ -6,7 +6,7 @@
 // #include <cstdio>
 
 namespace Utils {
-bool verbose;
+extern bool verbose;
 
 std::string fromNumberToString(int64_t n);
 

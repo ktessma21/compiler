@@ -1,0 +1,164 @@
+[wnv0414@moore ~/cs322]$ cd L1
+[wnv0414@moore L1]$ ./bin/L1i
+./bin/L1i: Permission denied.
+[wnv0414@moore L1]$ ls
+Makefile  bin  build  out  src  tests
+[wnv0414@moore L1]$ cd bin
+[wnv0414@moore bin]$ ls
+L1  L1i
+[wnv0414@moore bin]$ chmod 744 L1i 
+[wnv0414@moore bin]$ ls
+L1  L1i
+[wnv0414@moore bin]$ ls -l
+total 10088
+-rw-r--r-- 1 wnv0414 ug 4581024 Apr  7 15:00 L1
+-rwxr--r-- 1 wnv0414 ug 5744232 Apr  7 15:00 L1i
+[wnv0414@moore bin]$ chmod 744 L1
+[wnv0414@moore bin]$ ls
+L1  L1i
+[wnv0414@moore bin]$ cd ..
+[wnv0414@moore L1]$ ./bin/L1i 
+Usage: ./bin/L1i SOURCE [INPUT_FILE]
+[wnv0414@moore L1]$ ./bin/L1
+Usage: ./bin/L1 [-v] [-g 0|1] [-O 0|1|2] SOURCE [INPUT_FILE]
+[wnv0414@moore L1]$ ./bin/L1i tests/test0.
+test0.L1      test0.L1.out  
+[wnv0414@moore L1]$ ./bin/L1i tests/test0.L1
+0
+8
+42
+1
+16
+2
+[wnv0414@moore L1]$ ./bin/L1 tests/test0.L1
+[wnv0414@moore L1]$ ls
+Makefile  bin  build  out  prog.S  src  tests
+[wnv0414@moore L1]$ ./bin/L1 tests/test0.L1 -g 1
+[wnv0414@moore L1]$ ls
+Makefile  bin  build  out  prog.S  src  tests
+[wnv0414@moore L1]$ make compile FILE=tests/test0.L1
+python3 ../scripts/compile.py .. L1 tests/test0.L1 build ../lib/runtime.c
+Compilation Succeeded
+[wnv0414@moore L1]$ ls
+Makefile  bin  build  out  prog.S  src  tests
+[wnv0414@moore L1]$ ls build
+prog.S  prog.o  prog.out  runtime.o
+[wnv0414@moore L1]$ cd build
+[wnv0414@moore build]$ ./prog.out
+0
+8
+42
+1
+16
+2
+[wnv0414@moore build]$ make build
+make: *** No rule to make target 'build'.  Stop.
+[wnv0414@moore build]$ cd ..
+[wnv0414@moore L1]$ ls
+Makefile  bin  build  out  prog.S  src  tests
+[wnv0414@moore L1]$ make build
+mkdir -p obj
+mkdir -p bin
+g++ --std=c++17 -I./src -I../lib/PEGTL/include -I../lib -I../util -g3 -DDEBUG -pedantic -pedantic-errors -Werror=pedantic -c -o obj/compiler.o src/compiler.cpp
+g++ --std=c++17 -I./src -I../lib/PEGTL/include -I../lib -I../util -g3 -DDEBUG -pedantic -pedantic-errors -Werror=pedantic -c -o obj/parser.o src/parser.cpp
+src/parser.cpp:41:22: error: expected class-name before ‘:’ token
+ struct action : pegtl:nothing<Rule> {};
+                      ^
+src/parser.cpp:41:22: error: expected ‘{’ before ‘:’ token
+src/parser.cpp:41:39: error: extra ‘;’ [-Wpedantic]
+ struct action : pegtl:nothing<Rule> {};
+                                       ^
+src/parser.cpp: In function ‘L1::Program L1::parse_file(char*)’:
+src/parser.cpp:56:1: warning: no return statement in function returning non-void [-Wreturn-type]
+ }
+ ^
+make: *** [Makefile:29: obj/parser.o] Error 1
+[wnv0414@moore L1]$ make copy_instructor_bin
+mkdir -p bin ;
+cp .bin/* bin/ ;
+[wnv0414@moore L1]$ ls
+Makefile  bin  build  obj  out  prog.S  src  tests
+[wnv0414@moore L1]$ make run FILE=tests/test0
+FILE=tests/ not found
+
+[wnv0414@moore L1]$ make run FILE=tests/test0.L1
+python3 ../scripts/compile_and_run.py .. L1 tests/test0.L1 build ../lib/runtime.c
+0
+8
+42
+1
+16
+2
+
+[wnv0414@moore L1]$ make test
+python3 ../scripts/test_compiler.py .. L1 tests build ../lib/runtime.c --out out
+Test #5/5160
+Test #10/5160
+Test #15/5160
+Test #20/5160
+Test #25/5160
+Test #30/5160
+Test #35/5160
+Test #40/5160
+Test #45/5160
+Test #50/5160
+Test #55/5160
+Test #60/5160
+Test #65/5160
+Test #70/5160
+Test #75/5160
+Test #80/5160
+Test #85/5160
+Test #90/5160
+Test #95/5160
+Test #100/5160
+Test #105/5160
+Test #110/5160
+Test #115/5160
+Test #120/5160
+Test #125/5160
+Test #130/5160
+Test #135/5160
+Test #140/5160
+Test #145/5160
+Test #150/5160
+Test #155/5160
+Test #160/5160
+Test #165/5160
+Test #170/5160
+Test #175/5160
+Test #180/5160
+Test #185/5160
+Test #190/5160
+Test #195/5160
+Test #200/5160
+Test #205/5160
+Test #210/5160
+Test #215/5160
+Test #220/5160
+Test #225/5160
+Test #230/5160
+Test #235/5160
+^CTraceback (most recent call last):
+  File "../scripts/test_compiler.py", line 223, in <module>
+    main()
+  File "../scripts/test_compiler.py", line 209, in main
+    executable_save_dir)
+  File "../scripts/test_compiler.py", line 137, in run_tests
+    executable_save_dir)
+  File "../scripts/test_compiler.py", line 70, in test_language
+    timeout)
+  File "/home/wnv0414/cs322/scripts/compile.py", line 117, in compile_language
+    stderr=subprocess.PIPE)
+  File "/usr/lib64/python3.6/subprocess.py", line 425, in run
+    stdout, stderr = process.communicate(input, timeout=timeout)
+  File "/usr/lib64/python3.6/subprocess.py", line 863, in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+  File "/usr/lib64/python3.6/subprocess.py", line 1534, in _communicate
+    ready = selector.select(timeout)
+  File "/usr/lib64/python3.6/selectors.py", line 376, in select
+    fd_event_list = self._poll.poll(timeout)
+KeyboardInterrupt
+make: *** [Makefile:38: test] Error 1
+
+[wnv0414@moore L1]$ 

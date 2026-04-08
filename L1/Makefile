@@ -1,7 +1,7 @@
 CPP_FILES		:= $(wildcard src/*.cpp)
 OBJ_FILES		:= $(addprefix obj/,$(notdir $(CPP_FILES:.cpp=.o)))
-CC_FLAGS		:= --std=c++23 -I./src -I../lib/PEGTL/include -I../lib -I../util -g3 -DDEBUG -pedantic -pedantic-errors -Werror=pedantic
-CC				:= clang++
+CC_FLAGS		:= --std=c++17 -I./src -I../lib/PEGTL/include -I../lib -I../util -g3 -DDEBUG -pedantic -pedantic-errors -Werror=pedantic
+CC				:= g++
 PL_CLASS        := L1
 COMPILER 		:= bin/$(PL_CLASS)
 TEST_DIR		:= tests
@@ -39,7 +39,7 @@ test:
 
 copy_instructor_bin:
 	mkdir -p bin ;
-	cp .bin/* bin/ ;
+	cp -p .bin/* bin/ ;
 
 clean:
 	rm -fr bin obj *.out *.o core.* build/ out/
