@@ -3,3 +3,6 @@
 past_competitions
 */out
 lib
+*/build
+*/bin
+*.o
