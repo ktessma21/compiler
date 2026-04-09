@@ -332,32 +332,38 @@ namespace L1 {
         label
     >{};
 
+// use pegtl::space instead to makesure the spaces \n are not causing mismatch error 
+struct sep : pegtl::star< pegtl::space > {};
 
-    // not done consider space 
-    struct functionParser : 
-        pegtl::seq<
-            pegtl::one<'('>,
-            l, 
-            pegtl::eol, 
-            spaces,
-            numberParser,
-            spaces,
-            numberParser,
-            pegtl::eol, 
-            pegtl::star<instructionParser>,
-            pegtl::one<')'>, 
-            pegtl::eol
-        > {};
+
+struct functionParser : 
+    pegtl::seq<
+        sep,
+        pegtl::one<'('>,
+        sep,
+        l,
+        sep,
+        numberParser,
+        sep,
+        numberParser,
+        sep,
+        instructionParser,
+        sep,
+        pegtl::one<')'>
+    > {};
 
    // not done consider space  
-    struct grammar :
-		pegtl::must<
-			pegtl::one<'('>,
-            l,
-            pegtl::eol, 
-            pegtl::plus<functionParser>,
-            pegtl::one<')'>
-		> {};
+struct grammar :
+    pegtl::must<
+        sep,
+        pegtl::one<'('>,
+        sep,
+        l,
+        sep,
+        pegtl::plus<functionParser>,
+        sep,
+        pegtl::one<')'>
+    > {};
 
 
     template<typename Rule>
