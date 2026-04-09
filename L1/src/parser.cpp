@@ -226,7 +226,7 @@ struct instructionParser :
             sep, 
             memory_access,
             sep>, 
-        pegtl::seq< // w <- t cmp t
+        pegtl::seq< /
             sep,
             W, 
             sep, 
@@ -428,7 +428,7 @@ struct functionParser :
         sep,
         numberParser,
         sep,
-        instructionParser,
+        pegtl::plus<instructionParser>,
         sep,
         pegtl::one<')'>
     > {};
