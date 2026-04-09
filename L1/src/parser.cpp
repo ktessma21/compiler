@@ -16,40 +16,42 @@ using namespace pegtl;
 namespace L1 {
 
     // Separators
-	struct comment: 
-		pegtl::disable< 
-			TAO_PEGTL_STRING( "#" ), 
-			pegtl::until< pegtl::eolf > 
-		> {};
+	// struct comment: 
+	// 	pegtl::disable< 
+	// 		TAO_PEGTL_STRING( "#" ), 
+	// 		pegtl::until< pegtl::eolf > 
+	// 	> {};
 
-	struct spaces :
-		pegtl::star< 
-			pegtl::sor<
-				pegtl::one< ' ' >,
-				pegtl::one< '\t'>
-			>
-		> { };
+	// struct spaces :
+	// 	pegtl::star< 
+	// 		pegtl::sor<
+	// 			pegtl::one< ' ' >,
+	// 			pegtl::one< '\t'>
+	// 		>
+	// 	> { };
 
-	struct seps : 
-		pegtl::star<
-			pegtl::seq<
-				spaces,
-				pegtl::eol
-			>
-		> { };
+	// struct seps : 
+	// 	pegtl::star<
+	// 		pegtl::seq<
+	// 			spaces,
+	// 			pegtl::eol
+	// 		>
+	// 	> { };
 
-	struct seps_with_comments : 
-		pegtl::star< 
-			pegtl::seq<
-				spaces,
-				pegtl::sor<
-					pegtl::eol,
-					comment
-				>
-			>
-		> { };
+	// struct seps_with_comments : 
+	// 	pegtl::star< 
+	// 		pegtl::seq<
+	// 			spaces,
+	// 			pegtl::sor<
+	// 				pegtl::eol,
+	// 				comment
+	// 			>
+	// 		>
+	// 	> { };
 
     // binops 
+    // use pegtl::space instead to makesure the spaces \n are not causing mismatch error 
+     struct sep : pegtl::star< pegtl::space > {};
 
     struct sop : 
         pegtl::sor<
@@ -142,6 +144,7 @@ namespace L1 {
 					pegtl::one< '+' >
 				>
 			>,
+            sep,
 			pegtl::plus<
 				pegtl::digit
 			>
@@ -156,19 +159,19 @@ namespace L1 {
 
 
     struct nameParser :
-		pegtl::seq<
+        pegtl::seq<
             pegtl::sor<
                 pegtl::alpha,
                 pegtl::one< '_' >
             >,
-			pegtl::star<
-				pegtl::sor<
-					pegtl::alpha,
-					pegtl::one< '_' >,
-					pegtl::digit
-				>
-			>
-		> {};
+            pegtl::star<
+                pegtl::sor<
+                    pegtl::alpha,
+                    pegtl::one< '_' >,
+                    pegtl::digit
+                >
+            >
+        > {};
 
    
     
@@ -185,8 +188,8 @@ namespace L1 {
         > {};
 
     
-    struct M :
-        pegtl::digit {};
+    // struct M :
+    //     pegtl::digit {};
 
     struct s :
         pegtl::sor<
@@ -202,138 +205,216 @@ namespace L1 {
         > {};
 
     struct memory_access :
-        pegtl::seq<
-            TAO_PEGTL_STRING("mem"), 
-            X, 
-            M
-        > {};
+    pegtl::seq<
+        sep,
+        TAO_PEGTL_STRING("mem"), 
+        sep,
+        X, 
+        sep,
+        numberParser
+    > {};
 
 
-   struct instructionParser :
+struct instructionParser :
     pegtl::sor<
         // memory assignments first (more specific than w <- s)
         pegtl::seq< // w <- mem x M
+            sep,
             W, 
+            sep, 
             assign, 
-            memory_access>,
+            sep, 
+            memory_access,
+            sep>, 
         pegtl::seq< // w <- t cmp t
+            sep,
             W, 
+            sep, 
             assign, 
+            sep, 
             t,
+            sep,
             cmp, 
+            sep,
             t>, 
         pegtl::seq< // w <- s (most general assignment, last)
+            sep, 
             W, 
+            sep,
             assign,
+            sep,
             s>, 
 
         // memory arithmetic (more specific than w aop t)
         pegtl::seq< // mem x M += t
+            sep,
             memory_access, 
+            sep,
             TAO_PEGTL_STRING("+="), 
+            sep,
             t>, 
         pegtl::seq< // mem x M -= t 
+            sep,
             memory_access, 
+            sep,
             TAO_PEGTL_STRING("-="), 
+            sep,
             t>,  
         pegtl::seq< // mem x M <- s
+            sep,
             memory_access, 
+            sep,
             assign, 
+            sep,
             s>, 
 
         // w arithmetic (memory variants before general aop)
         pegtl::seq< // w += mem x M
+            sep,
             W, 
+            sep,
             TAO_PEGTL_STRING("+="), 
+            sep,
             memory_access>,
         pegtl::seq< // w -= mem x M 
+            sep,
             W, 
+            sep,
             TAO_PEGTL_STRING("-="), 
+            sep,
             memory_access>,
         pegtl::seq< // w aop t (general, after memory variants)
+            sep,
             W, 
+            sep,
             aop, 
+            sep,
             t>, 
 
         // shift operations
         pegtl::seq< // w sop sx
+            sep,
             W, 
+            sep,
             sop, 
+            sep,
             sx>,
         pegtl::seq< // w sop N
+            sep,
             W, 
+            sep,
             sop, 
+            sep,
             numberParser>, 
 
         // increment / decrement
         pegtl::seq< // W ++
+            sep,
             W, 
+            sep,
             TAO_PEGTL_STRING("++")>,
         pegtl::seq< // W --
+            sep,
             W, 
+            sep,
             TAO_PEGTL_STRING("--")>,  
 
         // lea
         pegtl::seq< // W @ W W E
+            sep,
             W, 
+            sep,
             pegtl::one<'@'>,
+            sep,
             W, 
+            sep,
             W, 
+            sep,
             E>,     
 
         // call — named variants before generic u
         pegtl::seq<
+            sep,
             TAO_PEGTL_STRING("call"), 
+            sep,
             TAO_PEGTL_STRING("print"), 
+            sep,
             pegtl::one<'1'>
         >,
         pegtl::seq<
+            sep,
             TAO_PEGTL_STRING("call"), 
+            sep,
             TAO_PEGTL_STRING("input"), 
+            sep,
             pegtl::one<'0'>
         >,
         pegtl::seq<
+            sep,
             TAO_PEGTL_STRING("call"), 
+            sep,
             TAO_PEGTL_STRING("allocate"), 
+            sep,
             pegtl::one<'2'>
         >,
         pegtl::seq<
+            sep,
             TAO_PEGTL_STRING("call"), 
+            sep,
             TAO_PEGTL_STRING("tuple-error"), 
+            sep,
             pegtl::one<'3'>
         >,  
         pegtl::seq<
+            sep,
             TAO_PEGTL_STRING("call"), 
+            sep,
             TAO_PEGTL_STRING("tensor-error"), 
+            sep,
             F
         >,  
         pegtl::seq< // call u N (generic, last)
+            sep,
             TAO_PEGTL_STRING("call"), 
+            sep,
             u, 
+            sep,
             numberParser>,
 
         // cjump
         pegtl::seq<
+            sep,
             TAO_PEGTL_STRING("cjump"),
+            sep,
             t, 
+            sep,
             cmp, 
+            sep,
             t, 
+            sep,
             label>, 
 
         // goto
         pegtl::seq<
+            sep,
             TAO_PEGTL_STRING("goto"), 
+            sep,
             label>, 
 
         // return
-        TAO_PEGTL_STRING("return"),
+        pegtl::seq<
+            sep,
+            TAO_PEGTL_STRING("return")
+        >,
 
         // label (most general, last)
-        label
+        pegtl::seq<
+            sep,
+            label
+        >
     >{};
 
-// use pegtl::space instead to makesure the spaces \n are not causing mismatch error 
-struct sep : pegtl::star< pegtl::space > {};
+
 
 
 struct functionParser : 
@@ -364,6 +445,7 @@ struct grammar :
         sep,
         pegtl::one<')'>
     > {};
+
 
 
     template<typename Rule>
