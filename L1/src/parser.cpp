@@ -1,5 +1,5 @@
 #include <fstream>
-#include "../util/utils.h"
+#include <utils.h>
 #include "l1.h"
 #include "parser.h"
 

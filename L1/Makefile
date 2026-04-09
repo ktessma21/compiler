@@ -1,5 +1,7 @@
-CPP_FILES		:= $(wildcard src/*.cpp)
-OBJ_FILES		:= $(addprefix obj/,$(notdir $(CPP_FILES:.cpp=.o)))
+CPP_FILES      := $(wildcard src/*.cpp)
+OBJ_FILES      := $(addprefix obj/src_,$(notdir $(CPP_FILES:.cpp=.o)))
+UTIL_FILES     := $(wildcard ../util/*.cpp)
+UTIL_OBJ_FILES := $(addprefix obj/util_,$(notdir $(UTIL_FILES:.cpp=.o)))
 CC_FLAGS		:= --std=c++17 -I./src -I../lib/PEGTL/include -I../lib -I../util -g3 -DDEBUG -pedantic -pedantic-errors -Werror=pedantic
 CC				:= g++
 PL_CLASS        := L1
@@ -22,11 +24,14 @@ obj:
 bin:
 	mkdir -p $@
 
-$(COMPILER): $(OBJ_FILES)
+$(COMPILER): $(OBJ_FILES) $(UTIL_OBJ_FILES)
 	$(CC) $(LD_FLAGS) -o $@ $^
 
-obj/%.o: src/%.cpp
-	$(CC) $(CC_FLAGS) -c -o $@ $<
+obj/src_%.o: src/%.cpp
+	$(CC) $(CC_FLAGS) -c -o $@ $^
+
+obj/util_%.o: ../util/%.cpp
+	$(CC) $(CC_FLAGS) -c -o $@ $^
 
 compile:
 	python3 ../scripts/compile.py $(ROOT_DIR) $(PL_CLASS) $(FILE) $(BUILD_DIR) $(RUNTIME)
@@ -39,7 +44,7 @@ test:
 
 copy_instructor_bin:
 	mkdir -p bin ;
-	cp -p .bin/* bin/ ;
+	cp .bin/* bin/ ;
 
 clean:
 	rm -fr bin obj *.out *.o core.* build/ out/

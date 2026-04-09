@@ -19,8 +19,8 @@ namespace L1 {
     
     struct cmp :
         pegtl::sor<
-            TAO_PEGTL_STRING("<"),  
             TAO_PEGTL_STRING("<="), 
+            TAO_PEGTL_STRING("<"),  
             TAO_PEGTL_STRING("=")
         > {};
 
@@ -28,7 +28,7 @@ namespace L1 {
         pegtl::sor<
             TAO_PEGTL_STRING("+="),  
             TAO_PEGTL_STRING("-="), 
-            TAO_PEGTL_STRING("*"), 
+            TAO_PEGTL_STRING("*="), 
             TAO_PEGTL_STRING("&=")
         > {};
     
@@ -231,7 +231,9 @@ namespace L1 {
             pegtl::seq<
                 TAO_PEGTL_STRING("call"), 
                 u, 
-                nameParser>
+                pegtl::star<s>>
+
+                
             >
     {};
 
