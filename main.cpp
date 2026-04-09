@@ -465,7 +465,7 @@ extern "C" int64_t go() {
         pegtl::parse< grammar, action >(fileInput);
     } catch( const pegtl::parse_error& e ) {
         const auto p = e.position_object();
-        std::cerr << "Parse error at line " << p.line 
+        std::cerr << "Parse error at line " << e.message() << " " << p.line 
                   << ", col " << p.column << std::endl;
         std::cerr << e.what() << std::endl;
     }
