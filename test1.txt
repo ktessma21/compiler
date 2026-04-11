@@ -9,7 +9,8 @@
         0 0
         return
 
-        r14 <- rsp
+        r14 <- mem rsi 4
+        rdi += 3
     )
     (@main
         0 0

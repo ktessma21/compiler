@@ -108,6 +108,42 @@ struct W :
             pstring("r15")
     > {};
 
+struct aop :
+    pegtl::sor<
+        pstring("+="),
+        pstring("-="),
+        pstring("*="),
+        pstring("&=")
+    > {};
+
+struct sop :
+    pegtl::sor<
+        pstring("<<="),
+        pstring(">>=")
+    > {};
+
+struct cmp :
+    pegtl::sor<
+        pstring("<="),
+        pstring("<"),
+        pstring("=")
+    > {};
+
+struct E :
+    pegtl::sor<
+        pegtl::one<'8'>,
+        pegtl::one<'4'>,
+        pegtl::one<'2'>,
+        pegtl::one<'1'>
+    > {};
+
+struct F :
+    pegtl::sor<
+        pegtl::one<'4'>,
+        pegtl::one<'3'>,
+        pegtl::one<'1'>
+    > {};
+
 struct label :
         pegtl::seq<
             pegtl::one<':'>, 
@@ -139,11 +175,30 @@ struct S :
         t
     >{};
 
+struct M : pegtl::digit {};
 
 
+/* All instructions set defined from here */
+struct memory_access_block :
+    pegtl::seq<
+        pstring("mem"), 
+                spaces, 
+                X, 
+                spaces, 
+                M
+    >{};
 
 
-struct assignWtoS :
+struct assignWfromMemory:
+        pegtl::seq<
+            W, 
+            spaces,
+            pstring("<-"),
+            spaces, 
+            memory_access_block
+        >{};
+
+struct assignWfromS :
         pegtl::seq<
             W, 
             spaces,
@@ -152,13 +207,56 @@ struct assignWtoS :
             S
         >{};
 
+struct WaopT:
+    pegtl::seq<
+            W, 
+            spaces,
+            aop,
+            spaces, 
+            t
+        >{};
 
+struct WsopSx:
+    pegtl::seq<
+                W, 
+                spaces,
+                sop,
+                spaces, 
+                sx
+            >{};
+
+struct WsopN:
+    pegtl::seq<
+                W, 
+                spaces,
+                sop,
+                spaces, 
+                number
+            >{};    
+
+struct memoryIncDecT:
+    pegtl::seq<
+        memory_access_block,
+        spaces, 
+        pegtl::sor<
+            pstring("+="), 
+            pstring("-=")>,
+        spaces, 
+        t
+    >{};
+        
+            
 // Clean function format 
 struct returnINS : pstring("return"){};
 
 struct Instruction : 
         pegtl::sor<
-            assignWtoS,
+            assignWfromS,
+            assignWfromMemory,
+            WaopT,
+            WsopSx, 
+            WsopN, 
+            memoryIncDecT,
             returnINS
         >{};
 
