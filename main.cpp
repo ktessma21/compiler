@@ -79,13 +79,68 @@ namespace pegtl = TAO_PEGTL_NAMESPACE;
 
         /* MY CODE GOES HERE */
 struct entry_point_rule; // early declaration. 
+struct l;
 
-struct l :
-    pegtl::seq<
-        pegtl::one<'@'>, 
-        name> {};
+struct sx: pstring("rcx"){};
 
-struct returnINS : TAO_PEGTL_STRING("return"){};
+struct a :
+    pegtl::sor<
+            sx,
+            pstring("rdi"), 
+            pstring("rsi"), 
+            pstring("rdx"),
+            pstring("r8"), 
+            pstring("r9")
+    > {};
+
+
+struct W :
+        pegtl::sor<
+            a, 
+            pstring("rax"), 
+            pstring("rbx"), 
+            pstring("rbp"), 
+            pstring("r10"), 
+            pstring("r11"), 
+            pstring("r12"), 
+            pstring("r13"), 
+            pstring("r14"),
+            pstring("r15")
+    > {};
+
+struct S :
+    pegtl::sor<
+        l
+    >{};
+
+
+
+
+
+struct Assignment :
+        pegtl::seq<
+            spaces,
+            W, 
+            spaces,
+            pstring("<-"),
+            spaces, 
+            S, 
+            seps_with_comments
+        >{};
+
+
+struct Instruction : 
+        pegtl::sor<
+            Assignment      
+        >{};
+
+
+
+struct InstructionFormat : pegtl::star<Instruction> {};
+
+
+// Clean function format 
+struct returnINS : pstring("return"){};
         
 
 struct functionFormat :
@@ -93,15 +148,14 @@ struct functionFormat :
         number, 
         spaces, // only a space is allowed between the twow
         number, 
-        seps, 
+        InstructionFormat,
+        seps_with_comments, 
         spaces,
-        returnINS
+        returnINS,
+        seps_with_comments
     > {};
 
 
-
-
-  
 struct programORfunction : 
     pegtl::seq<
         spaces, 
@@ -112,6 +166,12 @@ struct programORfunction :
     >{};
 
 
+// clean entry format 
+struct l :
+    pegtl::seq<
+        pegtl::one<'@'>, 
+        name> {};
+
  struct entry_point_rule:
     pegtl::seq<
       seps_with_comments,
@@ -119,9 +179,8 @@ struct programORfunction :
       l,
       seps_with_comments,
       programORfunction,      // it used to be a program, so now wait for function from now on. or it's function wait for number
-      seps_with_comments,
       pegtl::seq<spaces, pegtl::one< ')' >>,
-      spaces
+      seps_with_comments
     > { };
 
   struct grammar : 
