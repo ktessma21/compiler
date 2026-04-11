@@ -108,16 +108,42 @@ struct W :
             pstring("r15")
     > {};
 
+struct label :
+        pegtl::seq<
+            pegtl::one<':'>, 
+            name
+        > {};
+
+struct u :
+        pegtl::sor<
+            W, 
+            l
+        > {};
+
+struct X :
+        pegtl::sor<
+            W, 
+            pstring("rsp")
+        > {};
+
+struct t :
+        pegtl::sor <
+            X, 
+            number
+        > {};
+
 struct S :
     pegtl::sor<
-        l
+        l, 
+        label,
+        t
     >{};
 
 
 
 
 
-struct Assignment :
+struct assignWtoS :
         pegtl::seq<
             W, 
             spaces,
@@ -132,7 +158,7 @@ struct returnINS : pstring("return"){};
 
 struct Instruction : 
         pegtl::sor<
-            Assignment,
+            assignWtoS,
             returnINS
         >{};
 

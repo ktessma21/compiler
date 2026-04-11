@@ -3,11 +3,13 @@
         0 0
         return
         
-        return
+        rax <- @name
     )
 (@main
         0 0
         return
+
+        r14 <- rsp
     )
     (@main
         0 0
