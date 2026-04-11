@@ -119,40 +119,43 @@ struct S :
 
 struct Assignment :
         pegtl::seq<
-            spaces,
             W, 
             spaces,
             pstring("<-"),
             spaces, 
-            S, 
-            seps_with_comments
+            S
         >{};
-
-
-struct Instruction : 
-        pegtl::sor<
-            Assignment      
-        >{};
-
-
-
-struct InstructionFormat : pegtl::star<Instruction> {};
 
 
 // Clean function format 
 struct returnINS : pstring("return"){};
-        
+
+struct Instruction : 
+        pegtl::sor<
+            Assignment,
+            returnINS
+        >{};
+
+
+
+
+
+// Don't touch from now on. Extremely stable parsing code. 
+struct InstructionFormat : 
+    pegtl::seq<
+        spaces,
+        Instruction,
+        seps_with_comments>
+    {};
+
 
 struct functionFormat :
     pegtl::seq<
         number, 
-        spaces, // only a space is allowed between the twow
+        spaces, // only a space is allowed between the two numbers
         number, 
-        InstructionFormat,
-        seps_with_comments, 
-        spaces,
-        returnINS,
-        seps_with_comments
+        seps_with_comments,
+        pegtl::plus<InstructionFormat>
     > {};
 
 
@@ -195,7 +198,7 @@ template< typename Rule >
 struct action : pegtl::nothing< Rule > {};
 
 
-bool TRACE = false; // toggle this
+bool TRACE = true; // toggle this
 
 template< typename Rule >
 struct my_tracer : pegtl::normal< Rule > {
