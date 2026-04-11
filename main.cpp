@@ -5,6 +5,7 @@
 
 namespace pegtl = TAO_PEGTL_NAMESPACE;
 
+#define pstring TAO_PEGTL_STRING
  /* 
    * Grammar rules from now on.
    */
@@ -42,7 +43,7 @@ namespace pegtl = TAO_PEGTL_NAMESPACE;
 
     struct comment: 
         pegtl::disable< 
-        TAO_PEGTL_STRING( "//" ), 
+        pstring( "//" ), 
         pegtl::until< pegtl::eolf > 
          >{};
 
@@ -75,22 +76,49 @@ namespace pegtl = TAO_PEGTL_NAMESPACE;
 
 
 
+
+
+        /* MY CODE GOES HERE */
+struct entry_point_rule; // early declaration. 
+
 struct l :
     pegtl::seq<
         pegtl::one<'@'>, 
         name> {};
 
+struct returnINS : pstring("return") {};
+        
+
+struct functionFormat :
+    pegtl::seq<
+        number, 
+        spaces, // only a space is allowed between the twow
+        number, 
+        seps_with_comments, 
+        returnINS
+    > {};
+
+
+
+
+  
+struct programORfunction : 
+    pegtl::sor<
+        functionFormat, 
+        pegtl::plus<entry_point_rule> // handle many function openings. 
+    >{};
+
+
  struct entry_point_rule:
     pegtl::seq<
       seps_with_comments,
       pegtl::seq<spaces, pegtl::one< '(' >>,
-      seps_with_comments,
       l,
       seps_with_comments,
-      functions,
+      programORfunction,      // it used to be a program, so now wait for function from now on. or it's function wait for number
       seps_with_comments,
       pegtl::seq<spaces, pegtl::one< ')' >>,
-      seps
+      spaces
     > { };
 
   struct grammar : 
@@ -98,11 +126,14 @@ struct l :
       entry_point_rule
     > {};
 
+
+
+
 template< typename Rule >
 struct action : pegtl::nothing< Rule > {};
 
 
-template<> struct action < functionParser > {
+template<> struct action < functionFormat> {
     template< typename Input >
     static void apply( const Input& in){
         std::cout << in.string() << std::endl;
@@ -145,6 +176,7 @@ extern "C" int64_t go() {
         std::cerr << "Parse error at line " << p.line 
                   << ", col " << p.column << std::endl;
         std::cerr << e.what() << std::endl;
+
     }
     return 0;
 }
