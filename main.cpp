@@ -182,7 +182,7 @@ struct S :
         t
     >{};
 
-struct M : pegtl::digit {};
+struct M : number {};
 
 
 /* All instructions set defined from here */
@@ -366,6 +366,15 @@ struct wAtWWE:
         E
     >{};
 
+struct assignMemoryFromS :
+    pegtl::seq<
+        memory_access_block,
+        spaces,
+        pstring("<-"),
+        spaces,
+        S
+    >{};
+
 
 struct returnINS : pstring("return"){};
 
@@ -374,6 +383,7 @@ struct Instruction :
             compareAssign,      // W <- t cmp t   (before assignWfromS)
             assignWfromMemory,  // W <- mem ...   (before assignWfromS, "mem" is specific)
             assignWfromS,       // W <- S         (generic <- fallback)
+            assignMemoryFromS,
             wIncDecMemory,      // W op= mem ...  (before WaopT, "mem" is specific)
             WsopSx,             // W sop sx       (before WsopN, sx is specific)
             WsopN,              // W sop number   (sop fallback)
