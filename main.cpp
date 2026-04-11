@@ -77,7 +77,6 @@ namespace pegtl = TAO_PEGTL_NAMESPACE;
 
 
 
-
         /* MY CODE GOES HERE */
 struct entry_point_rule; // early declaration. 
 
@@ -86,7 +85,7 @@ struct l :
         pegtl::one<'@'>, 
         name> {};
 
-struct returnINS : pstring("return") {};
+struct returnINS : TAO_PEGTL_STRING("return"){};
         
 
 struct functionFormat :
@@ -94,7 +93,8 @@ struct functionFormat :
         number, 
         spaces, // only a space is allowed between the twow
         number, 
-        seps_with_comments, 
+        seps, 
+        spaces,
         returnINS
     > {};
 
@@ -103,9 +103,12 @@ struct functionFormat :
 
   
 struct programORfunction : 
-    pegtl::sor<
-        functionFormat, 
-        pegtl::plus<entry_point_rule> // handle many function openings. 
+    pegtl::seq<
+        spaces, 
+        pegtl::sor<
+            functionFormat, 
+            pegtl::plus<entry_point_rule> // handle many function openings. 
+        >
     >{};
 
 
@@ -140,6 +143,26 @@ template<> struct action < functionFormat> {
     }
 };
 
+template< typename Rule >
+struct my_tracer : pegtl::normal< Rule > {
+    template< typename Input, typename... States >
+    static void start( const Input& in, States&&... ) {
+        std::cerr << "try   " << pegtl::demangle< Rule >() 
+                  << " at line " << in.position().line 
+                  << " col " << in.position().column << "\n";
+    }
+
+    template< typename Input, typename... States >
+    static void success( const Input& in, States&&... ) {
+        std::cerr << "ok    " << pegtl::demangle< Rule >() << "\n";
+    }
+
+    template< typename Input, typename... States >
+    static void failure( const Input& in, States&&... ) {
+        std::cerr << "FAIL  " << pegtl::demangle< Rule >() << "\n";
+    }
+};
+
 // template<> struct action < content > {
 //     template< typename Input >
 //     static void apply( const Input& in){
@@ -170,7 +193,7 @@ extern "C" int64_t go() {
 
     try {
         pegtl::file_input< > fileInput(fileName);
-        pegtl::parse< grammar, action >(fileInput);
+        pegtl::parse< grammar, action, my_tracer>(fileInput);
     } catch( const pegtl::parse_error& e ) {
         const auto p = e.position_object();
         std::cerr << "Parse error at line " << p.line 
