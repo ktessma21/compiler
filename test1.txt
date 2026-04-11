@@ -13,10 +13,12 @@
         rdi += rsi
 rdi <- 4 <= 4
 cjump 4 < 4 :main
+rbp @ rbx rdi 2
 )
     (@main
         0 0
         :gotoma
+        call input 0
         return
     )
 )

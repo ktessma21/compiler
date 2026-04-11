@@ -307,6 +307,65 @@ struct callPrint:
             pegtl::one<'1'>
     >{};
 
+struct callInput:
+    pegtl::seq<
+            pstring("call"),
+            spaces,
+            pstring("input"),
+            spaces,
+            pegtl::one<'0'>
+    >{};
+
+struct callAllocate:
+    pegtl::seq<
+            pstring("call"),
+            spaces,
+            pstring("allocate"),
+            spaces,
+            pegtl::one<'2'>
+    >{};
+
+
+struct calltupleError:
+    pegtl::seq<
+            pstring("call"),
+            spaces,
+            pstring("tuple-error"),
+            spaces,
+            pegtl::one<'3'>
+    >{};
+
+struct calltensorError:
+    pegtl::seq<
+            pstring("call"),
+            spaces,
+            pstring("tensor-error"),
+            spaces,
+            F
+    >{};
+
+struct wIncDec:
+    pegtl::seq<
+            W,
+            spaces,
+            pegtl::sor<
+                pstring("++"), 
+                pstring("--")>
+    >{};
+
+struct wAtWWE:
+    pegtl::seq<
+        W,
+        spaces,
+        pegtl::one<'@'>,
+        spaces,
+        W,
+        spaces,
+        W,
+        spaces,
+        E
+    >{};
+
 
 struct returnINS : pstring("return"){};
 
@@ -318,11 +377,17 @@ struct Instruction :
             wIncDecMemory,      // W op= mem ...  (before WaopT, "mem" is specific)
             WsopSx,             // W sop sx       (before WsopN, sx is specific)
             WsopN,              // W sop number   (sop fallback)
+            wIncDec,
             WaopT,              // W aop t        (generic aop)
+            wAtWWE,
             memoryIncDecT,      // mem X M op= t  (unique prefix)
             cjump,              // cjump t cmp t label
             label,                // just label
             gotoLabel,
+            callPrint,
+            callInput,
+            callAllocate,
+            calltupleError,
             returnINS           // return         (unique)
         >{};
 
