@@ -3,6 +3,13 @@
 #include "lib/PEGTL/include/tao/pegtl/contrib/analyze.hpp"
 #include <iostream>
 
+// assignWfromS:   W <- t          (stops after one value)
+// compareAssign:  W <- t cmp t    (needs two values with a comparator)
+// During sor case : unfortunately the parser won't check the second one .assumes the first case satisfied and move on. 
+
+
+
+
 namespace pegtl = TAO_PEGTL_NAMESPACE;
 
 #define pstring TAO_PEGTL_STRING
@@ -268,15 +275,39 @@ struct compareAssign:
         spaces, 
         t
     >{};
-// struct WaopT:
-//     pegtl::seq<
-//             W, 
-//             spaces,
-//             aop,
-//             spaces, 
-//             t
-//         >{};
-// Clean function format 
+
+struct cjump:
+    pegtl::seq<
+        pstring("cjump"),
+        spaces,
+        t, 
+        spaces,
+        cmp,
+        spaces,
+        t, 
+        spaces,
+        label
+    >{};
+
+
+struct gotoLabel:
+    pegtl::seq<
+        pstring("goto"),
+        spaces,
+        label
+    >{};
+
+
+struct callPrint:
+    pegtl::seq<
+            pstring("call"),
+            spaces,
+            pstring("print"),
+            spaces,
+            pegtl::one<'1'>
+    >{};
+
+
 struct returnINS : pstring("return"){};
 
 struct Instruction : 
@@ -289,6 +320,9 @@ struct Instruction :
             WsopN,              // W sop number   (sop fallback)
             WaopT,              // W aop t        (generic aop)
             memoryIncDecT,      // mem X M op= t  (unique prefix)
+            cjump,              // cjump t cmp t label
+            label,                // just label
+            gotoLabel,
             returnINS           // return         (unique)
         >{};
 

@@ -12,9 +12,11 @@
         r14 <- mem rsi 4
         rdi += rsi
 rdi <- 4 <= 4
+cjump 4 < 4 :main
 )
     (@main
         0 0
+        :gotoma
         return
     )
 )
