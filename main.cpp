@@ -300,8 +300,6 @@ struct gotoLabel:
 
 struct callPrint:
     pegtl::seq<
-            pstring("call"),
-            spaces,
             pstring("print"),
             spaces,
             pegtl::one<'1'>
@@ -309,8 +307,6 @@ struct callPrint:
 
 struct callUN:
     pegtl::seq<
-        pstring("call"),
-        spaces,
         u,
         spaces,
         number
@@ -318,8 +314,6 @@ struct callUN:
 
 struct callInput:
     pegtl::seq<
-            pstring("call"),
-            spaces,
             pstring("input"),
             spaces,
             pegtl::one<'0'>
@@ -327,8 +321,6 @@ struct callInput:
 
 struct callAllocate:
     pegtl::seq<
-            pstring("call"),
-            spaces,
             pstring("allocate"),
             spaces,
             pegtl::one<'2'>
@@ -337,8 +329,6 @@ struct callAllocate:
 
 struct calltupleError:
     pegtl::seq<
-            pstring("call"),
-            spaces,
             pstring("tuple-error"),
             spaces,
             pegtl::one<'3'>
@@ -346,11 +336,23 @@ struct calltupleError:
 
 struct calltensorError:
     pegtl::seq<
-            pstring("call"),
-            spaces,
             pstring("tensor-error"),
             spaces,
             F
+    >{};
+
+struct callInstruction :
+    pegtl::seq<
+        pstring("call"),
+        spaces,
+        pegtl::sor<
+            callPrint,        // call print 1        (specific string)
+            callInput,        // call input 0        (specific string)
+            callAllocate,     // call allocate 2     (specific string)
+            calltupleError,   // call tuple-error 3  (specific string)
+            calltensorError,  // call tensor-error F (specific string)
+            callUN            // call u number       (generic fallback)
+        >
     >{};
 
 struct wIncDec:
@@ -400,14 +402,10 @@ struct Instruction :
             WaopT,              // W aop t        (generic aop)
             wAtWWE,
             memoryIncDecT,      // mem X M op= t  (unique prefix)
+            callInstruction,
             cjump,              // cjump t cmp t label
             label,                // just label
             gotoLabel,
-            callPrint,
-            callInput,
-            callAllocate,
-            calltupleError,
-            callUN,
             returnINS           // return         (unique)
         >{};
 
