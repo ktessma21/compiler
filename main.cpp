@@ -307,6 +307,15 @@ struct callPrint:
             pegtl::one<'1'>
     >{};
 
+struct callUN:
+    pegtl::seq<
+        pstring("call"),
+        spaces,
+        u,
+        spaces,
+        number
+    >{};
+
 struct callInput:
     pegtl::seq<
             pstring("call"),
@@ -398,6 +407,7 @@ struct Instruction :
             callInput,
             callAllocate,
             calltupleError,
+            callUN,
             returnINS           // return         (unique)
         >{};
 
@@ -463,7 +473,7 @@ template< typename Rule >
 struct action : pegtl::nothing< Rule > {};
 
 
-bool TRACE = true; // toggle this
+bool TRACE = false; // toggle this
 
 template< typename Rule >
 struct my_tracer : pegtl::normal< Rule > {
