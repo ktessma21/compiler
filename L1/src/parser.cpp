@@ -8,448 +8,502 @@
 
 namespace pegtl = TAO_PEGTL_NAMESPACE;
 
+
+#define pstring TAO_PEGTL_STRING
+
 using namespace pegtl;
 
 
 // handle the M case especially using code generation step. for now assume M is number
 
 namespace L1 {
-
-    // Separators
-	// struct comment: 
-	// 	pegtl::disable< 
-	// 		TAO_PEGTL_STRING( "#" ), 
-	// 		pegtl::until< pegtl::eolf > 
-	// 	> {};
-
-	// struct spaces :
-	// 	pegtl::star< 
-	// 		pegtl::sor<
-	// 			pegtl::one< ' ' >,
-	// 			pegtl::one< '\t'>
-	// 		>
-	// 	> { };
-
-	// struct seps : 
-	// 	pegtl::star<
-	// 		pegtl::seq<
-	// 			spaces,
-	// 			pegtl::eol
-	// 		>
-	// 	> { };
-
-	// struct seps_with_comments : 
-	// 	pegtl::star< 
-	// 		pegtl::seq<
-	// 			spaces,
-	// 			pegtl::sor<
-	// 				pegtl::eol,
-	// 				comment
-	// 			>
-	// 		>
-	// 	> { };
-
-    // binops 
-    // use pegtl::space instead to makesure the spaces \n are not causing mismatch error 
-     struct sep : pegtl::star< pegtl::space > {};
-
-    struct sop : 
-        pegtl::sor<
-            TAO_PEGTL_STRING("<<="), 
-            TAO_PEGTL_STRING("=>>")
-        > {};
-    
-    struct cmp :
-        pegtl::sor<
-            TAO_PEGTL_STRING("<="), 
-            TAO_PEGTL_STRING("<"),  
-            TAO_PEGTL_STRING("=")
-        > {};
-
-    struct aop :
-        pegtl::sor<
-            TAO_PEGTL_STRING("+="),  
-            TAO_PEGTL_STRING("-="), 
-            TAO_PEGTL_STRING("*="), 
-            TAO_PEGTL_STRING("&=")
-        > {};
-    
-    struct assign : TAO_PEGTL_STRING("<-"){};
-    struct E : pegtl::one<'1', '2', '4', '8'> {};
-    struct F : pegtl::one<'1', '3', '4'> {};
-    // sx
-    struct reg_rcx : TAO_PEGTL_STRING("rcx") {};
-    // a
-    struct reg_rdi : TAO_PEGTL_STRING("rdi") {};
-	struct reg_rsi : TAO_PEGTL_STRING("rsi") {};
-    struct reg_rdx : TAO_PEGTL_STRING("rdx") {};
-    struct reg_r8 : TAO_PEGTL_STRING("r8") {};
-    struct reg_r9 : TAO_PEGTL_STRING("r9") {};
-   // W
-    struct reg_rax : TAO_PEGTL_STRING("rax") {};
-	struct reg_rbx : TAO_PEGTL_STRING("rbx") {};
-    struct reg_rbp : TAO_PEGTL_STRING("rbp") {};
-    struct reg_r10 : TAO_PEGTL_STRING("r10") {};
-    struct reg_r11 : TAO_PEGTL_STRING("r11") {};
-    struct reg_r12 : TAO_PEGTL_STRING("r12") {};
-    struct reg_r13 : TAO_PEGTL_STRING("r13") {};
-    struct reg_r14 : TAO_PEGTL_STRING("r14") {};
-    struct reg_r15 : TAO_PEGTL_STRING("r15") {};
-
-   // rsp especial case
-   struct reg_rsp : TAO_PEGTL_STRING("rsp") {};
-
- 
-    
-
-    struct sx :
-        reg_rcx {};
-
-    struct a :
-        pegtl::sor<
-            sx,
-            reg_rdi, 
-            reg_rsi, 
-            reg_rdx,
-            reg_r8, 
-            reg_r9
-        > {};
-
-
-    struct W :
-        pegtl::sor<
-            a, 
-            reg_rax, 
-            reg_rbx, 
-            reg_rbp, 
-            reg_r10, 
-            reg_r11, 
-            reg_r12, 
-            reg_r13, 
-            reg_r14,
-            reg_r15
-        > {};
-
-    struct X :
-        pegtl::sor<
-            W, 
-            reg_rsp
-        > {};
-
-    struct numberParser :
-		pegtl::seq<
-			pegtl::opt<
-				pegtl::sor<
-					pegtl::one< '-' >,
-					pegtl::one< '+' >
-				>
-			>,
-            sep,
-			pegtl::plus<
-				pegtl::digit
-			>
-		> {
-	};
-
-    struct t :
-        pegtl::sor <
-            X, 
-            numberParser
-        > {};
-
-
-    struct nameParser :
-        pegtl::seq<
-            pegtl::sor<
-                pegtl::alpha,
-                pegtl::one< '_' >
-            >,
-            pegtl::star<
-                pegtl::sor<
-                    pegtl::alpha,
-                    pegtl::one< '_' >,
-                    pegtl::digit
-                >
-            >
-        > {};
-
-   
-    
-    struct label :
-        pegtl::seq<
-            pegtl::one<':'>, 
-            nameParser
-        > {};
-    
-    struct l :
-        pegtl::seq<
-            pegtl::one<'@'>,
-            nameParser
-        > {};
-
-    
-    // struct M :
-    //     pegtl::digit {};
-
-    struct s :
-        pegtl::sor<
-            t, 
-            label, 
-            l
-        > {};
-
-    struct u :
-        pegtl::sor<
-            W, 
-            l
-        > {};
-
-    struct memory_access :
+ /* 
+   * Grammar rules from now on.
+   */
+  struct name:
     pegtl::seq<
-        sep,
-        TAO_PEGTL_STRING("mem"), 
-        sep,
-        X, 
-        sep,
-        numberParser
+      pegtl::plus< 
+        pegtl::sor<
+          pegtl::alpha,
+          pegtl::one< '_' >
+        >
+      >,
+      pegtl::star<
+        pegtl::sor<
+          pegtl::alpha,
+          pegtl::one< '_' >,
+          pegtl::digit
+        >
+      >
     > {};
 
 
-struct instructionParser :
+  struct number:
+    pegtl::seq<
+      pegtl::opt<
+        pegtl::sor<
+          pegtl::one< '-' >,
+          pegtl::one< '+' >
+        >
+      >,
+      pegtl::plus< 
+        pegtl::digit
+      >
+    >{};
+
+
+    struct comment: 
+        pegtl::disable< 
+        pstring( "//" ), 
+        pegtl::until< pegtl::eolf > 
+         >{};
+
+    struct spaces :
+        pegtl::star<
+            pegtl::sor<
+                pegtl::one< ' ' >,
+                pegtl::one< '\t'>
+            >
+        > { };
+
+    struct seps : 
+        pegtl::star<
+            pegtl::seq<
+                spaces,
+                pegtl::eol
+            >
+        > { };
+
+    struct seps_with_comments : 
+        pegtl::star<
+            pegtl::seq<
+                spaces,
+                pegtl::sor<
+                    pegtl::eol,
+                    comment
+                >
+            >
+        > { };
+
+
+
+
+        /* MY CODE GOES HERE */
+struct entry_point_rule; // early declaration. 
+struct l;
+
+struct sx: pstring("rcx"){};
+
+struct a :
     pegtl::sor<
-        // memory assignments first (more specific than w <- s)
-        pegtl::seq< // w <- mem x M
-            sep,
-            W, 
-            sep, 
-            assign, 
-            sep, 
-            memory_access,
-            sep>, 
-        pegtl::seq< /
-            sep,
-            W, 
-            sep, 
-            assign, 
-            sep, 
-            t,
-            sep,
-            cmp, 
-            sep,
-            t>, 
-        pegtl::seq< // w <- s (most general assignment, last)
-            sep, 
-            W, 
-            sep,
-            assign,
-            sep,
-            s>, 
+            sx,
+            pstring("rdi"), 
+            pstring("rsi"), 
+            pstring("rdx"),
+            pstring("r8"), 
+            pstring("r9")
+    > {};
 
-        // memory arithmetic (more specific than w aop t)
-        pegtl::seq< // mem x M += t
-            sep,
-            memory_access, 
-            sep,
-            TAO_PEGTL_STRING("+="), 
-            sep,
-            t>, 
-        pegtl::seq< // mem x M -= t 
-            sep,
-            memory_access, 
-            sep,
-            TAO_PEGTL_STRING("-="), 
-            sep,
-            t>,  
-        pegtl::seq< // mem x M <- s
-            sep,
-            memory_access, 
-            sep,
-            assign, 
-            sep,
-            s>, 
 
-        // w arithmetic (memory variants before general aop)
-        pegtl::seq< // w += mem x M
-            sep,
-            W, 
-            sep,
-            TAO_PEGTL_STRING("+="), 
-            sep,
-            memory_access>,
-        pegtl::seq< // w -= mem x M 
-            sep,
-            W, 
-            sep,
-            TAO_PEGTL_STRING("-="), 
-            sep,
-            memory_access>,
-        pegtl::seq< // w aop t (general, after memory variants)
-            sep,
-            W, 
-            sep,
-            aop, 
-            sep,
-            t>, 
+struct W :
+        pegtl::sor<
+            a, 
+            pstring("rax"), 
+            pstring("rbx"), 
+            pstring("rbp"), 
+            pstring("r10"), 
+            pstring("r11"), 
+            pstring("r12"), 
+            pstring("r13"), 
+            pstring("r14"),
+            pstring("r15")
+    > {};
 
-        // shift operations
-        pegtl::seq< // w sop sx
-            sep,
-            W, 
-            sep,
-            sop, 
-            sep,
-            sx>,
-        pegtl::seq< // w sop N
-            sep,
-            W, 
-            sep,
-            sop, 
-            sep,
-            numberParser>, 
+struct aop :
+    pegtl::sor<
+        pstring("+="),
+        pstring("-="),
+        pstring("*="),
+        pstring("&=")
+    > {};
 
-        // increment / decrement
-        pegtl::seq< // W ++
-            sep,
-            W, 
-            sep,
-            TAO_PEGTL_STRING("++")>,
-        pegtl::seq< // W --
-            sep,
-            W, 
-            sep,
-            TAO_PEGTL_STRING("--")>,  
+struct sop :
+    pegtl::sor<
+        pstring("<<="),
+        pstring(">>=")
+    > {};
 
-        // lea
-        pegtl::seq< // W @ W W E
-            sep,
-            W, 
-            sep,
-            pegtl::one<'@'>,
-            sep,
-            W, 
-            sep,
-            W, 
-            sep,
-            E>,     
+struct cmp :
+    pegtl::sor<
+        pstring("<="),
+        pstring("<"),
+        pstring("=")
+    > {};
 
-        // call — named variants before generic u
+struct E :
+    pegtl::sor<
+        pegtl::one<'8'>,
+        pegtl::one<'4'>,
+        pegtl::one<'2'>,
+        pegtl::one<'1'>
+    > {};
+
+struct F :
+    pegtl::sor<
+        pegtl::one<'4'>,
+        pegtl::one<'3'>,
+        pegtl::one<'1'>
+    > {};
+
+struct label :
         pegtl::seq<
-            sep,
-            TAO_PEGTL_STRING("call"), 
-            sep,
-            TAO_PEGTL_STRING("print"), 
-            sep,
+            pegtl::one<':'>, 
+            name
+        > {};
+
+struct u :
+        pegtl::sor<
+            W, 
+            l
+        > {};
+
+struct X :
+        pegtl::sor<
+            W, 
+            pstring("rsp")
+        > {};
+
+struct t :
+        pegtl::sor <
+            X, 
+            number
+        > {};
+
+struct S :
+    pegtl::sor<
+        l, 
+        label,
+        t
+    >{};
+
+struct M : number {};
+
+
+/* All instructions set defined from here */
+struct memory_access_block :
+    pegtl::seq<
+        pstring("mem"), 
+                spaces, 
+                X, 
+                spaces, 
+                M
+    >{};
+
+
+struct assignWfromMemory:
+        pegtl::seq<
+            W, 
+            spaces,
+            pstring("<-"),
+            spaces, 
+            memory_access_block
+        >{};
+
+struct assignWfromS :
+        pegtl::seq<
+            W, 
+            spaces,
+            pstring("<-"),
+            spaces, 
+            S
+        >{};
+
+struct WaopT:
+    pegtl::seq<
+            W, 
+            spaces,
+            aop,
+            spaces, 
+            t
+        >{};
+
+struct WsopSx:
+    pegtl::seq<
+                W, 
+                spaces,
+                sop,
+                spaces, 
+                sx
+            >{};
+
+struct WsopN:
+    pegtl::seq<
+                W, 
+                spaces,
+                sop,
+                spaces, 
+                number
+            >{};    
+
+struct memoryIncDecT:
+    pegtl::seq<
+        memory_access_block,
+        spaces, 
+        pegtl::sor<
+            pstring("+="), 
+            pstring("-=")>,
+        spaces, 
+        t
+    >{};
+
+struct wIncDecMemory:
+    pegtl::seq<
+        W, 
+        spaces, 
+        pegtl::sor<
+            pstring("+="), 
+            pstring("-=")>,
+        spaces, 
+        memory_access_block
+    >{};
+        
+struct compareAssign:
+    pegtl::seq<
+        W, 
+        spaces, 
+        pstring("<-"), 
+        spaces,
+        t, 
+        spaces, 
+        cmp,
+        spaces, 
+        t
+    >{};
+
+struct cjump:
+    pegtl::seq<
+        pstring("cjump"),
+        spaces,
+        t, 
+        spaces,
+        cmp,
+        spaces,
+        t, 
+        spaces,
+        label
+    >{};
+
+
+struct gotoLabel:
+    pegtl::seq<
+        pstring("goto"),
+        spaces,
+        label
+    >{};
+
+
+struct callPrint:
+    pegtl::seq<
+            pstring("print"),
+            spaces,
             pegtl::one<'1'>
-        >,
-        pegtl::seq<
-            sep,
-            TAO_PEGTL_STRING("call"), 
-            sep,
-            TAO_PEGTL_STRING("input"), 
-            sep,
+    >{};
+
+struct callUN:
+    pegtl::seq<
+        u,
+        spaces,
+        number
+    >{};
+
+struct callInput:
+    pegtl::seq<
+            pstring("input"),
+            spaces,
             pegtl::one<'0'>
-        >,
-        pegtl::seq<
-            sep,
-            TAO_PEGTL_STRING("call"), 
-            sep,
-            TAO_PEGTL_STRING("allocate"), 
-            sep,
+    >{};
+
+struct callAllocate:
+    pegtl::seq<
+            pstring("allocate"),
+            spaces,
             pegtl::one<'2'>
-        >,
-        pegtl::seq<
-            sep,
-            TAO_PEGTL_STRING("call"), 
-            sep,
-            TAO_PEGTL_STRING("tuple-error"), 
-            sep,
+    >{};
+
+
+struct calltupleError:
+    pegtl::seq<
+            pstring("tuple-error"),
+            spaces,
             pegtl::one<'3'>
-        >,  
-        pegtl::seq<
-            sep,
-            TAO_PEGTL_STRING("call"), 
-            sep,
-            TAO_PEGTL_STRING("tensor-error"), 
-            sep,
+    >{};
+
+struct calltensorError:
+    pegtl::seq<
+            pstring("tensor-error"),
+            spaces,
             F
-        >,  
-        pegtl::seq< // call u N (generic, last)
-            sep,
-            TAO_PEGTL_STRING("call"), 
-            sep,
-            u, 
-            sep,
-            numberParser>,
+    >{};
 
-        // cjump
-        pegtl::seq<
-            sep,
-            TAO_PEGTL_STRING("cjump"),
-            sep,
-            t, 
-            sep,
-            cmp, 
-            sep,
-            t, 
-            sep,
-            label>, 
+struct callInstruction :
+    pegtl::seq<
+        pstring("call"),
+        spaces,
+        pegtl::sor<
+            callPrint,        // call print 1        (specific string)
+            callInput,        // call input 0        (specific string)
+            callAllocate,     // call allocate 2     (specific string)
+            calltupleError,   // call tuple-error 3  (specific string)
+            calltensorError,  // call tensor-error F (specific string)
+            callUN            // call u number       (generic fallback)
+        >
+    >{};
 
-        // goto
-        pegtl::seq<
-            sep,
-            TAO_PEGTL_STRING("goto"), 
-            sep,
-            label>, 
+struct wIncDec:
+    pegtl::seq<
+            W,
+            spaces,
+            pegtl::sor<
+                pstring("++"), 
+                pstring("--")>
+    >{};
 
-        // return
-        pegtl::seq<
-            sep,
-            TAO_PEGTL_STRING("return")
-        >,
+struct wAtWWE:
+    pegtl::seq<
+        W,
+        spaces,
+        pegtl::one<'@'>,
+        spaces,
+        W,
+        spaces,
+        W,
+        spaces,
+        E
+    >{};
 
-        // label (most general, last)
-        pegtl::seq<
-            sep,
-            label
+struct assignMemoryFromS :
+    pegtl::seq<
+        memory_access_block,
+        spaces,
+        pstring("<-"),
+        spaces,
+        S
+    >{};
+
+
+struct returnINS : pstring("return"){};
+
+struct Instruction_block : 
+        pegtl::sor<
+            compareAssign,      // W <- t cmp t   (before assignWfromS)
+            assignWfromMemory,  // W <- mem ...   (before assignWfromS, "mem" is specific)
+            assignWfromS,       // W <- S         (generic <- fallback)
+            assignMemoryFromS,
+            wIncDecMemory,      // W op= mem ...  (before WaopT, "mem" is specific)
+            WsopSx,             // W sop sx       (before WsopN, sx is specific)
+            WsopN,              // W sop number   (sop fallback)
+            wIncDec,
+            WaopT,              // W aop t        (generic aop)
+            wAtWWE,
+            memoryIncDecT,      // mem X M op= t  (unique prefix)
+            callInstruction,
+            cjump,              // cjump t cmp t label
+            label,                // just label
+            gotoLabel,
+            returnINS           // return         (unique)
+        >{};
+
+
+
+
+
+// Don't touch from now on. Extremely stable parsing code. 
+struct InstructionFormat : 
+    pegtl::seq<
+        spaces,
+        Instruction_block,
+        seps_with_comments>
+    {};
+
+
+struct functionFormat :
+    pegtl::seq<
+        number, 
+        spaces, // only a space is allowed between the two numbers
+        number, 
+        seps_with_comments,
+        pegtl::plus<InstructionFormat>
+    > {};
+
+
+struct programORfunction : 
+    pegtl::seq<
+        spaces, 
+        pegtl::sor<
+            functionFormat, 
+            pegtl::plus<entry_point_rule> // handle many function openings. 
         >
     >{};
 
 
-
-
-struct functionParser : 
+// clean entry format 
+struct l :
     pegtl::seq<
-        sep,
-        pegtl::one<'('>,
-        sep,
-        l,
-        sep,
-        numberParser,
-        sep,
-        numberParser,
-        sep,
-        pegtl::plus<instructionParser>,
-        sep,
-        pegtl::one<')'>
-    > {};
+        pegtl::one<'@'>, 
+        name> {};
 
-   // not done consider space  
-struct grammar :
-    pegtl::must<
-        sep,
-        pegtl::one<'('>,
-        sep,
+struct entry_point_rule:
+    pegtl::seq<
+        seps_with_comments,
+        pegtl::seq<spaces, pegtl::one< '(' >>,
         l,
-        sep,
-        pegtl::plus<functionParser>,
-        sep,
-        pegtl::one<')'>
+        seps_with_comments,
+        programORfunction,      // it used to be a program, so now wait for function from now on. or it's function wait for number
+        pegtl::seq<spaces, pegtl::one< ')' >>,
+        seps_with_comments
+    > { };
+
+struct grammar : 
+    pegtl::must< 
+        entry_point_rule
     > {};
 
 
 
     template<typename Rule>
     struct action : pegtl::nothing<Rule> {};
+
+    bool TRACE = false; // toggle this
+
+    template< typename Rule >
+    struct my_tracer : pegtl::normal< Rule > {
+        template< typename Input, typename... States >
+        static void start( const Input& in, States&&... ) {
+            if (!TRACE) return;
+            std::cerr << "try   " << pegtl::demangle< Rule >() 
+                    << " at line " << in.position().line 
+                    << " col " << in.position().column << "\n";
+        }
+
+        template< typename Input, typename... States >
+        static void success( const Input& in, States&&... ) {
+            if (!TRACE) return;
+            std::cerr << "ok    " << pegtl::demangle< Rule >() << "\n";
+        }
+
+        template< typename Input, typename... States >
+        static void failure( const Input& in, States&&... ) {
+            if (!TRACE) return;
+            std::cerr << "FAIL  " << pegtl::demangle< Rule >() << "\n";
+        }
+    };
+
+    template<> struct action < grammar > {
+        template< typename Input >
+        static void apply( const Input& in){
+            std::cout << in.string() << std::endl;
+        }
+    };
 
 
     Program parse_file (char* file_name);
