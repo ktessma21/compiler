@@ -136,17 +136,13 @@ template< typename Rule >
 struct action : pegtl::nothing< Rule > {};
 
 
-template<> struct action < functionFormat> {
-    template< typename Input >
-    static void apply( const Input& in){
-        std::cout << in.string() << std::endl;
-    }
-};
+bool TRACE = false; // toggle this
 
 template< typename Rule >
 struct my_tracer : pegtl::normal< Rule > {
     template< typename Input, typename... States >
     static void start( const Input& in, States&&... ) {
+        if (!TRACE) return;
         std::cerr << "try   " << pegtl::demangle< Rule >() 
                   << " at line " << in.position().line 
                   << " col " << in.position().column << "\n";
@@ -154,11 +150,13 @@ struct my_tracer : pegtl::normal< Rule > {
 
     template< typename Input, typename... States >
     static void success( const Input& in, States&&... ) {
+        if (!TRACE) return;
         std::cerr << "ok    " << pegtl::demangle< Rule >() << "\n";
     }
 
     template< typename Input, typename... States >
     static void failure( const Input& in, States&&... ) {
+        if (!TRACE) return;
         std::cerr << "FAIL  " << pegtl::demangle< Rule >() << "\n";
     }
 };

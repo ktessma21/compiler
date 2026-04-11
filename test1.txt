@@ -1,5 +1,9 @@
 (@main
-    (@main
+(@main
+        0 0
+        return
+    )
+(@main
         0 0
         return
     )
