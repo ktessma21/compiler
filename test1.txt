@@ -10,8 +10,9 @@
         return
 
         r14 <- mem rsi 4
-        rdi += 3
-    )
+        rdi += rsi
+rdi <- 4 <= 4
+)
     (@main
         0 0
         return

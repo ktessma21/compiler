@@ -244,20 +244,52 @@ struct memoryIncDecT:
         spaces, 
         t
     >{};
+
+struct wIncDecMemory:
+    pegtl::seq<
+        W, 
+        spaces, 
+        pegtl::sor<
+            pstring("+="), 
+            pstring("-=")>,
+        spaces, 
+        memory_access_block
+    >{};
         
-            
+struct compareAssign:
+    pegtl::seq<
+        W, 
+        spaces, 
+        pstring("<-"), 
+        spaces,
+        t, 
+        spaces, 
+        cmp,
+        spaces, 
+        t
+    >{};
+// struct WaopT:
+//     pegtl::seq<
+//             W, 
+//             spaces,
+//             aop,
+//             spaces, 
+//             t
+//         >{};
 // Clean function format 
 struct returnINS : pstring("return"){};
 
 struct Instruction : 
         pegtl::sor<
-            assignWfromS,
-            assignWfromMemory,
-            WaopT,
-            WsopSx, 
-            WsopN, 
-            memoryIncDecT,
-            returnINS
+            compareAssign,      // W <- t cmp t   (before assignWfromS)
+            assignWfromMemory,  // W <- mem ...   (before assignWfromS, "mem" is specific)
+            assignWfromS,       // W <- S         (generic <- fallback)
+            wIncDecMemory,      // W op= mem ...  (before WaopT, "mem" is specific)
+            WsopSx,             // W sop sx       (before WsopN, sx is specific)
+            WsopN,              // W sop number   (sop fallback)
+            WaopT,              // W aop t        (generic aop)
+            memoryIncDecT,      // mem X M op= t  (unique prefix)
+            returnINS           // return         (unique)
         >{};
 
 
