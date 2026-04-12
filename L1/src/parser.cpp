@@ -476,31 +476,49 @@ struct grammar :
 
 
     /* FUll ITEM collecting */
-     std::vector<std::unique_ptr<ASTNode>> items;
+    //  std::vector<std::unique_ptr<ASTNode>> items;
 
 
     template<typename Rule>
     struct action : pegtl::nothing<Rule> {};
 
+
     template<> struct action < l > {
         template< typename Input >
         static void apply( const Input& in, Program& p){
-            items.push_back(std::make_unique<Label>(in.string()));
+            if (p.label.empty()){
+                p.label = in.string();
+                p.functions.push_back(Function()); // there must be at least one function 
+                return;
+            }
+            if (p.functions.back().getLabel().empty()){
+                p.functions.back().setLabel(in.string());
+            }
         }
     };
 
-    // template<> struct action < number > {
-    //     template< typename Input >
-    //     static void apply( const Input& in, Program& p){
-    //         items.push_back(std::make_unique<Number>(std::to_string(in.string())));
-    //     }
-    // };
+    template<> struct action < number > {
+        template< typename Input >
+        static void apply( const Input& in, Program& p){ 
+            if (p.label.empty() || p.functions.empty()){
+                return;  // this is just a program
+            }
+
+            // if (p.bac)
+            if (!p.functions.back().args_set){
+                p.functions.back().setNumArgs(std::stoll(in.string()));
+            }
+            if (!p.functions.back().local_set){
+                p.functions.back().setNumLocals(std::stoll(in.string()));
+            }
+        }
+    };
 
     template<> struct action < functionFormat > {
         template< typename Input >
         static void apply( const Input& in, Program& p){
-            auto label = std::move(items.back());
-            items.pop_back();
+            // auto label = std::move(items.back().get());
+            // items.pop_back();
 
             
 
@@ -508,6 +526,20 @@ struct grammar :
         }
     };
 
+    template<> struct action < entry_point_rule > {
+        template< typename Input >
+        static void apply( const Input& in, Program& p){
+            if (p.label.empty()){
+                return;  // this is just a program
+            }
+
+            // else it must be a function
+             // this would be okay because there is no nested functions
+            // current_function = &p.functions.back(); dangerous idea because when the push_back needs more space it will reallocate the entire to another address so the pointer will be dangling. 
+            return;
+        }
+    };
+    
     // template<> struct action < grammar > {
     //     template< typename Input >
     //     static void apply( const Input& in, Program& p){
@@ -535,9 +567,7 @@ struct grammar :
     Program p;
     parse< grammar, action >(fileInput, p);
 
-    for (auto& item : items){
-        std::cout << item -> to_string() << std::endl;
-    }
+    std::cout << p.to_string() << std::endl ;
 
     return p;
   }
