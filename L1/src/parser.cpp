@@ -1,6 +1,8 @@
 
 #include <fstream>
 #include "l1.h"
+#include <memory>
+#include <vector>
 #include <tao/pegtl.hpp>
 #include <tao/pegtl/contrib/analyze.hpp>
 #include <tao/pegtl/contrib/raw_string.hpp> 
@@ -17,6 +19,8 @@ using namespace pegtl;
 // handle the M case especially using code generation step. for now assume M is number
 
 namespace L1 {
+
+   
  /* 
    * Grammar rules from now on.
    */
@@ -470,41 +474,98 @@ struct grammar :
 
 
 
+
+    /* FUll ITEM collecting */
+     std::vector<std::unique_ptr<ASTNode>> items;
+
+
     template<typename Rule>
     struct action : pegtl::nothing<Rule> {};
 
-    bool TRACE = false; // toggle this
-
-    template< typename Rule >
-    struct my_tracer : pegtl::normal< Rule > {
-        template< typename Input, typename... States >
-        static void start( const Input& in, States&&... ) {
-            if (!TRACE) return;
-            std::cerr << "try   " << pegtl::demangle< Rule >() 
-                    << " at line " << in.position().line 
-                    << " col " << in.position().column << "\n";
-        }
-
-        template< typename Input, typename... States >
-        static void success( const Input& in, States&&... ) {
-            if (!TRACE) return;
-            std::cerr << "ok    " << pegtl::demangle< Rule >() << "\n";
-        }
-
-        template< typename Input, typename... States >
-        static void failure( const Input& in, States&&... ) {
-            if (!TRACE) return;
-            std::cerr << "FAIL  " << pegtl::demangle< Rule >() << "\n";
-        }
-    };
-
-    template<> struct action < grammar > {
+    template<> struct action < l > {
         template< typename Input >
-        static void apply( const Input& in){
-            std::cout << in.string() << std::endl;
+        static void apply( const Input& in, Program& p){
+            items.push_back(std::make_unique<Label>(in.string()));
         }
     };
 
+    // template<> struct action < number > {
+    //     template< typename Input >
+    //     static void apply( const Input& in, Program& p){
+    //         items.push_back(std::make_unique<Number>(std::to_string(in.string())));
+    //     }
+    // };
 
-    Program parse_file (char* file_name);
+    template<> struct action < functionFormat > {
+        template< typename Input >
+        static void apply( const Input& in, Program& p){
+            auto label = std::move(items.back());
+            items.pop_back();
+
+            
+
+            // std::unique_ptr<Function> function = std::make_unique<Function>();
+        }
+    };
+
+    // template<> struct action < grammar > {
+    //     template< typename Input >
+    //     static void apply( const Input& in, Program& p){
+    //         std::cout << in.string() << std::endl;
+    //     }
+    // };
+
+    // fetch the last function
+
+    Program parse_file (char *fileName){
+
+    /* 
+     * Check the grammar for some possible issues.
+     */
+    if (pegtl::analyze< grammar >() != 0){
+      std::cerr << "There are problems with the grammar" << std::endl;
+      exit(1);
+    }
+
+    /*
+     * Parse.
+     */
+
+    file_input< > fileInput(fileName);
+    Program p;
+    parse< grammar, action >(fileInput, p);
+
+    for (auto& item : items){
+        std::cout << item -> to_string() << std::endl;
+    }
+
+    return p;
+  }
 }
+
+
+
+ // bool TRACE = false; // toggle this
+
+    // template< typename Rule >
+    // struct my_tracer : pegtl::normal< Rule > {
+    //     template< typename Input, typename... States >
+    //     static void start( const Input& in, States&&... ) {
+    //         if (!TRACE) return;
+    //         std::cerr << "try   " << pegtl::demangle< Rule >() 
+    //                 << " at line " << in.position().line 
+    //                 << " col " << in.position().column << "\n";
+    //     }
+
+    //     template< typename Input, typename... States >
+    //     static void success( const Input& in, States&&... ) {
+    //         if (!TRACE) return;
+    //         std::cerr << "ok    " << pegtl::demangle< Rule >() << "\n";
+    //     }
+
+    //     template< typename Input, typename... States >
+    //     static void failure( const Input& in, States&&... ) {
+    //         if (!TRACE) return;
+    //         std::cerr << "FAIL  " << pegtl::demangle< Rule >() << "\n";
+    //     }
+    // };

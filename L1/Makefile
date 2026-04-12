@@ -1,8 +1,7 @@
-CPP_FILES      := $(wildcard src/*.cpp)
-OBJ_FILES      := $(addprefix obj/src_,$(notdir $(CPP_FILES:.cpp=.o)))
-UTIL_FILES     := $(wildcard ../util/*.cpp)
-UTIL_OBJ_FILES := $(addprefix obj/util_,$(notdir $(UTIL_FILES:.cpp=.o)))
-CC_FLAGS		:= --std=c++17 -I./src -I../lib/PEGTL/include -I../lib -I../util -g3 -DDEBUG -pedantic -pedantic-errors -Werror=pedantic
+CPP_FILES       := $(wildcard src/*.cpp) ../util/utils.cpp
+OBJ_FILES       := $(addprefix obj/,$(notdir $(CPP_FILES:.cpp=.o)))
+OBJ_FILES		:= $(addprefix obj/,$(notdir $(CPP_FILES:.cpp=.o)))
+CC_FLAGS		:= --std=c++23 -I./src -I../lib/PEGTL/include -I../lib -I../util -g3 -DDEBUG -pedantic -pedantic-errors -Werror=pedantic
 CC				:= g++
 PL_CLASS        := L1
 COMPILER 		:= bin/$(PL_CLASS)
@@ -24,14 +23,14 @@ obj:
 bin:
 	mkdir -p $@
 
-$(COMPILER): $(OBJ_FILES) $(UTIL_OBJ_FILES)
+$(COMPILER): $(OBJ_FILES)
 	$(CC) $(LD_FLAGS) -o $@ $^
 
-obj/src_%.o: src/%.cpp
-	$(CC) $(CC_FLAGS) -c -o $@ $^
+obj/%.o: src/%.cpp
+	$(CC) $(CC_FLAGS) -c -o $@ $<
 
-obj/util_%.o: ../util/%.cpp
-	$(CC) $(CC_FLAGS) -c -o $@ $^
+obj/utils.o: ../util/utils.cpp
+	$(CC) $(CC_FLAGS) -c -o $@ $<
 
 compile:
 	python3 ../scripts/compile.py $(ROOT_DIR) $(PL_CLASS) $(FILE) $(BUILD_DIR) $(RUNTIME)

@@ -10,82 +10,95 @@
 
 namespace L1 {
     class ASTNode {
-        // public:
-        //     virtual 
+        public:
+            virtual ~ASTNode() = default;
+            virtual std::string to_string() = 0;
     };
-
 
     
     // this could be a variant or I mean a UNION
     class Number : public ASTNode {
-        uint64_t value;
+        int64_t value;
         public:
-            Number(uint64_t _value) : value(_value) { };
-
-
+            Number() : value(0) {}
+            Number(int64_t _value) : value(_value) { }
+            std::string to_string() override {
+                return std::to_string(value);
+            }
     };
 
     class Pointer : public ASTNode {
         uint64_t value;
-        public:
-            Pointer(uint64_t _value) : value(_value) { };
-            
+    public:
+        Pointer() : value(0) {}
+        Pointer(uint64_t _value) : value(_value) {}
+        std::string to_string() override {
+            return std::to_string(value);
+        }
     };
     
     class Register : public ASTNode {
         std::string value;
         public:
-            Register(std::string _value) : value(_value) {};
+            Register() : value("") {}
+            Register(std::string _value) : value(_value) {}
+            std::string to_string() override {
+                    return value;  // or "@" + value, depending on what you want
+                }
     };
 
 
-    
-   
 
     class Label : public ASTNode {
         std::string value;
-        public:
-            Label(std::string _value) : value(_value) {};
-    }; 
+        public:          // <-- must be public
+            Label() : value("") {}
+            Label(std::string _value) : value(std::move(_value)) {}
+            Label(const char* begin) : value(begin) {} 
+            std::string to_string() override {
+                    return value;  // or "@" + value, depending on what you want
+                }
+    };
 
     class Instruction : public ASTNode {
-
+        public:
+            virtual ~Instruction() = default;
     };
 
-    class AssignInstruction : public Instruction {
-
-    };
-
-    class PrintInstruction : public Instruction {
-
-    };
-
-    class ReturnInstruction : public Instruction {
-
-    };
-    
-    class InputInstruction : public Instruction {
-
-    };
+    class AssignInstruction : public Instruction {};
+    class PrintInstruction  : public Instruction {};
+    class ReturnInstruction : public Instruction {};
+    class InputInstruction  : public Instruction {};
 
      // create a type name called NumPoi : could be Number or Pointer
     using NumPoi  = std::variant<Number, Pointer>;  
     
     class Function : public ASTNode {
-        std::vector<NumPoi> input_vals;
-        int num_args;
-        int num_locals;
-        std::vector<std::unique_ptr<Instruction>> instructions;
-        
         public:
-            Function();
+            std::string label = "";
+            int num_args = 0;
+            int num_locals = 0;
+            std::vector<std::unique_ptr<Instruction>> instructions;
+
+            Function() = default;
+        
     };
 
     class Program : public ASTNode {
-        Label label;
-        std::map<Label, Function> functions;  // no polymorphism for now. 
-        
-        
+        public:
+            Label label;
+            std::vector<Function> functions;  // no polymorphism for now. 
+            Program() = default;
+            std::string to_string() override {
+                std::string result;
+                result += '(';
+                result += label.to_string() + "\n";
+                for (auto& function : functions) {
+                    result += function.to_string() + "\n";
+                }
+                result += ')';
+                return result;
+            }
     };
 
 }

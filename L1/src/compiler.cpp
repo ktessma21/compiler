@@ -13,6 +13,8 @@
 #include <vector>
 
 #include <utils.h>
+#include <parser.h>
+#include <string.h>
 
 void print_help(char *progName) {
   std::cerr << "Usage: " << progName
@@ -58,6 +60,8 @@ int main(int argc, char **argv) {
    */
   // TODO
 
+  auto p = L1::parse_file(argv[optind]);
+   
   /*
    * Print the source program.
    */
