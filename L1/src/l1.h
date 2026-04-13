@@ -16,6 +16,7 @@ namespace L1 {
             virtual ~ASTNode() = default;
             virtual std::string to_string() const = 0;
             virtual bool verify() const { return true; }
+            virtual std::string generate_code() const  {return "";}
     };
 
     // label is just another string. 
@@ -68,6 +69,9 @@ namespace L1 {
             Instruction(InstructionType t) : type(t) {}
             virtual ~Instruction() = default;
             bool verify() const override { return true; }
+            std::string generate_code() const override {
+                return "";
+            }
      
     };
 
@@ -83,6 +87,9 @@ namespace L1 {
             }
             int64_t getValue() const { return value;}
             bool verify() const override { return true; }
+            std::string generate_code() const override {
+                return "$" + std::to_string(value);
+            }
     };
 
     
@@ -253,7 +260,30 @@ namespace L1 {
                 }
 
                 return result + "\n";
-    }
+            }
+            std::string generate_code() const override {
+
+                auto valueToString = [](const VALUE& v) -> std::string {
+                    return std::visit([](const auto& val) -> std::string {
+                        using T = std::decay_t<decltype(val)>;
+                        if constexpr (std::is_same_v<T, Register>) {
+                            return '%' + registerToString(val);
+                        } else if constexpr (std::is_same_v<T, memoryAccess>){
+                            return "TODO_MEM_ACCESS";
+                        } else if constexpr (std::is_same_v<T, Label>) {
+                            return "TODO_LABEL";
+                        } else if constexpr (std::is_same_v<T, Number>) {
+                            return val.generate_code();
+                        } else {
+                            assert(false && "unknown VALUE type");
+                            return "";
+                        }
+                    }, v);
+                };  
+
+
+                return "\tmovq " + valueToString(from.value()) + ", " + valueToString(to.value()) + "\n";
+            }
         };
 
    class CallInstruction : public Instruction {
@@ -297,6 +327,12 @@ namespace L1 {
                     default:                               return "";
                 }
             }
+            std::string generate_code() const override {
+                if (type == InstructionType::CallPrint){
+                    return "\tcall print # runtime system call\n";
+                }
+                return "";
+            }
         };
 
 
@@ -305,6 +341,9 @@ namespace L1 {
             ReturnInstruction() : Instruction(InstructionType::Return) {}
             std::string to_string() const override {
                     return "\t\treturn\n";
+            }
+            std::string generate_code() const override {
+                return "\tretq";
             }
     };
 
@@ -316,6 +355,9 @@ namespace L1 {
             std::string to_string() const override {
                     return "\t\t:" + label + '\n';
             }
+            std::string generate_code() const override {
+                return "";
+            }
     };
     
     class GotoInstruction : public Instruction {
@@ -325,6 +367,9 @@ namespace L1 {
             GotoInstruction(Label _label) : Instruction(InstructionType::Goto), label(_label) {}
             std::string to_string() const override {
                     return "\t\tgoto :" + label + '\n';
+            }
+            std::string generate_code() const override {
+                return "";
             }
     };
 
@@ -367,6 +412,10 @@ namespace L1 {
                 };
                 return valueToString(dst.value()) + " " + aopStr(aop) + " " + valueToString(src.value()) + "\n";
             }
+
+            std::string generate_code() const override {
+                return "";
+            }
         };
 
         class ShiftInstruction : public Instruction {
@@ -398,6 +447,10 @@ namespace L1 {
                 };
                 return "\t\t" + valueToString(dst.value()) + " " + sopStr(sop) + " " + valueToString(src.value()) + "\n";
             }
+
+            std::string generate_code() const override {
+                return "";
+            }
         };
 
         class IncDecInstruction : public Instruction {
@@ -413,6 +466,9 @@ namespace L1 {
                 return std::get<Register>(dst.value()) == Register::rax ?
                     "\t\t" + registerToString(std::get<Register>(dst.value())) + (isIncrement ? "++" : "--") + "\n" :
                     "\t\t" + registerToString(std::get<Register>(dst.value())) + (isIncrement ? "++" : "--") + "\n";
+            }
+            std::string generate_code() const override {
+                return "";
             }
         };
 
@@ -434,6 +490,9 @@ namespace L1 {
                     registerToString(std::get<Register>(base.value())) + " "   +
                     registerToString(std::get<Register>(idx.value()))  + " "   +
                     std::to_string(scale) + "\n";
+            }
+            std::string generate_code() const override {
+                return "";
             }
         };
 
@@ -459,6 +518,10 @@ namespace L1 {
                 return "\t\tmem " + registerToString(mem.x_value) + " " + 
                     std::to_string(mem.size) + " " + aopStr + " " + src_str + "\n";
             }
+            std::string generate_code() const override {
+                return "";
+            }
+
         };
 
     class Function : public ASTNode {
@@ -496,6 +559,16 @@ namespace L1 {
             void setNumLocals(int n)      { local_set = true; num_locals = n; }
 
 
+            std::string generate_code() const override {
+                std::string result;
+                result += "_" + label + ":\n";
+                for (auto& instruction: instructions){
+                    result += instruction->generate_code();
+                }
+                return result;
+            }
+
+
         
     };
 
@@ -524,6 +597,14 @@ namespace L1 {
                 }
                 std::cerr << "no matching function with a program label\n";
                 return false;
+            }
+
+            std::string generate_code() const override {
+                std::string result;
+                for (auto& function: functions){
+                    result += function.generate_code();
+                }
+                return result;
             }
     };
 

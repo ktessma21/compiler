@@ -34,7 +34,7 @@ namespace L1 {
         outputFile << "\tpushq %r13\n";
         outputFile << "\tpushq %r14\n";
         outputFile << "\tpushq %r15\n\n";
-        outputFile << "\t call _"<< p.label << "\n\n";
+        outputFile << "\tcall _"<< p.label << "\n\n";
         outputFile << "\t# restore callee-saved registers and return\n";
         outputFile << "\tpopq %r15\n";
         outputFile << "\tpopq %r14\n";
@@ -42,10 +42,11 @@ namespace L1 {
         outputFile << "\tpopq %r12\n";
         outputFile << "\tpopq %rbp\n";
         outputFile << "\tpopq %rbx\n";
-        outputFile << "\tretq\n";
+        outputFile << "\tretq\n\n";
 
-        
+        outputFile << p.generate_code();
 
+        outputFile << "\n";
         outputFile.close();
         return;
     }

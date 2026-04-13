@@ -68,7 +68,7 @@ int main(int argc, char **argv) {
    * Print the source program.
    */
   if (Utils::verbose) {
-    std::cout << p.to_string << std::endl;
+    std::cout << p.to_string() << std::endl;
   }
 
   /*
