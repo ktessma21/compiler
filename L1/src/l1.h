@@ -79,6 +79,7 @@ namespace L1 {
             std::string to_string() const override {
                 return std::to_string(value);
             }
+            int64_t getValue() const { return value;}
     };
 
     class Pointer : public ASTNode {
@@ -262,22 +263,41 @@ namespace L1 {
 
    class CallInstruction : public Instruction {
         public:
-            CallInstruction(InstructionType t) : Instruction(t) {
+            
+            std::optional<VALUE> callee;    // for CallUN: the u (Register or Label)
+            std::optional<int64_t> arg;     // for CallUN: the number argument
+
+            void setCallee(VALUE v)   { callee = std::move(v); }
+            void setNum(int64_t n)    { arg = n; }
+            
+            CallInstruction(InstructionType t, int64_t argument = 0) : Instruction(t) {
                 assert(t == InstructionType::CallPrint    ||
                     t == InstructionType::CallInput    ||
                     t == InstructionType::CallAllocate ||
                     t == InstructionType::CallTupleError ||
                     t == InstructionType::CallTensorError ||
                     t == InstructionType::CallUN);
+
+                    if (t == InstructionType::CallPrint){
+                        arg = 1;
+                    } else if (t == InstructionType::CallInput){
+                        arg = 0;
+                    } else if (t == InstructionType::CallAllocate){
+                        arg = 2;
+                    } else if (t == InstructionType::CallTensorError){
+                        arg = -1;
+                    } else if (t == InstructionType::CallUN){
+                        arg = argument;
+                    }
             }
             std::string to_string() const override {
                 switch (type) {
-                    case InstructionType::CallPrint:       return "call print 1\n";
-                    case InstructionType::CallInput:       return "call input 0\n";
-                    case InstructionType::CallAllocate:    return "call allocate 2\n";
-                    case InstructionType::CallTupleError:  return "call tuple-error 3\n";
-                    case InstructionType::CallTensorError: return "call tensor-error\n";
-                    case InstructionType::CallUN:          return "call\n";
+                    case InstructionType::CallPrint:       return "\t\tcall print 1\n";
+                    case InstructionType::CallInput:       return "\t\tcall input 0\n";
+                    case InstructionType::CallAllocate:    return "\t\tcall allocate 2\n";
+                    case InstructionType::CallTupleError:  return "\t\tcall tuple-error 3\n";
+                    case InstructionType::CallTensorError: return "\t\tcall tensor-error\n";
+                    case InstructionType::CallUN:          return "\t\tcall u" + std::to_string(arg.value()) + "\n";
                     default:                               return "";
                 }
             }
@@ -288,12 +308,163 @@ namespace L1 {
         public:
             ReturnInstruction() : Instruction(InstructionType::Return) {}
             std::string to_string() const override {
-                    return "return";
+                    return "\t\treturn\n";
+            }
+    };
+
+    class LabelInstruction : public Instruction {
+        public:
+            Label label = "";
+
+            LabelInstruction(Label _label) : Instruction(InstructionType::Label), label(_label) {}
+            std::string to_string() const override {
+                    return "\t\t:" + label + '\n';
+            }
+    };
+    
+    class GotoInstruction : public Instruction {
+        public:
+            Label label = "";
+
+            GotoInstruction(Label _label) : Instruction(InstructionType::Goto), label(_label) {}
+            std::string to_string() const override {
+                    return "\t\tgoto :" + label + '\n';
             }
     };
 
 
-    
+
+
+        enum class AopType { AddEq, SubEq, MulEq, AndEq };
+        enum class SopType { LShift, RShift };
+
+        class ArithInstruction : public Instruction {
+        public:
+            std::optional<VALUE> dst;   // W
+            AopType aop;
+            std::optional<VALUE> src;   // t or mem X M
+
+            ArithInstruction(InstructionType t) : Instruction(t) {}
+            void setDst(VALUE v) { dst = std::move(v); }
+            void setSrc(VALUE v) { src = std::move(v); }
+            void setAop(AopType a) { aop = a; }
+
+            std::string to_string() const override {
+                auto aopStr = [](AopType a) -> std::string {
+                    switch(a) {
+                        case AopType::AddEq: return "+=";
+                        case AopType::SubEq: return "-=";
+                        case AopType::MulEq: return "*=";
+                        case AopType::AndEq: return "&=";
+                    }
+                    return "";
+                };
+                auto valueToString = [](const VALUE& v) -> std::string {
+                    return std::visit([](const auto& val) -> std::string {
+                        using T = std::decay_t<decltype(val)>;
+                        if constexpr (std::is_same_v<T, Register>)    return registerToString(val);
+                        else if constexpr (std::is_same_v<T, Number>) return std::to_string(val.getValue());
+                        else if constexpr (std::is_same_v<T, memoryAccess>) 
+                            return "mem " + registerToString(val.x_value) + " " + std::to_string(val.size);
+                        else return "";
+                    }, v);
+                };
+                return valueToString(dst.value()) + " " + aopStr(aop) + " " + valueToString(src.value()) + "\n";
+            }
+        };
+
+        class ShiftInstruction : public Instruction {
+        public:
+            std::optional<VALUE> dst;   // W
+            SopType sop;
+            std::optional<VALUE> src;   // sx or number
+
+            ShiftInstruction(InstructionType t) : Instruction(t) {}
+            void setDst(VALUE v)   { dst = std::move(v); }
+            void setSrc(VALUE v)   { src = std::move(v); }
+            void setSop(SopType s) { sop = s; }
+
+            std::string to_string() const override {
+                auto sopStr = [](SopType s) -> std::string {
+                    switch(s) {
+                        case SopType::LShift: return "<<=";
+                        case SopType::RShift: return ">>=";
+                    }
+                    return "";
+                };
+                auto valueToString = [](const VALUE& v) -> std::string {
+                    return std::visit([](const auto& val) -> std::string {
+                        using T = std::decay_t<decltype(val)>;
+                        if constexpr (std::is_same_v<T, Register>)    return registerToString(val);
+                        else if constexpr (std::is_same_v<T, Number>) return std::to_string(val.getValue());
+                        else return "";
+                    }, v);
+                };
+                return "\t\t" + valueToString(dst.value()) + " " + sopStr(sop) + " " + valueToString(src.value()) + "\n";
+            }
+        };
+
+        class IncDecInstruction : public Instruction {
+        public:
+            std::optional<VALUE> dst;  // W
+            bool isIncrement;          // true = ++, false = --
+
+            IncDecInstruction() : Instruction(InstructionType::WIncDec) {}
+            void setDst(VALUE v)      { dst = std::move(v); }
+            void setIsInc(bool inc)   { isIncrement = inc; }
+
+            std::string to_string() const override {
+                return std::get<Register>(dst.value()) == Register::rax ?
+                    "\t\t" + registerToString(std::get<Register>(dst.value())) + (isIncrement ? "++" : "--") + "\n" :
+                    "\t\t" + registerToString(std::get<Register>(dst.value())) + (isIncrement ? "++" : "--") + "\n";
+            }
+        };
+
+        class AddrInstruction : public Instruction {
+        public:
+            std::optional<VALUE> dst;   // W
+            std::optional<VALUE> base;  // W
+            std::optional<VALUE> idx;   // W
+            int64_t scale;              // E (1,2,4,8)
+
+            AddrInstruction() : Instruction(InstructionType::WAtWWE) {}
+            void setDst(VALUE v)  { dst  = std::move(v); }
+            void setBase(VALUE v) { base = std::move(v); }
+            void setIdx(VALUE v)  { idx  = std::move(v); }
+            void setScale(int64_t s) { scale = s; }
+
+            std::string to_string() const override {
+                return "\t\t" + registerToString(std::get<Register>(dst.value()))  + " @ " +
+                    registerToString(std::get<Register>(base.value())) + " "   +
+                    registerToString(std::get<Register>(idx.value()))  + " "   +
+                    std::to_string(scale) + "\n";
+            }
+        };
+
+        class MemIncDecInstruction : public Instruction {
+        public:
+            memoryAccess mem;
+            AopType aop;               // += or -=
+            std::optional<VALUE> src;  // t
+
+            MemIncDecInstruction() : Instruction(InstructionType::MemoryIncDecT) {}
+            void setMem(memoryAccess m)  { mem = m; }
+            void setAop(AopType a)       { aop = a; }
+            void setSrc(VALUE v)         { src = std::move(v); }
+
+            std::string to_string() const override {
+                std::string aopStr = (aop == AopType::AddEq) ? "+=" : "-=";
+                std::string src_str = std::visit([](const auto& val) -> std::string {
+                    using T = std::decay_t<decltype(val)>;
+                    if constexpr (std::is_same_v<T, Register>) return registerToString(val);
+                    else if constexpr (std::is_same_v<T, Number>) return std::to_string(val.getValue());
+                    else return "";
+                }, src.value());
+                return "\t\tmem " + registerToString(mem.x_value) + " " + 
+                    std::to_string(mem.size) + " " + aopStr + " " + src_str + "\n";
+            }
+        };
+
     class Function : public ASTNode {
         Label label = "";
         

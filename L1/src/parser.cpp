@@ -548,9 +548,36 @@ struct programORfunction :
 
             std::unique_ptr<CallInstruction> call = std::make_unique<CallInstruction>(parser(in.string()));
 
-            if (call -> InstructionType::CallUN){
+            
+            if (call->type == InstructionType::CallUN){
+                std::string s = in.string();
+                size_t pos = s.find("call") + 4;
 
+                // skip spaces
+                while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
+                // read u value
+                size_t u_start = pos;
+                while (pos < s.size() && s[pos] != ' ' && s[pos] != '\t') pos++;
+                std::string u_str = s.substr(u_start, pos - u_start);
+
+                // parse S — label, register, or number
+                auto parseS = [](const std::string& str) -> VALUE {
+                    if (str[0] == '@') return Label(str);
+                    return stringToRegister(str);
+                };
+
+                call -> setCallee(parseS(u_str));
+                // skip spaces
+                while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
+
+// read u value
+                size_t digit = pos;
+                while (pos < s.size() && s[pos] != ' ' && s[pos] != '\t') pos++;
+                std::string digit_str = s.substr(digit, pos - digit);   
+                call -> setNum(std::stoll(digit_str));
             }
+
+
             p.functions.back().instructions.push_back(std::move(call));
         }
     };
@@ -629,6 +656,45 @@ struct programORfunction :
         }
     };
 
+    template<> struct action <label> {
+        template<typename Input>
+        static void apply(const Input& in, Program& p){
+            assert(!p.label.empty());
+            assert(!p.functions.empty());
+
+            std::string s = in.string();
+            size_t pos = s.find(':');
+            pos += 1;
+            assert(pos != std::string::npos);
+            
+            size_t next = s.find(' ', pos);
+            std::string label_name = s.substr(pos, next - pos);
+
+            auto label = std::make_unique<LabelInstruction>(label_name);
+            p.functions.back().instructions.push_back(std::move(label));
+
+        }
+    };
+
+    template<> struct action <gotoLabel> {
+        template<typename Input>
+        static void apply(const Input& in, Program& p){
+            assert(!p.label.empty());
+            assert(!p.functions.empty());
+
+            std::string s = in.string();
+            size_t pos = s.find(':');
+            pos += 1;
+            assert(pos != std::string::npos);
+            
+            size_t next = s.find(' ', pos);
+            std::string label_name = s.substr(pos, next - pos);
+
+            auto label = std::make_unique<GotoInstruction>(label_name);
+            p.functions.back().instructions.push_back(std::move(label));
+
+        }
+    };
 
     template<> struct action<assignWfromS> {
         template<typename Input>
