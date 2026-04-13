@@ -351,7 +351,7 @@ struct calltensorError:
             F
     >{};
 
-struct callInstruction :
+struct callInstruction_block :
     pegtl::seq<
         pstring("call"),
         spaces,
@@ -416,7 +416,7 @@ struct Instruction_block :
             WaopT,              // W aop t        (generic aop)
             wAtWWE,
             memoryIncDecT,      // mem X M op= t  (unique prefix)
-            callInstruction,
+            callInstruction_block,
             cjump,              // cjump t cmp t label
             label,                // just label
             gotoLabel,
@@ -499,28 +499,7 @@ struct programORfunction :
         throw std::runtime_error("unknown register: " + s);
     }
 
-    inline std::string registerToString(Register r) {
-        switch (r) {
-            case Register::rcx: return "rcx";
-            case Register::rdi: return "rdi";
-            case Register::rsi: return "rsi";
-            case Register::rdx: return "rdx";
-            case Register::r8:  return "r8";
-            case Register::r9:  return "r9";
-            case Register::rax: return "rax";
-            case Register::rbx: return "rbx";
-            case Register::rbp: return "rbp";
-            case Register::r10: return "r10";
-            case Register::r11: return "r11";
-            case Register::r12: return "r12";
-            case Register::r13: return "r13";
-            case Register::r14: return "r14";
-            case Register::r15: return "r15";
-            case Register::rsp: return "rsp";
-        }
-        return "";
-    }
-
+   
     
 
 
@@ -541,203 +520,304 @@ struct programORfunction :
     //         assignMemoryFromS> {};
 
     // InstructionType currentInstructionType = InstructionType::Unknown;
-
-    template<> struct action < label > {
-            template< typename Input >
-            static void start( const Input& in, Program& p){
-                assert(!p.label.empty());
-                assert(!p.functions.empty());
-                assert(!p.functions.back().instructions.empty());
-
-                if (isAssignType(p.functions.back().instructions.back() -> type)){
-                    auto* assign = dynamic_cast<AssignInstruction*>(
-                        p.functions.back().instructions.back().get()
-                    );
-                    VALUE v = in.string();
-                    assert(!assign -> hasTo());
-                    assign -> setTo(v);
-                    return;
-                }
-                
-                
-                // assert(isAssignType(assign -> getType()));
-            }
-
-        };
-
-    template<> struct action < memory_access_block > {
-            template< typename Input >
-            static void start( const Input& in, Program& p){
-                value_is_memory_access = true;
-            }
-
-            template< typename Input >
-            static void apply( const Input& in, Program& p){
-                        
-                std::string s = in.string();
-                
-                // skip "mem" and any surrounding spaces
-                size_t pos = s.find("mem");
-                pos += 3;  // skip past "mem"
-                
-                // skip spaces after "mem"
-                while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
-                
-                // read register — everything until next space
-                size_t reg_start = pos;
-                while (pos < s.size() && s[pos] != ' ' && s[pos] != '\t') pos++;
-                std::string reg_str = s.substr(reg_start, pos - reg_start);
-                
-                // skip spaces between register and number
-                while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
-                
-                // read number — everything remaining
-                std::string num_str = s.substr(pos);
-
-                // build the memoryAccess
-                memoryAccess m;
-                m.x_value = stringToRegister(reg_str);
-                m.size    = std::stoll(num_str);
-                
-                std::cerr << "mem: reg=" << reg_str << " size=" << num_str << "\n";  // debug
-                auto* assign = dynamic_cast<AssignInstruction*>(
-                    p.functions.back().instructions.back().get()
-                );
-                // assume we are in assignment 
-                if (value_is_memory_access && isAssignType(assign -> type)){
-                    VALUE v = m;
-                    if (!assign -> hasFrom()){
-                        assign -> setFrom(v);
-                        return;
-                    }
-                    if (!assign -> hasTo()){
-                        assign -> setTo(v);
-                        return;
-                    }
-                    std::cerr << "weirdly both are assigned without waiting me";
-                    exit(1);
-                }
-
-                value_is_memory_access = false;
-            }
-
-            template< typename Input >
-            static void failure( const Input& in, Program& p){
-                value_is_memory_access = false;
-            }
-
-        };
-
-
-    template<> struct action < W > {
-            template< typename Input >
-            static void apply( const Input& in, Program& p){
-                std::cerr << "W::apply fired: " << in.string() 
-                  << " instructions.size()=" 
-                  << (p.functions.empty() ? -1 : (int)p.functions.back().instructions.size()) 
-                  << "\n";  
-                assert(!p.label.empty());
-                assert(!p.functions.empty());
-                assert(!p.functions.back().instructions.empty());
-
-                auto* assign = dynamic_cast<AssignInstruction*>(
-                    p.functions.back().instructions.back().get()
-                );
-                // assume we are in assignment 
-                if (!value_is_memory_access && isAssignType(assign -> type)){
-                    VALUE v = stringToRegister(in.string());
-                    if (!assign -> hasFrom()){
-                        assign -> setFrom(v);
-                        return;
-                    }
-                    if (!assign -> hasTo()){
-                        assign -> setTo(v);
-                        return;
-                    }
-                    std::cerr << "weirdly both are assigned without waiting me";
-                    exit(1);
-                }
-            }
-        };
-
-
-    template<> struct action < assignMemoryFromS > {
-            template< typename Input >
-            static void start( const Input& in, Program& p){
-                assert(!p.label.empty());
-                assert(!p.functions.empty());
-                assert(!p.functions.back().instructions.empty());
-                auto* assign = dynamic_cast<AssignInstruction*>(
-                    p.functions.back().instructions.back().get()
-                );
-                assign -> setType(InstructionType::AssignMemoryFromS);
-            }
-
-        };
-
-
-    template<> struct action < assignWfromS > {
-        template< typename Input >
-        static void start( const Input& in, Program& p){
+    template<> struct action<returnINS> {
+        template<typename Input>
+        static void apply(const Input& in, Program& p) {
             assert(!p.label.empty());
             assert(!p.functions.empty());
-            assert(!p.functions.back().instructions.empty());
-            auto* assign = dynamic_cast<AssignInstruction*>(
-                p.functions.back().instructions.back().get()
-            );
-            assign -> setType(InstructionType::AssignFromS);
+
+            std::unique_ptr<ReturnInstruction> ret = std::make_unique<ReturnInstruction>();
+            p.functions.back().instructions.push_back(std::move(ret));
+        }
+    };
+    
+    template<> struct action<callInstruction_block> {
+        template<typename Input>
+        static void apply(const Input& in, Program& p) {
+            assert(!p.label.empty());
+            assert(!p.functions.empty());
+
+            auto parser = [](const std::string& s) -> InstructionType {
+                if (s.contains("print")) return InstructionType::CallPrint;
+                if (s.contains("input")) return InstructionType::CallInput;
+                if (s.contains("allocate")) return InstructionType::CallAllocate;
+                if (s.contains("tuple-error")) return InstructionType::CallTupleError;
+                if (s.contains("tensor-error")) return InstructionType::CallTensorError;
+                else return InstructionType::CallUN;
+            };
+
+            std::unique_ptr<CallInstruction> call = std::make_unique<CallInstruction>(parser(in.string()));
+
+            if (call -> InstructionType::CallUN){
+
+            }
+            p.functions.back().instructions.push_back(std::move(call));
+        }
+    };
+   
+
+
+    template<> struct action<assignMemoryFromS> {
+        template<typename Input>
+        static void apply(const Input& in, Program& p) {
+            assert(!p.label.empty());
+            assert(!p.functions.empty());
+
+            std::string s = in.string();
+            size_t pos = 0;
+
+            // skip leading spaces
+            while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
+
+            // find and skip past "mem"
+            size_t mem_pos = s.find("mem", pos);
+            assert(mem_pos != std::string::npos);
+            pos = mem_pos + 3;
+
+            // skip spaces after "mem"
+            while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
+
+            // read X register
+            size_t x_start = pos;
+            while (pos < s.size() && s[pos] != ' ' && s[pos] != '\t') pos++;
+            std::string x_str = s.substr(x_start, pos - x_start);
+
+            // skip spaces
+            while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
+
+            // read M number
+            size_t m_start = pos;
+            while (pos < s.size() && s[pos] != ' ' && s[pos] != '\t') pos++;
+            std::string m_str = s.substr(m_start, pos - m_start);
+
+            // skip spaces
+            while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
+
+            // skip "<-"
+            pos += 2;
+
+            // skip spaces
+            while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
+
+            // read S — rest of string trimmed
+            std::string s_str = s.substr(pos);
+            while (!s_str.empty() && (s_str.back() == ' ' || s_str.back() == '\t')) {
+                s_str.pop_back();
+            }
+
+            // parse S — label, register, or number
+            auto parseS = [](const std::string& str) -> VALUE {
+                if (str[0] == '@') return Label(str);
+                if (str[0] == ':') return Label(str);
+                try {
+                    return stringToRegister(str);
+                } catch (...) {
+                    return Number(std::stoll(str));
+                }
+            };
+
+            // build memory access for destination
+            memoryAccess m;
+            m.x_value = stringToRegister(x_str);
+            m.size    = std::stoll(m_str);
+
+            auto assign = std::make_unique<AssignInstruction>(InstructionType::AssignMemoryFromS);
+            assign->setTo(VALUE(m));          // mem X M is destination
+            assign->setFrom(parseS(s_str));   // S is source
+
+            p.functions.back().instructions.push_back(std::move(assign));
         }
     };
 
-    template<> struct action < compareAssign > {
-        template< typename Input >
-        static void start( const Input& in, Program& p){
+
+    template<> struct action<assignWfromS> {
+        template<typename Input>
+        static void apply(const Input& in, Program& p) {
             assert(!p.label.empty());
             assert(!p.functions.empty());
-            assert(!p.functions.back().instructions.empty());
-            auto* assign = dynamic_cast<AssignInstruction*>(
-                p.functions.back().instructions.back().get()
-            );
-            assign -> setType(InstructionType::CompareAssign);
+
+            std::string s = in.string();
+            size_t pos = 0;
+
+            // skip leading spaces
+            while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
+
+            // read destination W
+            size_t w_start = pos;
+            while (pos < s.size() && s[pos] != ' ' && s[pos] != '\t') pos++;
+            std::string w_str = s.substr(w_start, pos - w_start);
+
+            // skip spaces
+            while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
+
+            // skip "<-"
+            pos += 2;
+
+            // skip spaces
+            while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
+
+            // read S — rest of string trimmed
+            std::string s_str = s.substr(pos);
+            while (!s_str.empty() && (s_str.back() == ' ' || s_str.back() == '\t')) {
+                s_str.pop_back();
+            }
+
+            // parse S — could be label (@foo), label (:foo), register, or number
+            auto parseS = [](const std::string& str) -> VALUE {
+                if (str[0] == '@') return Label(str);       // l
+                if (str[0] == ':') return Label(str);       // label
+                try {
+                    return stringToRegister(str);           // register
+                } catch (...) {
+                    return Number(std::stoll(str));         // number
+                }
+            };
+
+            auto assign = std::make_unique<AssignInstruction>(InstructionType::AssignFromS);
+            assign->setTo(stringToRegister(w_str));
+            assign->setFrom(parseS(s_str));
+
+            p.functions.back().instructions.push_back(std::move(assign));
+        }
+    };
+
+    template<> struct action<compareAssign> {
+        template<typename Input>
+        static void apply(const Input& in, Program& p) {
+            assert(!p.label.empty());
+            assert(!p.functions.empty());
+
+            std::string s = in.string();
+            size_t pos = 0;
+
+            // skip leading spaces
+            while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
+
+            // read destination W
+            size_t w_start = pos;
+            while (pos < s.size() && s[pos] != ' ' && s[pos] != '\t') pos++;
+            std::string w_str = s.substr(w_start, pos - w_start);
+
+            // skip spaces
+            while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
+
+            // skip "<-"
+            pos += 2;
+
+            // skip spaces
+            while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
+
+            // read left t operand
+            size_t left_start = pos;
+            while (pos < s.size() && s[pos] != ' ' && s[pos] != '\t') pos++;
+            std::string left_str = s.substr(left_start, pos - left_start);
+
+            // skip spaces
+            while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
+
+            // read cmp operator (<=, <, =)
+            std::string cmp_op;
+            if (pos + 1 < s.size() && s.substr(pos, 2) == "<=") {
+                cmp_op = "<=";
+                pos += 2;
+            } else if (s[pos] == '<') {
+                cmp_op = "<";
+                pos += 1;
+            } else if (s[pos] == '=') {
+                cmp_op = "=";
+                pos += 1;
+            }
+
+            // skip spaces
+            while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
+
+            // read right t operand — rest of string trimmed
+            std::string right_str = s.substr(pos);
+            while (!right_str.empty() && (right_str.back() == ' ' || right_str.back() == '\t')) {
+                right_str.pop_back();
+            }
+
+            // parse a t value — either register or number
+            auto parseT = [](const std::string& str) -> VALUE {
+                try {
+                    return stringToRegister(str);
+                } catch (...) {
+                    return Number(std::stoll(str));
+                }
+            };
+
+            // build compareAssignValue
+            compareAssignValue cav;
+            cav.left  = std::make_unique<VALUE>(parseT(left_str));
+            cav.cmp   = cmp_op;
+            cav.right = std::make_unique<VALUE>(parseT(right_str));
+
+            // build instruction
+            auto assign = std::make_unique<AssignInstruction>(InstructionType::CompareAssign);
+            assign->setTo(stringToRegister(w_str));
+            assign -> setCmpVal(std::move(cav));
+
+            p.functions.back().instructions.push_back(std::move(assign));
         }
     };
 
     template<> struct action < assignWfromMemory > {
         template< typename Input >
-        static void start( const Input& in, Program& p){
+        static void apply( const Input& in, Program& p){
             assert(!p.label.empty());
             assert(!p.functions.empty());
-            assert(!p.functions.back().instructions.empty());
-            auto* assign = dynamic_cast<AssignInstruction*>(
-                p.functions.back().instructions.back().get()
-            );
-            assign -> setType(InstructionType::AssignFromMemory);
+
+            std::unique_ptr<AssignInstruction> assign = std::make_unique<AssignInstruction>(InstructionType::AssignFromMemory);
+            
+            std::string s = in.string();
+
+
+            size_t pos = 0;
+            // skip any leading spaces.
+            while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
+
+            // read register — everything until next space
+            size_t reg_start = pos;
+            while (pos < s.size() && s[pos] != ' ' && s[pos] != '\t') pos++;
+            std::string reg_str = s.substr(reg_start, pos - reg_start);
+
+            VALUE v = stringToRegister(reg_str);
+            assign -> setTo(v);
+
+            size_t mem_pos = s.find("mem", pos);
+            pos = mem_pos + 3;  // skip past "mem"
+            assert(mem_pos != std::string::npos);
+
+
+            // skip spaces after "mem"
+            while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
+            
+            // read register — everything until next space
+            reg_start = pos;
+            while (pos < s.size() && s[pos] != ' ' && s[pos] != '\t') pos++;
+            reg_str = s.substr(reg_start, pos - reg_start);
+            
+            // skip spaces between register and number
+            while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
+            
+            // read number — everything remaining
+            std::string num_str = s.substr(pos);
+
+            // build the memoryAccess
+            memoryAccess m;
+            m.x_value = stringToRegister(reg_str);
+            m.size    = std::stoll(num_str);
+
+            VALUE mem_value = m;
+            assign -> setFrom(mem_value);
+
+            p.functions.back().instructions.push_back(std::move(assign));
+        
         }
 
     };
 
-    template<> struct action < assignment_block > {
-        template< typename Input >
-        static void start( const Input& in, Program& p){
-            std::cerr << "assignment_block::start fired\n";  // add this
-
-            assert(!p.label.empty());
-            assert(!p.functions.empty());
-            assert(!p.functions.back().instructions.empty());
-            p.functions.back().instructions.push_back(
-                std::make_unique<AssignInstruction>()
-            );
-        }
-        template< typename Input >
-        static void failure( const Input& in, Program& p){
-            std::cerr << "assignment_block::failure fired\n";  // add this
-            assert(!p.label.empty());
-            assert(!p.functions.empty());
-            assert(!p.functions.back().instructions.empty());
-            p.functions.back().instructions.pop_back();
-        }
-
-    };
+   
 
     
 
@@ -746,9 +826,9 @@ struct programORfunction :
         static void apply( const Input& in, Program& p){
             if (p.label.empty()){
                 p.label = in.string();
-                p.functions.push_back(Function()); // there must be at least one function 
                 return;
             }
+            p.functions.push_back(Function()); // there must be at least one function 
             if (p.functions.back().getLabel().empty()){
                 p.functions.back().setLabel(in.string());
             }
