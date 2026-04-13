@@ -7,12 +7,66 @@
 #include <memory>
 #include <variant>
 #include <vector>
+#include <cassert>
+#include <optional>
 
 namespace L1 {
     class ASTNode {
         public:
             virtual ~ASTNode() = default;
             virtual std::string to_string() = 0;
+    };
+
+    // label is just another string. 
+    using Label = std::string;
+
+    enum class InstructionType {
+
+        // default value
+        Unknown, 
+        // assignment instructions
+        CompareAssign,      // W <- t cmp t
+        AssignFromMemory,   // W <- mem X M
+        AssignFromS,        // W <- S
+        AssignMemoryFromS,  // mem X M <- S
+
+        // arithmetic/logic
+        WaopT,              // W aop t
+        WsopSx,             // W sop sx
+        WsopN,              // W sop number
+
+        // increment/decrement
+        WIncDec,            // W++ / W--
+        MemoryIncDecT,      // mem X M += t
+
+        // address computation
+        WAtWWE,             // W @ W W E
+
+        // call instructions
+        CallPrint,          // call print 1
+        CallInput,          // call input 0
+        CallAllocate,       // call allocate 2
+        CallTupleError,     // call tuple-error 3
+        CallTensorError,    // call tensor-error F
+        CallUN,             // call u number
+
+        // control flow
+        CJump,              // cjump t cmp t label
+        Goto,               // goto label
+        Label,              // :label
+        Return              // return
+
+        
+    };
+
+    class Instruction : public ASTNode {
+        public:
+            InstructionType type;
+            Instruction() = delete;
+
+            Instruction(InstructionType t) : type(t) {}
+            virtual ~Instruction() = default;
+            std::string to_string() override { return ""; }
     };
 
     
@@ -37,33 +91,122 @@ namespace L1 {
         }
     };
     
-    class Register : public ASTNode {
-        std::string value;
+    enum class Register {
+        // sx
+        rcx,
+
+        // a registers (includes sx)
+        rdi,
+        rsi,
+        rdx,
+        r8,
+        r9,
+
+        // w registers (includes a)
+        rax,
+        rbx,
+        rbp,
+        r10,
+        r11,
+        r12,
+        r13,
+        r14,
+        r15,
+
+        // special
+        rsp
+    };
+
+
+    
+
+    struct memoryAccess {
+        Register x_value = Register::rsp;  // some sentinel default
+        int64_t size = 0;
+    };
+
+    using VALUE = std::variant<memoryAccess, Register, Label, Number, Pointer>;
+
+    inline bool isAssignType(InstructionType t) {
+        return t == InstructionType::CompareAssign    ||
+            t == InstructionType::AssignFromMemory ||
+            t == InstructionType::AssignFromS      ||
+            t == InstructionType::AssignMemoryFromS;
+    }
+
+    class AssignInstruction : public Instruction {
         public:
-            Register() : value("") {}
-            Register(std::string _value) : value(_value) {}
+            std::optional<VALUE> from;
+            std::optional<VALUE> to;
+
+            AssignInstruction() : Instruction(InstructionType::Unknown) {}
+            AssignInstruction(InstructionType t) : Instruction(t) {
+                assert(isAssignType(t));
+            }
+
+            // setters
+            void setType(InstructionType t) {
+                assert(isAssignType(t));
+                type = t;
+            }
+            void setFrom(VALUE v) { from = std::move(v); }
+            void setTo(VALUE v)   { to   = std::move(v); }
+
+            // getters
+            InstructionType getType() const { return type; }
+            
+            const std::optional<VALUE>& getFrom() const { return from; }
+            const std::optional<VALUE>& getTo()   const { return to; }
+
+            // safety checks
+            bool hasFrom() const { return from.has_value(); }
+            bool hasTo()   const { return to.has_value(); }
+            bool isComplete() const { 
+                return type != InstructionType::Unknown && 
+                    from.has_value() && 
+                    to.has_value(); 
+            }
+
             std::string to_string() override {
-                    return value;  // or "@" + value, depending on what you want
-                }
-    };
+                assert(isComplete());
+                // fill in later
+                return "";
+            }
+        };
 
-
-    // label is just another string. 
-    using Label = std::string;
-
-    class Instruction : public ASTNode {
+   class CallInstruction : public Instruction {
         public:
-            virtual ~Instruction() = default;
-            std::string to_string() override { return ""; }
+            CallInstruction(InstructionType t) : Instruction(t) {
+                assert(t == InstructionType::CallPrint    ||
+                    t == InstructionType::CallInput    ||
+                    t == InstructionType::CallAllocate ||
+                    t == InstructionType::CallTupleError ||
+                    t == InstructionType::CallTensorError ||
+                    t == InstructionType::CallUN);
+            }
+            std::string to_string() override {
+                switch (type) {
+                    case InstructionType::CallPrint:       return "call print 1\n";
+                    case InstructionType::CallInput:       return "call input 0\n";
+                    case InstructionType::CallAllocate:    return "call allocate 2\n";
+                    case InstructionType::CallTupleError:  return "call tuple-error 3\n";
+                    case InstructionType::CallTensorError: return "call tensor-error\n";
+                    case InstructionType::CallUN:          return "call\n";
+                    default:                               return "";
+                }
+            }
+        };
+
+
+    class ReturnInstruction : public Instruction {
+        public:
+            ReturnInstruction() : Instruction(InstructionType::Return) {}
+            std::string to_string() override {
+                    return "return";
+            }
     };
 
-    class AssignInstruction : public Instruction {};
-    class PrintInstruction  : public Instruction {};
-    class ReturnInstruction : public Instruction {};
-    class InputInstruction  : public Instruction {};
 
-     // create a type name called NumPoi : could be Number or Pointer
-    using NumPoi  = std::variant<Number, Pointer>;  
     
     class Function : public ASTNode {
         Label label = "";
@@ -123,3 +266,4 @@ namespace L1 {
     };
 
 }
+
