@@ -890,13 +890,19 @@ struct programORfunction :
     template<> struct action < l > {
         template< typename Input >
         static void apply( const Input& in, Program& p){
+            size_t pos = in.string().find('@');
+            pos += 1;
+            assert(pos != std::string::npos);
+            std::string str_label = in.string().substr(pos);
             if (p.label.empty()){
-                p.label = in.string();
+                
+                p.label = str_label;
                 return;
             }
             p.functions.push_back(Function()); // there must be at least one function 
             if (p.functions.back().getLabel().empty()){
-                p.functions.back().setLabel(in.string());
+
+                p.functions.back().setLabel(str_label);
             }
         }
     };
@@ -958,6 +964,13 @@ struct programORfunction :
     // fetch the last function
 
     Program parse_file (char *fileName){
+    
+    FILE *file = fopen(fileName, "r");
+
+    if (!file){
+        std::cerr <<fileName << " : file not found." << std::endl;
+        exit(1);
+    }
 
     /* 
      * Check the grammar for some possible issues.
@@ -976,35 +989,9 @@ struct programORfunction :
     Program p;
     parse< grammar, action >(fileInput, p);
 
-    std::cout << p.to_string() << std::endl ;
+    // std::cout << p.to_string() << std::endl ;
 
     return p;
   }
 }
 
-
-
- // bool TRACE = false; // toggle this
-
-    // template< typename Rule >
-    // struct my_tracer : pegtl::normal< Rule > {
-    //     template< typename Input, typename... States >
-    //     static void start( const Input& in, States&&... ) {
-    //         if (!TRACE) return;
-    //         std::cerr << "try   " << pegtl::demangle< Rule >() 
-    //                 << " at line " << in.position().line 
-    //                 << " col " << in.position().column << "\n";
-    //     }
-
-    //     template< typename Input, typename... States >
-    //     static void success( const Input& in, States&&... ) {
-    //         if (!TRACE) return;
-    //         std::cerr << "ok    " << pegtl::demangle< Rule >() << "\n";
-    //     }
-
-    //     template< typename Input, typename... States >
-    //     static void failure( const Input& in, States&&... ) {
-    //         if (!TRACE) return;
-    //         std::cerr << "FAIL  " << pegtl::demangle< Rule >() << "\n";
-    //     }
-    // };

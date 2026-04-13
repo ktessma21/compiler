@@ -15,6 +15,7 @@ namespace L1 {
         public:
             virtual ~ASTNode() = default;
             virtual std::string to_string() const = 0;
+            virtual bool verify() const { return true; }
     };
 
     // label is just another string. 
@@ -66,6 +67,7 @@ namespace L1 {
 
             Instruction(InstructionType t) : type(t) {}
             virtual ~Instruction() = default;
+            bool verify() const override { return true; }
      
     };
 
@@ -80,17 +82,10 @@ namespace L1 {
                 return std::to_string(value);
             }
             int64_t getValue() const { return value;}
+            bool verify() const override { return true; }
     };
 
-    class Pointer : public ASTNode {
-        uint64_t value;
-    public:
-        Pointer() : value(0) {}
-        Pointer(uint64_t _value) : value(_value) {}
-        std::string to_string() const override {
-            return std::to_string(value);
-        }
-    };
+    
     
     enum class Register {
         // sx
@@ -147,7 +142,7 @@ namespace L1 {
 
     
 
-    using VALUE = std::variant<memoryAccess, Register, Label,Number, Pointer>;
+    using VALUE = std::variant<memoryAccess, Register, Label, Number>;
    
     
     struct compareAssignValue {
@@ -201,7 +196,9 @@ namespace L1 {
                     to.has_value() ; 
             }
 
-           std::string to_string() const override {
+            bool verify() const override { return isComplete(); }
+
+            std::string to_string() const override {
                 assert(isComplete());
                 
                 auto valueToString = [](const VALUE& v) -> std::string {
@@ -214,8 +211,6 @@ namespace L1 {
                         } else if constexpr (std::is_same_v<T, Label>) {
                             return val;
                         } else if constexpr (std::is_same_v<T, Number>) {
-                            return val.to_string();
-                        } else if constexpr (std::is_same_v<T, Pointer>) {
                             return val.to_string();
                         } else {
                             assert(false && "unknown VALUE type");
@@ -290,6 +285,7 @@ namespace L1 {
                         arg = argument;
                     }
             }
+
             std::string to_string() const override {
                 switch (type) {
                     case InstructionType::CallPrint:       return "\t\tcall print 1\n";
@@ -520,6 +516,14 @@ namespace L1 {
                 }
                 result += ')';
                 return result;
+            }
+
+            bool verify() const override { 
+                for (auto& function: functions){
+                    if (function.getLabel() == label) return true;
+                }
+                std::cerr << "no matching function with a program label\n";
+                return false;
             }
     };
 

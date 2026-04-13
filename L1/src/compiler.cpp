@@ -14,6 +14,7 @@
 
 #include <utils.h>
 #include <parser.h>
+#include <generator.h>
 #include <string.h>
 
 void print_help(char *progName) {
@@ -61,19 +62,21 @@ int main(int argc, char **argv) {
   // TODO
 
   auto p = L1::parse_file(argv[optind]);
+  // std::cout << p.to_string() << std::endl ;
    
   /*
    * Print the source program.
    */
   if (Utils::verbose) {
-    // TODO
+    std::cout << p.to_string << std::endl;
   }
 
   /*
    * Generate x86_64 assembly.
    */
   if (enable_code_generator) {
-    // TODO
+    L1::generate_code(p);
+
   }
 
   return 0;
