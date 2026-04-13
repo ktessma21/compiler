@@ -632,6 +632,10 @@ struct programORfunction :
     template<> struct action < W > {
             template< typename Input >
             static void apply( const Input& in, Program& p){
+                std::cerr << "W::apply fired: " << in.string() 
+                  << " instructions.size()=" 
+                  << (p.functions.empty() ? -1 : (int)p.functions.back().instructions.size()) 
+                  << "\n";  
                 assert(!p.label.empty());
                 assert(!p.functions.empty());
                 assert(!p.functions.back().instructions.empty());
@@ -715,6 +719,8 @@ struct programORfunction :
     template<> struct action < assignment_block > {
         template< typename Input >
         static void start( const Input& in, Program& p){
+            std::cerr << "assignment_block::start fired\n";  // add this
+
             assert(!p.label.empty());
             assert(!p.functions.empty());
             assert(!p.functions.back().instructions.empty());
@@ -724,6 +730,7 @@ struct programORfunction :
         }
         template< typename Input >
         static void failure( const Input& in, Program& p){
+            std::cerr << "assignment_block::failure fired\n";  // add this
             assert(!p.label.empty());
             assert(!p.functions.empty());
             assert(!p.functions.back().instructions.empty());
