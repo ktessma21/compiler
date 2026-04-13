@@ -8,7 +8,6 @@ namespace L1 {
 
     void generate_code(const Program& p){
 
-
         if (!p.verify()) {
             exit(1);
         }

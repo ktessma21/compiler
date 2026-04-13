@@ -10,7 +10,7 @@ go:
 	pushq %r14
 	pushq %r15
 
-	call _sammy
+	call _go
 
 	# restore callee-saved registers and return
 	popq %r15
@@ -21,7 +21,14 @@ go:
 	popq %rbx
 	retq
 
-_sammy
-	movq $25, rdi
+_go:
+	movq $5, %rdi
+	movq $_:testFunction_ret, -8(%rsp)
+	subq-8, %rsp
+
+_testFunction:
+	movq %rax, %rdi
 	call print # runtime system call
+	retq_testFunction:
+	movq %rdi, %rax
 	retq

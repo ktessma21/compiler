@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
   /*
    * Check the compiler arguments.
    */
-  Utils::verbose = false;
+  Utils::verbose = true;
   if (argc < 2) {
     print_help(argv[0]);
     return 1;
@@ -68,7 +68,7 @@ int main(int argc, char **argv) {
    * Print the source program.
    */
   if (Utils::verbose) {
-    std::cout << p.to_string() << std::endl;
+    std::cerr << p.to_string() << std::endl;
   }
 
   /*

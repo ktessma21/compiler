@@ -264,14 +264,31 @@ namespace L1 {
             std::string generate_code() const override {
 
                 auto valueToString = [](const VALUE& v) -> std::string {
-                    return std::visit([](const auto& val) -> std::string {
+
+                    auto processmemoryAccess = [](const memoryAccess& mem) -> std::string{
+                        if (mem.size % 8 != 0){
+                            std::cerr << "memory access size must be a multiple of 8\n";
+                            exit(1);
+                        }
+
+                        if (mem.x_value == Register::rsp){
+                            std::string result = std::to_string(mem.size) + "(%rsp)" + '\n';
+                            result += "\tsubq" + std::to_string(mem.size) + ", %rsp\n";
+                            return result;
+                        }
+
+
+                        return std::to_string(mem.size) + "(%" + registerToString(mem.x_value) + ')';
+                    };
+
+                    return std::visit([&](const auto& val) -> std::string {
                         using T = std::decay_t<decltype(val)>;
                         if constexpr (std::is_same_v<T, Register>) {
                             return '%' + registerToString(val);
                         } else if constexpr (std::is_same_v<T, memoryAccess>){
-                            return "TODO_MEM_ACCESS";
+                            return processmemoryAccess(val);
                         } else if constexpr (std::is_same_v<T, Label>) {
-                            return "TODO_LABEL";
+                            return "$_" + val;
                         } else if constexpr (std::is_same_v<T, Number>) {
                             return val.generate_code();
                         } else {
@@ -331,6 +348,11 @@ namespace L1 {
                 if (type == InstructionType::CallPrint){
                     return "\tcall print # runtime system call\n";
                 }
+                if (type == InstructionType::CallInput){
+                    return "\tcall input # runtime system call\n";
+                }
+                //    call input # runtime system call
+
                 return "";
             }
         };
@@ -356,9 +378,9 @@ namespace L1 {
                     return "\t\t:" + label + '\n';
             }
             std::string generate_code() const override {
-                return "";
+                return ""; // "\tjmp _" + label + '\n';
             }
-    };
+    }; 
     
     class GotoInstruction : public Instruction {
         public:
@@ -414,6 +436,40 @@ namespace L1 {
             }
 
             std::string generate_code() const override {
+
+                auto valueToString = [](const VALUE& v) -> std::string {
+
+                    auto processmemoryAccess = [](const memoryAccess& mem) -> std::string{
+                        
+                        return std::to_string(mem.size) + "(%" + registerToString(mem.x_value) + ')';
+                    };
+
+                    return std::visit([&](const auto& val) -> std::string {
+                        using T = std::decay_t<decltype(val)>;
+                        if constexpr (std::is_same_v<T, Register>) {
+                            return '%' + registerToString(val);
+                        } else if constexpr (std::is_same_v<T, memoryAccess>){
+                            return processmemoryAccess(val);
+                        } else if constexpr (std::is_same_v<T, Label>) {
+                            return "$_" + val;
+                        } else if constexpr (std::is_same_v<T, Number>) {
+                            return val.generate_code();
+                        } else {
+                            assert(false && "unknown VALUE type");
+                            return "";
+                        }
+                    }, v);
+                };  
+                if (aop == AopType::AddEq){
+                    return "\taddq " + valueToString(src.value()) + ", " + valueToString(dst.value()) + '\n';
+                }else if (aop == AopType::SubEq){
+                    return "\tsubq " + valueToString(src.value()) + ", " + valueToString(dst.value()) + '\n';
+                }else if (aop == AopType::MulEq){
+                    return "\tmulq " + valueToString(src.value()) + ", " + valueToString(dst.value()) + '\n';
+                }else if (aop == AopType::AndEq){
+                    return "not implemented yet\n";
+                }
+
                 return "";
             }
         };
@@ -518,7 +574,42 @@ namespace L1 {
                 return "\t\tmem " + registerToString(mem.x_value) + " " + 
                     std::to_string(mem.size) + " " + aopStr + " " + src_str + "\n";
             }
+
             std::string generate_code() const override {
+
+                // auto valueToString = [](const VALUE& v) -> std::string {
+
+                //     auto processmemoryAccess = [](const memoryAccess& mem) -> std::string{
+                //         if (mem.x_value == Register::rsp){
+                //             return "-" + std::to_string(mem.size) + "(%rsp)";
+                //         }
+                //         return std::to_string(mem.size) + "(%" + registerToString(mem.x_value) + ')';
+                //     };
+
+                //     return std::visit([&](const auto& val) -> std::string {
+                //         using T = std::decay_t<decltype(val)>;
+                //         if constexpr (std::is_same_v<T, Register>) {
+                //             return '%' + registerToString(val);
+                //         } else if constexpr (std::is_same_v<T, memoryAccess>){
+                //             return processmemoryAccess(val);
+                //         } else if constexpr (std::is_same_v<T, Label>) {
+                //             return "$_" + val;
+                //         } else if constexpr (std::is_same_v<T, Number>) {
+                //             return val.generate_code();
+                //         } else {
+                //             assert(false && "unknown VALUE type");
+                //             return "";
+                //         }
+                //     }, v);
+                // };  
+
+
+                // if (aop == AopType::AddEq){
+                //     return "\taddq " + valueToString(src.value()) + ", " + valueToString(VALUE(mem)) + '\n';
+                // }else if (aop == AopType::SubEq){
+                //     return "\tsubq " + valueToString(src.value()) + ", " + valueToString(VALUE(mem)) + '\n';
+                // }
+
                 return "";
             }
 
