@@ -12,9 +12,9 @@ namespace L1 {
             exit(1);
         }
 
-        if (Utils::verbose){
-            std::cout << "generating" << std::endl;
-        }
+        // if (Utils::verbose){
+        //     std::cout << "generating" << std::endl;
+        // }
 
         std::ofstream outputFile;
         outputFile.open("prog.S");

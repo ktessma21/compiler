@@ -407,7 +407,9 @@ namespace L1 {
             AopType aop;
             std::optional<VALUE> src;   // t or mem X M
 
-            ArithInstruction(InstructionType t) : Instruction(t) {}
+            ArithInstruction(InstructionType t) : Instruction(t) {
+                std::cerr << "intialized arith instruction with type " << std::endl;
+            }
             void setDst(VALUE v) { dst = std::move(v); }
             void setSrc(VALUE v) { src = std::move(v); }
             void setAop(AopType a) { aop = a; }
@@ -630,7 +632,7 @@ namespace L1 {
             std::string to_string() const override {
                 std::string result;
                 result += '\t';
-                result += '(' + label + "\n\t\t";
+                result += "(@" + label + "\n\t\t";
                 result += std::to_string(num_args) + ' ' + std::to_string(num_locals) + '\n';
                 for (auto& instruction : instructions) {
                     result += instruction->to_string();  // -> and semicolon

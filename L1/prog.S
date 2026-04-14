@@ -26,7 +26,6 @@ _go:
 	movq $_:testFunction_ret, -8(%rsp)
 	subq-8, %rsp
 
-_testFunction:
 	movq %rax, %rdi
 	call print # runtime system call
 	retq_testFunction:

@@ -167,6 +167,12 @@ struct label :
             name
         > {};
 
+struct label_instruction_block :
+        pegtl::seq<
+            pegtl::one<':'>, 
+            name
+        > {};
+
 struct u :
         pegtl::sor<
             W, 
@@ -418,7 +424,7 @@ struct Instruction_block :
             memoryIncDecT,      // mem X M op= t  (unique prefix)
             callInstruction_block,
             cjump,              // cjump t cmp t label
-            label,                // just label
+            label_instruction_block,                // just label
             gotoLabel,
             returnINS           // return         (unique)
         >{};
@@ -505,7 +511,7 @@ struct programORfunction :
 
     /* FUll ITEM collecting */
     //  std::vector<std::unique_ptr<ASTNode>> items;
-    bool value_is_memory_access = false;
+    bool new_function = false;
 
 
     template<typename Rule>
@@ -520,6 +526,120 @@ struct programORfunction :
     //         assignMemoryFromS> {};
 
     // InstructionType currentInstructionType = InstructionType::Unknown;
+
+    template<> struct action<WaopT> {
+        template<typename Input>
+        static void apply(const Input& in, Program& p) {
+                assert(!p.label.empty());
+                assert(!p.functions.empty());
+
+                std::string s = in.string();
+                size_t pos = 0;
+
+                // read W
+                while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
+                size_t w_start = pos;
+                while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t') pos++;
+                std::string w_str = s.substr(w_start, pos - w_start);
+
+                // read aop
+                while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
+                size_t aop_start = pos;
+                while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t') pos++;
+                std::string aop_str = s.substr(aop_start, pos - aop_start);
+
+                // read t
+                while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
+                std::string t_str = s.substr(pos);
+                while (!t_str.empty() && (t_str.back()==' '||t_str.back()=='\t')) t_str.pop_back();
+
+                auto instr = std::make_unique<ArithInstruction>(InstructionType::WaopT);
+                instr->setDst(stringToRegister(w_str));
+                instr->setAop(parseAop(aop_str));
+                instr->setSrc(parseT(t_str));
+                p.functions.back().instructions.push_back(std::move(instr));
+            }
+        };
+
+    template<> struct action<wIncDecMemory> {
+        template<typename Input>
+        static void apply(const Input& in, Program& p) {
+            assert(!p.label.empty());
+            assert(!p.functions.empty());
+
+            std::string s = in.string();
+            size_t pos = 0;
+
+            // read W
+            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
+            size_t w_start = pos;
+            while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t') pos++;
+            std::string w_str = s.substr(w_start, pos - w_start);
+
+            // read aop (+=  or -=)
+            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
+            size_t aop_start = pos;
+            while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t') pos++;
+            std::string aop_str = s.substr(aop_start, pos - aop_start);
+
+            // find mem
+            size_t mem_pos = s.find("mem", pos);
+            assert(mem_pos != std::string::npos);
+            pos = mem_pos + 3;
+
+            // read X
+            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
+            size_t x_start = pos;
+            while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t') pos++;
+            std::string x_str = s.substr(x_start, pos - x_start);
+
+            // read M
+            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
+            std::string m_str = s.substr(pos);
+            while (!m_str.empty() && (m_str.back()==' '||m_str.back()=='\t')) m_str.pop_back();
+
+            memoryAccess m;
+            m.x_value = stringToRegister(x_str);
+            m.size    = std::stoll(m_str);
+
+            auto instr = std::make_unique<ArithInstruction>(InstructionType::WIncDecMemory);
+            instr->setDst(stringToRegister(w_str));
+            instr->setAop(parseAop(aop_str));
+            instr->setSrc(VALUE(m));
+            p.functions.back().instructions.push_back(std::move(instr));
+        }
+    };
+
+    template<> struct action<WsopSx> {
+        template<typename Input>
+        static void apply(const Input& in, Program& p) {
+            assert(!p.label.empty());
+            assert(!p.functions.empty());
+
+            std::string s = in.string();
+            size_t pos = 0;
+
+            // read W
+            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
+            size_t w_start = pos;
+            while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t') pos++;
+            std::string w_str = s.substr(w_start, pos - w_start);
+
+            // read sop
+            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
+            size_t sop_start = pos;
+            while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t') pos++;
+            std::string sop_str = s.substr(sop_start, pos - sop_start);
+
+            // sx is always rcx
+            auto instr = std::make_unique<ShiftInstruction>(InstructionType::WsopSx);
+            instr->setDst(stringToRegister(w_str));
+            instr->setSop(parseSop(sop_str));
+            instr->setSrc(Register::rcx);
+            p.functions.back().instructions.push_back(std::move(instr));
+        }
+    };
+
     template<> struct action<returnINS> {
         template<typename Input>
         static void apply(const Input& in, Program& p) {
@@ -656,9 +776,10 @@ struct programORfunction :
         }
     };
 
-    template<> struct action <label> {
+    template<> struct action <label_instruction_block> {
         template<typename Input>
         static void apply(const Input& in, Program& p){
+            // std::cerr << "parsing label instruction\n";
             assert(!p.label.empty());
             assert(!p.functions.empty());
 
@@ -895,48 +1016,37 @@ struct programORfunction :
             assert(pos != std::string::npos);
             std::string str_label = in.string().substr(pos);
             if (p.label.empty()){
-                
                 p.label = str_label;
                 return;
             }
-            p.functions.push_back(Function()); // there must be at least one function 
-            if (p.functions.back().getLabel().empty()){
-
+            if (!new_function){
+                new_function = true;
+                p.functions.push_back(Function()); // there must be at least one function 
                 p.functions.back().setLabel(str_label);
             }
         }
     };
 
-    template<> struct action < number > {
-        template< typename Input >
-        static void apply( const Input& in, Program& p){ 
-            if (p.label.empty() || p.functions.empty()){
-                return;  // this is just a program
-            }
-
-            // if (p.bac)
-
-            // check if it is called from function point of view 
-            if (!p.functions.back().args_set){
-                p.functions.back().setNumArgs(std::stoll(in.string()));
-            }
-            if (!p.functions.back().local_set){
-                p.functions.back().setNumLocals(std::stoll(in.string()));
-            }
-
-            // check if it is called from instruction point of view 
-        }
-    };
 
     template<> struct action < functionFormat > {
         template< typename Input >
         static void apply( const Input& in, Program& p){
-            // auto label = std::move(items.back().get());
-            // items.pop_back();
+            new_function = false;
+            std::string s = in.string();
+            size_t pos = 0;
+            // skip leading spaces 
+            while (pos < s.size() && (s[pos] == ' '|| s[pos] == '\t')) pos++;
 
-            
+            size_t num_args_start = in.string().find(' ', pos);
+            std::string num_args_str = s.substr(pos, num_args_start - pos);
+            pos = num_args_start + 1;
+            while (pos < s.size() && (s[pos] == ' '|| s[pos] == '\t')) pos++;
+            size_t num_args_local = in.string().find(' ', pos);
+            std::string num_local_str= s.substr(pos, num_args_local - pos);
 
-            // std::unique_ptr<Function> function = std::make_unique<Function>();
+            p.functions.back().setNumArgs(std::stoll(num_args_str));
+            p.functions.back().setNumLocals(std::stoll(num_local_str));
+
         }
     };
 
