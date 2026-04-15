@@ -262,12 +262,8 @@ namespace L1{
                     return "\tcall allocate # runtime system call\n";
                 }
                 
-
                 // Call tensor-error note implemented in runtime system yet. 
 
-               
-
-                
                 if (instr.type == InstructionType::CallUN){
                     std::string callee_str = Converter::toString(instr.callee.value());
                         std::string result;

@@ -362,12 +362,12 @@ struct callInstruction_block :
         pstring("call"),
         spaces,
         pegtl::sor<
+            callUN,   // call u number       (not generic actually fallback)
             callPrint,        // call print 1        (specific string)
             callInput,        // call input 0        (specific string)
             callAllocate,     // call allocate 2     (specific string)
             calltupleError,   // call tuple-error 3  (specific string)
-            calltensorError,  // call tensor-error F (specific string)
-            callUN            // call u number       (generic fallback)
+            calltensorError           
         >
     >{};
 
@@ -813,37 +813,41 @@ struct programORfunction :
         static void apply(const Input& in, Program& p) {
             assert(!p.label.empty());
             assert(!p.functions.empty());
+            // std::cerr << "parsing call instruction : " << in.string() << '\n';
+             
+            std::string s = in.string();
+            size_t pos = s.find_first_of("call") + 4;
+
+                // skip spaces
+            while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
+                // read u value
+            size_t u_end = s.find_first_of(" ", pos);
+            std::string u_str = s.substr(pos, u_end - pos);
+
+            // std::cerr<< "parsing call instruction with u_str: " << u_str << '\n';
 
             auto parser = [](const std::string& s) -> InstructionType {
+                if (s.starts_with("@") || s.starts_with("r")) return InstructionType::CallUN;
                 if (s.contains("print")) return InstructionType::CallPrint;
                 if (s.contains("input")) return InstructionType::CallInput;
                 if (s.contains("allocate")) return InstructionType::CallAllocate;
                 if (s.contains("tuple-error")) return InstructionType::CallTupleError;
                 if (s.contains("tensor-error")) return InstructionType::CallTensorError;
-                else return InstructionType::CallUN;
+                return InstructionType::Unknown;
             };
 
-            std::unique_ptr<CallInstruction> call = std::make_unique<CallInstruction>(parser(in.string()));
+            std::unique_ptr<CallInstruction> call = std::make_unique<CallInstruction>(parser(u_str));
 
-            
+            assert(call->type != InstructionType::Unknown);
             if (call->type == InstructionType::CallUN){
-                std::string s = in.string();
-                size_t pos = s.find("call") + 4;
-
-                // skip spaces
-                while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
-                // read u value
-                size_t u_start = pos;
-                while (pos < s.size() && s[pos] != ' ' && s[pos] != '\t') pos++;
-                std::string u_str = s.substr(u_start, pos - u_start);
-
-                // parse S — label, register, or number
+                    // parse S — label, register, or number
                 auto parseS = [](const std::string& str) -> VALUE {
                     if (str[0] == '@') return Label(str.substr(1));
                     return stringToRegister(str);
                 };
 
                 call -> setCallee(parseS(u_str));
+                pos = u_end;
                 // skip spaces
                 while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
 
@@ -853,7 +857,8 @@ struct programORfunction :
                 std::string digit_str = s.substr(digit, pos - digit);   
                 call -> setNum(std::stoll(digit_str));
             }
-
+            
+           
 
             p.functions.back().instructions.push_back(std::move(call));
         }

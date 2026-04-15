@@ -24,26 +24,30 @@ go:
 _go:
 	subq $8, %rsp #Allocate locals
 	movq %r12, 0(%rsp)
-	movq $0, %r12
-_startLoop:
-	cmpq $5, %r12
-	jle _loopBody
-	jmp _exitLoop #goto
-_loopBody:
 	movq $5, %rdi
-	movq $_testFunction_ret, -8(%rsp)
-	subq $16, %rsp #allocate space for arguments and return address
-	jmp _testFunction# callee jump
-_testFunction_ret:
-	movq %rax, %rdi
-	call print # runtime system call
-	addq $2, %r12
-	jmp _startLoop #goto
-_exitLoop:
+	movq $5, %rsi
+	call allocate # runtime system call
+	movq %rax, %r12
+	movq %r12, %rdi
+	movq $_printData_ret, -8(%rsp)
+	subq $8, %rsp #allocate space for return address only
+	jmp _printData# callee jump
+_printData_ret:
 	movq 0(%rsp), %r12
 	addq $8, %rsp #Deallocate locals
 	retq
-_testFunction:
-	movq %rdi, %rax
+_printData:
+	subq $16, %rsp #Allocate locals
+	movq %r12, 0(%rsp)
+	movq %r13, 8(%rsp)
+	movq %rdi, %r12
+	movq 0(%r12), %r13
+	movq %r13, %rdi
+	salq $1, %rdi
+	addq $1, %rdi
+	call print # runtime system call
+	movq 0(%rsp), %r12
+	movq 8(%rsp), %r13
+	addq $24, %rsp #Deallocate locals
 	retq
 
