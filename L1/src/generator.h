@@ -313,11 +313,19 @@ namespace L1{
             }
             for (auto& instruction : function.instructions) {
                 if (instruction->type == InstructionType::Return) {
-                    result += generate(
+                    if (function.getNumArgs() <= 6){
+                        result += generate(
+                        static_cast<const ReturnInstruction&>(*instruction),
+                        function.getNumLocals(),
+                        0
+                    );
+                    }else{
+                        result += generate(
                         static_cast<const ReturnInstruction&>(*instruction),
                         function.getNumLocals(),
                         function.getNumArgs()
                     );
+                    }
                 } else {
                     result += generate(*instruction);  // generic for everything else
                 }
