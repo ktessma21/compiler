@@ -505,10 +505,36 @@ struct programORfunction :
         throw std::runtime_error("unknown register: " + s);
     }
 
-   
+   inline AopType parseAop(const std::string& s) {
+    if (s == "+=") return AopType::AddEq;
+    if (s == "-=") return AopType::SubEq;
+    if (s == "*=") return AopType::MulEq;
+    return AopType::AndEq;  // &=
+    }
     
+    inline SopType parseSop(const std::string& s){
+        if (s == "<<=") return SopType::LShift;
+        return SopType::RShift; 
+    }
+        
+    inline VALUE parseS(const std::string& str) {
+        if (!str.empty() && str[0] == '@') return Label(str);
+        if (!str.empty() && str[0] == ':') return Label(str);
+        try { 
+            return stringToRegister(str); 
+        } catch (...) { 
+            return Number(std::stoll(str)); 
+        }
+    }
 
+    inline VALUE parseT(const std::string& str){
+        if (!str.empty() && str[0] == 'r'){
+            return stringToRegister(str);
 
+        }else{
+            return Number(std::stoll(str));
+        }
+    }
     /* FUll ITEM collecting */
     //  std::vector<std::unique_ptr<ASTNode>> items;
     bool new_function = false;
@@ -527,39 +553,125 @@ struct programORfunction :
 
     // InstructionType currentInstructionType = InstructionType::Unknown;
 
-    template<> struct action<WaopT> {
+    template<> struct action<wAtWWE> {
         template<typename Input>
         static void apply(const Input& in, Program& p) {
-                assert(!p.label.empty());
-                assert(!p.functions.empty());
+            assert(!p.label.empty());
+            assert(!p.functions.empty());
 
-                std::string s = in.string();
-                size_t pos = 0;
+            std::string s = in.string();
+            size_t pos = 0;
 
-                // read W
-                while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
-                size_t w_start = pos;
-                while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t') pos++;
-                std::string w_str = s.substr(w_start, pos - w_start);
+            // skip spaces
+            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
+            // read dst W
+            size_t dst_start = pos;
+            while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t') pos++;
+            std::string dst_str = s.substr(dst_start, pos - dst_start);
 
-                // read aop
-                while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
-                size_t aop_start = pos;
-                while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t') pos++;
-                std::string aop_str = s.substr(aop_start, pos - aop_start);
+            // skip spaces, skip @
+            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
+            assert(s[pos] == '@');
+            pos++;
 
-                // read t
-                while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
-                std::string t_str = s.substr(pos);
-                while (!t_str.empty() && (t_str.back()==' '||t_str.back()=='\t')) t_str.pop_back();
+            // skip spaces
+            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
+            // read base W
+            size_t base_start = pos;
+            while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t') pos++;
+            std::string base_str = s.substr(base_start, pos - base_start);
 
-                auto instr = std::make_unique<ArithInstruction>(InstructionType::WaopT);
-                instr->setDst(stringToRegister(w_str));
-                instr->setAop(parseAop(aop_str));
-                instr->setSrc(parseT(t_str));
-                p.functions.back().instructions.push_back(std::move(instr));
-            }
+            // skip spaces
+            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
+            // read idx W
+            size_t idx_start = pos;
+            while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t') pos++;
+            std::string idx_str = s.substr(idx_start, pos - idx_start);
+
+            // skip spaces
+            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
+            // read E — rest of string trimmed
+            std::string e_str = s.substr(pos);
+            while (!e_str.empty() && (e_str.back()==' '||e_str.back()=='\t')) e_str.pop_back();
+
+            auto instr = std::make_unique<WWWEInstruction>();
+            instr->setDst(stringToRegister(dst_str));
+            instr->setBase(stringToRegister(base_str));
+            instr->setIdx(stringToRegister(idx_str));
+            instr->setScale(std::stoll(e_str));
+
+            p.functions.back().instructions.push_back(std::move(instr));
+        }
         };
+
+        template<> struct action<WaopT> {
+            template<typename Input>
+            static void apply(const Input& in, Program& p) {
+                    assert(!p.label.empty());
+                    assert(!p.functions.empty());
+
+                    std::string s = in.string();
+                    size_t pos = 0;
+
+                    // read W
+                    while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
+                    size_t w_start = pos;
+                    while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t') pos++;
+                    std::string w_str = s.substr(w_start, pos - w_start);
+
+                    // read aop
+                    while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
+                    size_t aop_start = pos;
+                    while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t') pos++;
+                    std::string aop_str = s.substr(aop_start, pos - aop_start);
+
+                    // read t
+                    while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
+                    std::string t_str = s.substr(pos);
+                    while (!t_str.empty() && (t_str.back()==' '||t_str.back()=='\t')) t_str.pop_back();
+
+                    auto instr = std::make_unique<ArithInstruction>(InstructionType::WaopT);
+                    instr->setDst(stringToRegister(w_str));
+                    instr->setAop(parseAop(aop_str));
+                    instr->setSrc(parseT(t_str));
+                    p.functions.back().instructions.push_back(std::move(instr));
+                }
+        };
+
+   
+    template<> struct action<WsopN> {
+        template<typename Input>
+        static void apply(const Input& in, Program& p) {
+            assert(!p.label.empty());
+            assert(!p.functions.empty());
+
+            std::string s = in.string();
+            size_t pos = 0;
+
+            // skip spaces, read W
+            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
+            size_t w_start = pos;
+            while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t') pos++;
+            std::string w_str = s.substr(w_start, pos - w_start);
+
+            // skip spaces, read sop
+            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
+            size_t sop_start = pos;
+            while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t') pos++;
+            std::string sop_str = s.substr(sop_start, pos - sop_start);
+
+            // skip spaces, read number
+            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
+            std::string n_str = s.substr(pos);
+            while (!n_str.empty() && (n_str.back()==' '||n_str.back()=='\t')) n_str.pop_back();
+
+            auto instr = std::make_unique<ShiftInstruction>(InstructionType::WsopN);
+            instr->setDst(stringToRegister(w_str));
+            instr->setSop(parseSop(sop_str));
+            instr->setSrc(Number(std::stoll(n_str)));
+            p.functions.back().instructions.push_back(std::move(instr));
+        }
+    };
 
     template<> struct action<wIncDecMemory> {
         template<typename Input>
@@ -607,6 +719,51 @@ struct programORfunction :
             instr->setAop(parseAop(aop_str));
             instr->setSrc(VALUE(m));
             p.functions.back().instructions.push_back(std::move(instr));
+        }
+    };
+
+    template<> struct action<cjump> {
+        template<typename Input>
+        static void apply(const Input& in, Program& p){
+            assert(!p.label.empty());
+            assert(!p.functions.empty());
+
+            std::string s = in.string();
+            size_t pos = s.find("cjump") + 5;
+
+            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
+            size_t left_end = s.find_first_of(" ", pos);
+            std::string left_str = s.substr(pos, left_end - pos);
+            pos = left_end;
+            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
+            size_t cmp_end = s.find_first_of(" ", pos);
+            std::string cmp_str = s.substr(pos, cmp_end - pos);
+            pos = cmp_end;
+            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
+            size_t right_end = s.find_first_of(" ", pos);
+            std::string right_str = s.substr(pos, right_end - pos);
+            pos = right_end;
+            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
+            pos += 1; // skip ':'
+            std::size_t label_end = s.find_first_of(" ", pos);
+            std::string label_str = s.substr(pos, label_end - pos);
+
+
+
+
+            compareStruct cav;
+
+            cav.left = std::make_unique<VALUE>(parseT(left_str));
+            cav.cmp = cmp_str;
+            cav.right = std::make_unique<VALUE>(parseT(right_str));
+            
+            auto instr = std::make_unique<CjumpInstruction>();  // no &
+            instr->setCmpVal(cav);
+            instr->setLabel(Label(label_str));
+            p.functions.back().instructions.push_back(std::move(instr));
+            
+            // std::cerr << "parsed cjump with left\n";
+
         }
     };
 
@@ -682,7 +839,7 @@ struct programORfunction :
 
                 // parse S — label, register, or number
                 auto parseS = [](const std::string& str) -> VALUE {
-                    if (str[0] == '@') return Label(str);
+                    if (str[0] == '@') return Label(str.substr(1));
                     return stringToRegister(str);
                 };
 
@@ -754,8 +911,8 @@ struct programORfunction :
 
             // parse S — label, register, or number
             auto parseS = [](const std::string& str) -> VALUE {
-                if (str[0] == '@') return Label(str);
-                if (str[0] == ':') return Label(str);
+                if (str[0] == '@') return Label(str.substr(1));
+                if (str[0] == ':') return Label(str.substr(1));
                 try {
                     return stringToRegister(str);
                 } catch (...) {
@@ -790,6 +947,7 @@ struct programORfunction :
             
             size_t next = s.find(' ', pos);
             std::string label_name = s.substr(pos, next - pos);
+            // std::cerr << "parsed label: " << label_name << "\n";
 
             auto label = std::make_unique<LabelInstruction>(label_name);
             p.functions.back().instructions.push_back(std::move(label));
@@ -933,14 +1091,14 @@ struct programORfunction :
                 }
             };
 
-            // build compareAssignValue
-            compareAssignValue cav;
+            // build compareStruct
+            compareStruct cav;
             cav.left  = std::make_unique<VALUE>(parseT(left_str));
             cav.cmp   = cmp_op;
             cav.right = std::make_unique<VALUE>(parseT(right_str));
 
             // build instruction
-            auto assign = std::make_unique<AssignInstruction>(InstructionType::CompareAssign);
+            auto assign = std::make_unique<AssignInstruction>(InstructionType::compareAssign);
             assign->setTo(stringToRegister(w_str));
             assign -> setCmpVal(std::move(cav));
 

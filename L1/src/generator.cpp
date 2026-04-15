@@ -2,6 +2,7 @@
 #include <fstream>
 #include <iostream>
 #include <utils.h>
+#include "generator.h"
 
 namespace L1 {
 
@@ -43,13 +44,13 @@ namespace L1 {
         outputFile << "\tpopq %rbx\n";
         outputFile << "\tretq\n\n";
 
-        outputFile << p.generate_code();
+        outputFile << CodeGenerator::generate(p);
 
         outputFile << "\n";
         outputFile.close();
         return;
     }
-
+    
     
 
 

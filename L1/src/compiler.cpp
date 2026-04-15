@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
   /*
    * Check the compiler arguments.
    */
-  Utils::verbose = true;
+  Utils::verbose = false;
   if (argc < 2) {
     print_help(argv[0]);
     return 1;

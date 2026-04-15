@@ -16,7 +16,6 @@ namespace L1 {
             virtual ~ASTNode() = default;
             virtual std::string to_string() const = 0;
             virtual bool verify() const { return true; }
-            virtual std::string generate_code() const  {return "";}
     };
 
     // label is just another string. 
@@ -27,7 +26,7 @@ namespace L1 {
         // default value
         Unknown, 
         // assignment instructions
-        CompareAssign,      // W <- t cmp t
+        compareAssign,      // W <- t cmp t
         AssignFromMemory,   // W <- mem X M
         AssignFromS,        // W <- S
         AssignMemoryFromS,  // mem X M <- S
@@ -40,6 +39,7 @@ namespace L1 {
         // increment/decrement
         WIncDec,            // W++ / W--
         MemoryIncDecT,      // mem X M += t
+        WIncDecMemory,      // W += mem X M 
 
         // address computation
         WAtWWE,             // W @ W W E
@@ -69,9 +69,7 @@ namespace L1 {
             Instruction(InstructionType t) : type(t) {}
             virtual ~Instruction() = default;
             bool verify() const override { return true; }
-            std::string generate_code() const override {
-                return "";
-            }
+           
      
     };
 
@@ -87,9 +85,7 @@ namespace L1 {
             }
             int64_t getValue() const { return value;}
             bool verify() const override { return true; }
-            std::string generate_code() const override {
-                return "$" + std::to_string(value);
-            }
+            
     };
 
     
@@ -142,6 +138,25 @@ namespace L1 {
         return "";
     }
 
+    enum class AopType { AddEq, SubEq, MulEq, AndEq };
+    enum class SopType { LShift, RShift };
+    enum class CmpType { Eq, Neq, Lt, Lte, Gt, Gte };
+
+
+      
+
+    inline CmpType stringToCmpType(const std::string& cmp) {
+        if (cmp == "=")  return CmpType::Eq;
+        if (cmp == "!=") return CmpType::Neq;
+        if (cmp == "<")  return CmpType::Lt;
+        if (cmp == "<=") return CmpType::Lte;
+        if (cmp == ">")  return CmpType::Gt;
+        if (cmp == ">=") return CmpType::Gte;
+        assert(false && "unknown cmp operator");
+        return CmpType::Eq; // unreachable
+    }
+
+
     struct memoryAccess {
         Register x_value = Register::rsp;  // some sentinel default
         int64_t size = 0;
@@ -152,7 +167,7 @@ namespace L1 {
     using VALUE = std::variant<memoryAccess, Register, Label, Number>;
    
     
-    struct compareAssignValue {
+    struct compareStruct {
             std::unique_ptr<VALUE>left;
             std::string cmp;
             std::unique_ptr<VALUE> right;
@@ -161,17 +176,63 @@ namespace L1 {
     
 
     inline bool isAssignType(InstructionType t) {
-        return t == InstructionType::CompareAssign    ||
+        return t == InstructionType::compareAssign    ||
             t == InstructionType::AssignFromMemory ||
             t == InstructionType::AssignFromS      ||
             t == InstructionType::AssignMemoryFromS;
     }
 
+    class CjumpInstruction : public Instruction {
+        public:
+            std::optional<compareStruct> cmp_val;
+            Label label;
+
+            CjumpInstruction() : Instruction(InstructionType::CJump) {
+                // std::cerr << "vinitalized cjump instruction\n";
+
+            }  // add this
+
+            void setCmpVal(compareStruct& cv) { cmp_val = std::move(cv);} 
+            void setLabel(const Label& lbl) { label = lbl;}
+            
+            std::string to_string() const override{
+                auto valueToString = [](const VALUE& v) -> std::string {
+                    return std::visit([](const auto& val) -> std::string {
+                        using T = std::decay_t<decltype(val)>;
+                        if constexpr (std::is_same_v<T, Register>) {
+                            return registerToString(val);
+                        } else if constexpr (std::is_same_v<T, memoryAccess>){
+                            return "mem " + registerToString(val.x_value) + " " + std::to_string(val.size);
+                        } else if constexpr (std::is_same_v<T, Label>) {
+                            return val;
+                        } else if constexpr (std::is_same_v<T, Number>) {
+                            return val.to_string();
+                        } else {
+                            assert(false && "unknown VALUE type");
+                            return "";
+                        }
+                    }, v);
+                };
+
+                std::string result;
+                result += "\t\tcjump ";
+                result += valueToString(*cmp_val->left);
+                result += " " + cmp_val->cmp + " ";
+                result += valueToString(*cmp_val->left);
+                result += " " + label + "\n";
+                return result;
+            }
+
+            bool verify() const override { return true; }
+
+
+    };
+
     class AssignInstruction : public Instruction {
         public:
             std::optional<VALUE> from;
             std::optional<VALUE> to;
-            std::optional<compareAssignValue> cmp_val;  // separate, not inside VALUE
+            std::optional<compareStruct> cmp_val;  // separate, not inside VALUE
 
 
             AssignInstruction() : Instruction(InstructionType::Unknown) {}
@@ -186,17 +247,19 @@ namespace L1 {
             }
             void setFrom(VALUE v) { from = std::move(v); }
             void setTo(VALUE v)   { to   = std::move(v); }
-            void setCmpVal(compareAssignValue cv) { cmp_val  = std::move(cv); }
+            void setCmpVal(compareStruct cv) { cmp_val  = std::move(cv); }
 
             // getters
             InstructionType getType() const { return type; }
             
             const std::optional<VALUE>& getFrom() const { return from; }
             const std::optional<VALUE>& getTo()   const { return to; }
+            const std::optional<compareStruct>& getCmpVal() const { return cmp_val; }
 
             // safety checks
             bool hasFrom() const { return from.has_value(); }
             bool hasTo()   const { return to.has_value(); }
+            bool isCmpAssign() const {return type == InstructionType::compareAssign;}
             bool isComplete() const { 
                 return type != InstructionType::Unknown && 
                     (from.has_value() || cmp_val.has_value()) && 
@@ -245,7 +308,7 @@ namespace L1 {
                         result += valueToString(from.value());
                         break;
 
-                    case InstructionType::CompareAssign:
+                    case InstructionType::compareAssign:
                         // W <- t cmp t  -- need extra fields for cmp and second t
                         result += valueToString(to.value());
                         result += " <- ";
@@ -261,49 +324,11 @@ namespace L1 {
 
                 return result + "\n";
             }
-            std::string generate_code() const override {
-
-                auto valueToString = [](const VALUE& v) -> std::string {
-
-                    auto processmemoryAccess = [](const memoryAccess& mem) -> std::string{
-                        if (mem.size % 8 != 0){
-                            std::cerr << "memory access size must be a multiple of 8\n";
-                            exit(1);
-                        }
-
-                        if (mem.x_value == Register::rsp){
-                            std::string result = std::to_string(mem.size) + "(%rsp)" + '\n';
-                            result += "\tsubq" + std::to_string(mem.size) + ", %rsp\n";
-                            return result;
-                        }
-
-
-                        return std::to_string(mem.size) + "(%" + registerToString(mem.x_value) + ')';
-                    };
-
-                    return std::visit([&](const auto& val) -> std::string {
-                        using T = std::decay_t<decltype(val)>;
-                        if constexpr (std::is_same_v<T, Register>) {
-                            return '%' + registerToString(val);
-                        } else if constexpr (std::is_same_v<T, memoryAccess>){
-                            return processmemoryAccess(val);
-                        } else if constexpr (std::is_same_v<T, Label>) {
-                            return "$_" + val;
-                        } else if constexpr (std::is_same_v<T, Number>) {
-                            return val.generate_code();
-                        } else {
-                            assert(false && "unknown VALUE type");
-                            return "";
-                        }
-                    }, v);
-                };  
-
-
-                return "\tmovq " + valueToString(from.value()) + ", " + valueToString(to.value()) + "\n";
-            }
+          
         };
-
-   class CallInstruction : public Instruction {
+    // class WaopT
+    
+    class CallInstruction : public Instruction {
         public:
             
             std::optional<VALUE> callee;    // for CallUN: the u (Register or Label)
@@ -344,17 +369,6 @@ namespace L1 {
                     default:                               return "";
                 }
             }
-            std::string generate_code() const override {
-                if (type == InstructionType::CallPrint){
-                    return "\tcall print # runtime system call\n";
-                }
-                if (type == InstructionType::CallInput){
-                    return "\tcall input # runtime system call\n";
-                }
-                //    call input # runtime system call
-
-                return "";
-            }
         };
 
 
@@ -364,9 +378,7 @@ namespace L1 {
             std::string to_string() const override {
                     return "\t\treturn\n";
             }
-            std::string generate_code() const override {
-                return "\tretq";
-            }
+           
     };
 
     class LabelInstruction : public Instruction {
@@ -377,9 +389,7 @@ namespace L1 {
             std::string to_string() const override {
                     return "\t\t:" + label + '\n';
             }
-            std::string generate_code() const override {
-                return ""; // "\tjmp _" + label + '\n';
-            }
+            
     }; 
     
     class GotoInstruction : public Instruction {
@@ -390,17 +400,13 @@ namespace L1 {
             std::string to_string() const override {
                     return "\t\tgoto :" + label + '\n';
             }
-            std::string generate_code() const override {
-                return "";
-            }
+           
     };
 
 
 
 
-        enum class AopType { AddEq, SubEq, MulEq, AndEq };
-        enum class SopType { LShift, RShift };
-
+      
         class ArithInstruction : public Instruction {
         public:
             std::optional<VALUE> dst;   // W
@@ -408,11 +414,15 @@ namespace L1 {
             std::optional<VALUE> src;   // t or mem X M
 
             ArithInstruction(InstructionType t) : Instruction(t) {
-                std::cerr << "intialized arith instruction with type " << std::endl;
+                // std::cerr << "intialized arith instruction with type " << std::endl;
             }
             void setDst(VALUE v) { dst = std::move(v); }
             void setSrc(VALUE v) { src = std::move(v); }
             void setAop(AopType a) { aop = a; }
+
+            const std::optional<VALUE>& getDst() const { return dst; }
+            const std::optional<VALUE>& getSrc() const { return src; }
+            AopType getAop()                     const { return aop; }
 
             std::string to_string() const override {
                 auto aopStr = [](AopType a) -> std::string {
@@ -434,46 +444,10 @@ namespace L1 {
                         else return "";
                     }, v);
                 };
-                return valueToString(dst.value()) + " " + aopStr(aop) + " " + valueToString(src.value()) + "\n";
+                return "\t\t" + valueToString(dst.value()) + " " + aopStr(aop) + " " + valueToString(src.value()) + "\n";
             }
 
-            std::string generate_code() const override {
-
-                auto valueToString = [](const VALUE& v) -> std::string {
-
-                    auto processmemoryAccess = [](const memoryAccess& mem) -> std::string{
-                        
-                        return std::to_string(mem.size) + "(%" + registerToString(mem.x_value) + ')';
-                    };
-
-                    return std::visit([&](const auto& val) -> std::string {
-                        using T = std::decay_t<decltype(val)>;
-                        if constexpr (std::is_same_v<T, Register>) {
-                            return '%' + registerToString(val);
-                        } else if constexpr (std::is_same_v<T, memoryAccess>){
-                            return processmemoryAccess(val);
-                        } else if constexpr (std::is_same_v<T, Label>) {
-                            return "$_" + val;
-                        } else if constexpr (std::is_same_v<T, Number>) {
-                            return val.generate_code();
-                        } else {
-                            assert(false && "unknown VALUE type");
-                            return "";
-                        }
-                    }, v);
-                };  
-                if (aop == AopType::AddEq){
-                    return "\taddq " + valueToString(src.value()) + ", " + valueToString(dst.value()) + '\n';
-                }else if (aop == AopType::SubEq){
-                    return "\tsubq " + valueToString(src.value()) + ", " + valueToString(dst.value()) + '\n';
-                }else if (aop == AopType::MulEq){
-                    return "\tmulq " + valueToString(src.value()) + ", " + valueToString(dst.value()) + '\n';
-                }else if (aop == AopType::AndEq){
-                    return "not implemented yet\n";
-                }
-
-                return "";
-            }
+           
         };
 
         class ShiftInstruction : public Instruction {
@@ -504,11 +478,7 @@ namespace L1 {
                     }, v);
                 };
                 return "\t\t" + valueToString(dst.value()) + " " + sopStr(sop) + " " + valueToString(src.value()) + "\n";
-            }
-
-            std::string generate_code() const override {
-                return "";
-            }
+                   }
         };
 
         class IncDecInstruction : public Instruction {
@@ -525,19 +495,16 @@ namespace L1 {
                     "\t\t" + registerToString(std::get<Register>(dst.value())) + (isIncrement ? "++" : "--") + "\n" :
                     "\t\t" + registerToString(std::get<Register>(dst.value())) + (isIncrement ? "++" : "--") + "\n";
             }
-            std::string generate_code() const override {
-                return "";
-            }
         };
 
-        class AddrInstruction : public Instruction {
+        class WWWEInstruction : public Instruction {
         public:
             std::optional<VALUE> dst;   // W
             std::optional<VALUE> base;  // W
             std::optional<VALUE> idx;   // W
-            int64_t scale;              // E (1,2,4,8)
+            int64_t scale;              
 
-            AddrInstruction() : Instruction(InstructionType::WAtWWE) {}
+            WWWEInstruction() : Instruction(InstructionType::WAtWWE) {}
             void setDst(VALUE v)  { dst  = std::move(v); }
             void setBase(VALUE v) { base = std::move(v); }
             void setIdx(VALUE v)  { idx  = std::move(v); }
@@ -549,9 +516,7 @@ namespace L1 {
                     registerToString(std::get<Register>(idx.value()))  + " "   +
                     std::to_string(scale) + "\n";
             }
-            std::string generate_code() const override {
-                return "";
-            }
+           
         };
 
         class MemIncDecInstruction : public Instruction {
@@ -577,45 +542,19 @@ namespace L1 {
                     std::to_string(mem.size) + " " + aopStr + " " + src_str + "\n";
             }
 
-            std::string generate_code() const override {
-
-                // auto valueToString = [](const VALUE& v) -> std::string {
-
-                //     auto processmemoryAccess = [](const memoryAccess& mem) -> std::string{
-                //         if (mem.x_value == Register::rsp){
-                //             return "-" + std::to_string(mem.size) + "(%rsp)";
-                //         }
-                //         return std::to_string(mem.size) + "(%" + registerToString(mem.x_value) + ')';
-                //     };
-
-                //     return std::visit([&](const auto& val) -> std::string {
-                //         using T = std::decay_t<decltype(val)>;
-                //         if constexpr (std::is_same_v<T, Register>) {
-                //             return '%' + registerToString(val);
-                //         } else if constexpr (std::is_same_v<T, memoryAccess>){
-                //             return processmemoryAccess(val);
-                //         } else if constexpr (std::is_same_v<T, Label>) {
-                //             return "$_" + val;
-                //         } else if constexpr (std::is_same_v<T, Number>) {
-                //             return val.generate_code();
-                //         } else {
-                //             assert(false && "unknown VALUE type");
-                //             return "";
-                //         }
-                //     }, v);
-                // };  
-
-
-                // if (aop == AopType::AddEq){
-                //     return "\taddq " + valueToString(src.value()) + ", " + valueToString(VALUE(mem)) + '\n';
-                // }else if (aop == AopType::SubEq){
-                //     return "\tsubq " + valueToString(src.value()) + ", " + valueToString(VALUE(mem)) + '\n';
-                // }
-
-                return "";
-            }
+            
 
         };
+
+
+
+
+
+
+        /// functions 
+
+
+
 
     class Function : public ASTNode {
         Label label = "";
@@ -652,14 +591,7 @@ namespace L1 {
             void setNumLocals(int n)      { local_set = true; num_locals = n; }
 
 
-            std::string generate_code() const override {
-                std::string result;
-                result += "_" + label + ":\n";
-                for (auto& instruction: instructions){
-                    result += instruction->generate_code();
-                }
-                return result;
-            }
+            
 
 
         
@@ -692,13 +624,7 @@ namespace L1 {
                 return false;
             }
 
-            std::string generate_code() const override {
-                std::string result;
-                for (auto& function: functions){
-                    result += function.generate_code();
-                }
-                return result;
-            }
+          
     };
 
 }

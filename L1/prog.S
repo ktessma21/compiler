@@ -22,12 +22,28 @@ go:
 	retq
 
 _go:
+	subq $8, %rsp #Allocate locals
+	movq %r12, 0(%rsp)
+	movq $0, %r12
+_startLoop:
+	cmpq $5, %r12
+	jle _loopBody
+	jmp exitLoop #goto
+_loopBody:
 	movq $5, %rdi
-	movq $_:testFunction_ret, -8(%rsp)
-	subq-8, %rsp
-
+	movq $_testFunction_ret, -8(%rsp)
+	subq $16, %rsp #allocate space for arguments and return address
+	jmp _testFunction
+_testFunction_ret:
 	movq %rax, %rdi
 	call print # runtime system call
-	retq_testFunction:
+	addq $2, %r12
+	jmp startLoop #goto
+_exitLoop:
+	movq 0(%rsp), %r12
+	addq $8, %rsp #Deallocate locals
+	retq
+_testFunction:
 	movq %rdi, %rax
 	retq
+
