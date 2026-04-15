@@ -220,11 +220,11 @@ namespace L1{
                                                 return cmpStr; // validate the solution in compile time. 
                     }
                     else if (std::holds_alternative<Number>(left) && !std::holds_alternative<Number>(right)){
-                        cmpStr += "\tcmpq" + Converter::toString(left) + ", " + Converter::toString(right) + "\n";
+                        cmpStr += "\tcmpq " + Converter::toString(left) + ", " + Converter::toString(right) + "\n";
                     }else if (!std::holds_alternative<Number>(left) && std::holds_alternative<Number>(right)){
-                        cmpStr += "\tcmpq" + Converter::toString(right) + ", " + Converter::toString(left) + "\n";
+                        cmpStr += "\tcmpq " + Converter::toString(right) + ", " + Converter::toString(left) + "\n";
                     }else{
-                        cmpStr += "\tcmpq" + Converter::toString(left) + ", " + Converter::toString(right) + "\n";
+                        cmpStr += "\tcmpq " + Converter::toString(left) + ", " + Converter::toString(right) + "\n";
                     }
                     
                     
@@ -271,12 +271,16 @@ namespace L1{
                 if (instr.type == InstructionType::CallUN){
                     std::string callee_str = Converter::toString(instr.callee.value());
                         std::string result;
-                        result += "\tsubq $" + std::to_string(instr.arg.value()*8 + 8) + ", %rsp #allocate space for arguments and return address\n";
-                    
+                        if (instr.arg.value() > 6){
+                            result += "\tsubq $" + std::to_string(instr.arg.value()*8 + 8) + ", %rsp #allocate space for arguments and return address\n";
+                        }else{
+                            result += "\tsubq $8, %rsp #allocate space for return address only\n";
+
+                        }
                         if (std::holds_alternative<Label>(instr.callee.value())){
-                            result += "\tjmp _" + callee_str + "\n";  // assume it's only label for now
+                            result += "\tjmp " + callee_str + "# callee jump\n";  
                         } else if (std::holds_alternative<Register>(instr.callee.value())){
-                            result += "\tjmp *" + callee_str + "\n";
+                            result += "\tjmp *" + callee_str + "# callee jump but register\n";
                         }
                         return result;
             }

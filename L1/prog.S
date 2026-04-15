@@ -28,17 +28,17 @@ _go:
 _startLoop:
 	cmpq $5, %r12
 	jle _loopBody
-	jmp exitLoop #goto
+	jmp _exitLoop #goto
 _loopBody:
 	movq $5, %rdi
 	movq $_testFunction_ret, -8(%rsp)
 	subq $16, %rsp #allocate space for arguments and return address
-	jmp _testFunction
+	jmp _testFunction# callee jump
 _testFunction_ret:
 	movq %rax, %rdi
 	call print # runtime system call
 	addq $2, %r12
-	jmp startLoop #goto
+	jmp _startLoop #goto
 _exitLoop:
 	movq 0(%rsp), %r12
 	addq $8, %rsp #Deallocate locals
