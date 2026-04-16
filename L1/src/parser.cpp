@@ -553,6 +553,38 @@ struct programORfunction :
 
     // InstructionType currentInstructionType = InstructionType::Unknown;
 
+
+    template<> struct action <wIncDec> {
+        template<typename Input>
+        static void apply(const Input& in, Program& p){
+            assert(!p.label.empty());
+            assert(!p.functions.empty());
+
+            std::string s = in.string();
+            size_t pos = 0;
+
+            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
+
+            size_t reg_start = pos;
+            while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t' && (s[pos] != '+') && (s[pos] != '-')) pos++;
+            std::string reg_str = s.substr(reg_start, pos - reg_start);
+
+            VALUE reg = stringToRegister(reg_str);
+            auto instr = std::make_unique<IncDecInstruction>();
+            instr->setDst(reg);
+
+            if (s.substr(pos, 2) == "++"){
+                instr->setIsInc(true);
+            } else if (s.substr(pos, 2) == "--"){
+                instr->setIsInc(false);
+            }else{
+                throw std::runtime_error("invalid increment/decrement instruction: " + s);
+            }
+            p.functions.back().instructions.push_back(std::move(instr));
+
+        }
+    };
+
     template<> struct action<wAtWWE> {
         template<typename Input>
         static void apply(const Input& in, Program& p) {
@@ -649,7 +681,7 @@ struct programORfunction :
             size_t pos = 0;
 
             // skip spaces, read W
-            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
+            while (pos < s.size() && (s[pos]=='\]]] '||s[pos]=='\t')) pos++;
             size_t w_start = pos;
             while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t') pos++;
             std::string w_str = s.substr(w_start, pos - w_start);

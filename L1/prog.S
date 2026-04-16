@@ -22,20 +22,8 @@ go:
 	retq
 
 _go:
-	subq $8, %rsp #Allocate locals
-	movq %r12, 0(%rsp)
-	movq $5, %rdi
-	movq $5, %rsi
-	call allocate # runtime system call
-	movq %rax, %r12
-	movq %r12, %rdi
-	movq $_printData_ret, -8(%rsp)
-	subq $8, %rsp #allocate space for return address only
-	jmp _printData# callee jump
-_printData_ret:
-	movq 0(%rsp), %r12
-	addq $8, %rsp #Deallocate locals
-	retq
-_printData:
+	call input # runtime system call
+	movq %rax, %rdi
+	call print # runtime system call
 	retq
 
