@@ -445,19 +445,31 @@ struct InstructionFormat :
 struct functionFormat :
     pegtl::seq<
         number, 
-        spaces, // only a space is allowed between the two numbers
+        seps_with_comments, 
+        spaces, // allow new lines too
         number, 
         seps_with_comments,
         pegtl::plus<InstructionFormat>
     > {};
 
 
+// struct functionDef :
+//     pegtl::seq<
+//         seps_with_comments,
+//         pegtl::seq<spaces, pegtl::one<'('>>,
+//         l,
+//         seps_with_comments,
+//         functionFormat,
+//         pegtl::seq<spaces, pegtl::one<')'>>,
+//         seps_with_comments
+//     > {};
+
 struct programORfunction : 
     pegtl::seq<
         spaces, 
         pegtl::sor<
-            pegtl::plus<functionFormat>,  
-            pegtl::plus<entry_point_rule> // handle many function openings. 
+            pegtl::plus<functionFormat>,       // multiple functions ← fix
+            pegtl::plus<entry_point_rule>   // nested programs
         >
     >{};
 
@@ -1046,8 +1058,8 @@ struct programORfunction :
 
             // parse S — could be label (@foo), label (:foo), register, or number
             auto parseS = [](const std::string& str) -> VALUE {
-                if (str[0] == '@') return Label(str);       // l
-                if (str[0] == ':') return Label(str);       // label
+                if (str[0] == '@') return Label(str.substr(1));       // l
+                if (str[0] == ':') return Label(str.substr(1));       // label
                 try {
                     return stringToRegister(str);           // register
                 } catch (...) {
@@ -1199,7 +1211,64 @@ struct programORfunction :
 
     };
 
-   
+template<> struct action<memoryIncDecT> {
+    template<typename Input>
+    static void apply(const Input& in, Program& p) {
+        assert(!p.label.empty());
+        assert(!p.functions.empty());
+
+        std::string s = in.string();
+        size_t pos = 0;
+
+        // skip leading spaces
+        while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
+
+        // skip "mem"
+        pos = s.find("mem", pos) + 3;
+
+        // skip spaces
+        while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
+
+        // read X register
+        size_t x_start = pos;
+        while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t') pos++;
+        std::string x_str = s.substr(x_start, pos - x_start);
+
+        // skip spaces
+        while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
+
+        // read M number
+        size_t m_start = pos;
+        while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t') pos++;
+        std::string m_str = s.substr(m_start, pos - m_start);
+
+        // skip spaces
+        while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
+
+        // read aop (+= or -=)
+        size_t aop_start = pos;
+        while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t') pos++;
+        std::string aop_str = s.substr(aop_start, pos - aop_start);
+
+        // skip spaces
+        while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
+
+        // read t — rest of string trimmed
+        std::string t_str = s.substr(pos);
+        while (!t_str.empty() && (t_str.back()==' '||t_str.back()=='\t')) t_str.pop_back();
+
+        memoryAccess m;
+        m.x_value = stringToRegister(x_str);
+        m.size    = std::stoll(m_str);
+
+        auto instr = std::make_unique<MemIncDecInstruction>();
+        instr->setMem(m);
+        instr->setAop(parseAop(aop_str));
+        instr->setSrc(parseT(t_str));
+
+        p.functions.back().instructions.push_back(std::move(instr));
+    }
+};
 
     
 
@@ -1258,6 +1327,33 @@ struct programORfunction :
             return;
         }
     };
+
+
+    bool TRACE = false;
+
+    template<typename Rule>
+    struct my_tracer : pegtl::normal<Rule> {
+        template<typename Input, typename... States>
+        static void start(const Input& in, States&&...) {
+            if (!TRACE) return;
+            std::cerr << "try   " << pegtl::demangle<Rule>()
+                    << " at line " << in.position().line
+                    << " col " << in.position().column << "\n";
+        }
+        template<typename Input, typename... States>
+        static void success(const Input& in, States&&...) {
+            if (!TRACE) return;
+            std::cerr << "ok    " << pegtl::demangle<Rule>() << "\n";
+        }
+        template<typename Input, typename... States>
+        static void failure(const Input& in, States&&...) {
+            if (!TRACE) return;
+            std::cerr << "FAIL  " << pegtl::demangle<Rule>() << "\n";
+        }
+    };
+
+// to:
+
     
     // template<> struct action < grammar > {
     //     template< typename Input >
@@ -1292,8 +1388,7 @@ struct programORfunction :
     // Only matching one function. 
     file_input< > fileInput(fileName);
     Program p;
-    parse< grammar, action >(fileInput, p);
-
+    parse<grammar, action, my_tracer>(fileInput, p);
     // std::cout << p.to_string() << std::endl ;
 
     return p;

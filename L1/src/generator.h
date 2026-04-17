@@ -275,6 +275,7 @@ namespace L1{
                   }
                 
                 if (std::holds_alternative<Label>(instr.getFrom().value())){
+                    // std::cerr << Converter::toString(instr.getFrom().value()) << std::endl;
                     return "\tmovq $" + Converter::toString(instr.getFrom().value()) + ", " + Converter::toString(instr.getTo().value()) + "\n";
                 }
               // W <- t cmp t
@@ -346,18 +347,15 @@ namespace L1{
         static std::string generate(const ReturnInstruction& instr, int numLocals = 0, int numArgs = 0) {
             std::string result;
 
-            // std::cerr << numLocals << "total" << numArgs <<std::endl;
-            if (numLocals > 0){
-                if (numArgs > 6){
-                    result += "\taddq $" + std::to_string(numLocals * 8 + (numArgs - 6) * 8) + ", %rsp #Deallocate locals < 6\n";
-                }else{
-                    result += "\taddq $" + std::to_string(numLocals * 8 + numArgs * 8) + ", %rsp #Deallocate locals\n";
-                }
-            }
+            int64_t dealloc = 0;
+            dealloc += numLocals * 8;                              // locals space
+            dealloc += (numArgs > 6 ? (numArgs - 6) * 8 : 0);    // extra stack args beyond 6
+            // dealloc += 8;                                          // always +8 for return address
+
+            if (dealloc > 0) result += "\taddq $" + std::to_string(dealloc) + ", %rsp\n";
             result += "\tretq\n";
             return result;
         }
-
         static std::string generate(const LabelInstruction& instr) {
              return "_" + instr.label + ":\n";
         }
@@ -377,21 +375,13 @@ namespace L1{
             }
             for (auto& instruction : function.instructions) {
                 if (instruction->type == InstructionType::Return) {
-                    if (function.getNumArgs() <= 6){
-                        result += generate(
-                        static_cast<const ReturnInstruction&>(*instruction),
-                        function.getNumLocals(),
-                        0
-                    );
-                    }else{
-                        result += generate(
+                    result += generate(
                         static_cast<const ReturnInstruction&>(*instruction),
                         function.getNumLocals(),
                         function.getNumArgs()
                     );
-                    }
                 } else {
-                    result += generate(*instruction);  // generic for everything else
+                    result += generate(*instruction);
                 }
             }
             return result;
