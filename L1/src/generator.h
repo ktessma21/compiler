@@ -185,10 +185,10 @@ namespace L1{
                 switch (stringToCmpType(cmpVal.cmp)) {
                     case CmpType::Eq:  result += "\tje ";  break;
                     case CmpType::Neq: result += "\tjne "; break;
-                    case CmpType::Lt:  result += "\tjl ";  break;
-                    case CmpType::Lte: result += "\tjle "; break;
-                    case CmpType::Gt:  result += "\tjg ";  break;
-                    case CmpType::Gte: result += "\tjge "; break;
+                    case CmpType::Lt:  result += "\tjg ";  break;  // flipped
+                    case CmpType::Lte: result += "\tjge "; break;  // flipped
+                    case CmpType::Gt:  result += "\tjl ";  break;  // flipped
+                    case CmpType::Gte: result += "\tjle "; break;  // flipped
                 }
             } else {
                 // both registers — cmpq left, right computes right - left
