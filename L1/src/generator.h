@@ -173,10 +173,10 @@ namespace L1{
                 switch (stringToCmpType(cmpVal.cmp)) {
                     case CmpType::Eq:  result += "\tje ";  break;
                     case CmpType::Neq: result += "\tjne "; break;
-                    case CmpType::Lt:  result += "\tjg ";  break;  // flipped
-                    case CmpType::Lte: result += "\tjge "; break;  // flipped
-                    case CmpType::Gt:  result += "\tjl ";  break;  // flipped
-                    case CmpType::Gte: result += "\tjle "; break;  // flipped
+                    case CmpType::Lt:  result += "\tjl ";  break;  // flipped
+                    case CmpType::Lte: result += "\tjle "; break;  // flipped
+                    case CmpType::Gt:  result += "\tjg ";  break;  // flipped
+                    case CmpType::Gte: result += "\tjge "; break;  // flipped
                 }
             } else if (std::holds_alternative<Number>(left) && !std::holds_alternative<Number>(right)) {
                 // left is number — already in correct position (first)

@@ -10,7 +10,7 @@ go:
 	pushq %r14
 	pushq %r15
 
-	call _testing
+	call _go
 
 	# restore callee-saved registers and return
 	popq %r15
@@ -21,94 +21,48 @@ go:
 	popq %rbx
 	retq
 
-_testing:
-	movq $5, %rdi
-	movq $85, %rsi
-	movq $_myfunc_ret, -8(%rsp)
-	call allocate
-_myfunc_ret:
-	movq $5, 16(%rax)
-	movq %rax, %rdi
-	movq $_rett, -8(%rsp)
-	subq $8, %rsp
-	jmp _printArray
-_rett:
+_go:
+	movq $3, %rdi
+	movq $5, %rsi
+	movq $7, %rdx
+	movq $9, %rcx
+	movq $11, %r8
+	movq $13, %r9
+	movq $15, -16(%rsp)
+	movq $17, -24(%rsp)
+	movq $_testFunction_ret, -8(%rsp)
+	subq $24, %rsp
+	jmp _testFunction
+_testFunction_ret:
 	retq
-_printArray:
-	subq $24, %rsp #Allocate locals
-	movq %rdi, %rsi
-	andq $1, %rsi
-	cmpq $0, %rsi
-	je _isarray
-	jmp _notarray #goto
-_notarray:
-	movq $0, %rax
-	addq $24, %rsp #Deallocate locals
-	retq
-_isarray:
-	movq $0, 16(%rsp)
-	movq %rdi, 8(%rsp)
-	movq 0(%rdi), %rdi
+_testFunction:
+	subq $64, %rsp #Allocate locals
 	movq %rdi, 0(%rsp)
-_forloop:
-	movq 0(%rsp), %rsi
-	movq 16(%rsp), %rdi
-	cmpq %rdi, %rsi
-	jl _continue
-	jmp _done #goto
-_continue:
-	movq 8(%rsp), %rdi
-	movq 16(%rsp), %rsi
-	movq $_ret, -8(%rsp)
-	subq $8, %rsp
-	jmp _printArrayElement
-_ret:
-	movq 16(%rsp), %rdi
-	inc %rdi
-	movq %rdi, 16(%rsp)
-	jmp _forloop #goto
-_done:
-	movq $1, %rax
-	addq $24, %rsp #Deallocate locals
-	retq
-_printArrayElement:
-	subq $24, %rsp #Allocate locals
-	movq %rdi, 8(%rsp)
-	movq %rsi, 16(%rsp)
-	movq 16(%rsp), %rdi
-	salq $1, %rdi
-	addq $1, %rdi
-	call print
-	movq 16(%rsp), %rdi
-	imulq $8, %rdi
-	addq $8, %rdi
-	salq $1, %rdi
-	addq $1, %rdi
-	movq %rdi, 0(%rsp)
-	call print
+	movq %rsi, 8(%rsp)
+	movq %rdx, 16(%rsp)
+	movq %rcx, 24(%rsp)
+	movq %r8, 32(%rsp)
+	movq %r9, 40(%rsp)
+	movq 72(%rsp), %rdi
+	movq %rdi, 48(%rsp)
+	movq 64(%rsp), %rdi
+	movq %rdi, 56(%rsp)
 	movq 0(%rsp), %rdi
-	sarq $1, %rdi
-	movq %rdi, 0(%rsp)
-	movq 0(%rsp), %rsi
-	movq 8(%rsp), %rdi
-	addq %rsi, %rdi
-	movq %rdi, 8(%rsp)
-	movq 8(%rsp), %rdi
-	movq 0(%rdi), %rdi
-	movq %rdi, %rsi
-	andq $1, %rsi
-	movq %rdi, %rdi
-	cmpq $0, %rsi
-	je _isarr
-	jmp _notarr #goto
-_notarr:
 	call print
-	jmp _fnc_ret #goto
-_isarr:
-	movq $_fnc_ret, -8(%rsp)
-	subq $8, %rsp
-	jmp _printArray
-_fnc_ret:
-	addq $24, %rsp #Deallocate locals
+	movq 8(%rsp), %rdi
+	call print
+	movq 16(%rsp), %rdi
+	call print
+	movq 24(%rsp), %rdi
+	call print
+	movq 32(%rsp), %rdi
+	call print
+	movq 40(%rsp), %rdi
+	call print
+	movq 48(%rsp), %rdi
+	call print
+	movq 56(%rsp), %rdi
+	call print
+	addq $128, %rsp #Deallocate locals
 	retq
 

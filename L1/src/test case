@@ -1,0 +1,9 @@
+make run FILE=tests/test20.L1
+
+make clean
+
+
+valgrind --leak-check=full --track-origins=yes bin/L1 tests/test19.L1
+
+
+make copy_instructor_bin
