@@ -456,7 +456,7 @@ struct programORfunction :
     pegtl::seq<
         spaces, 
         pegtl::sor<
-            functionFormat, 
+            pegtl::plus<functionFormat>,  
             pegtl::plus<entry_point_rule> // handle many function openings. 
         >
     >{};
@@ -681,7 +681,7 @@ struct programORfunction :
             size_t pos = 0;
 
             // skip spaces, read W
-            while (pos < s.size() && (s[pos]=='\]]] '||s[pos]=='\t')) pos++;
+            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
             size_t w_start = pos;
             while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t') pos++;
             std::string w_str = s.substr(w_start, pos - w_start);

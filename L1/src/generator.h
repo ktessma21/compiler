@@ -162,15 +162,49 @@ namespace L1{
             }
             // std::cerr << "generating cjump with left\n";
             // runtime comparison
-            result += "\tcmpq " + Converter::toString(right) + ", " + Converter::toString(left) + "\n";
-            switch (stringToCmpType(cmpVal.cmp)) {
-                case CmpType::Eq:  result += "\tje ";  break;
-                case CmpType::Neq: result += "\tjne "; break;
-                case CmpType::Lt:  result += "\tjl ";  break;
-                case CmpType::Lte: result += "\tjle "; break;
-                case CmpType::Gt:  result += "\tjg ";  break;
-                case CmpType::Gte: result += "\tjge "; break;
+        //     std::cerr << "cjump: left=" << Converter::toString(left) 
+        //   << " cmp=" << cmpVal.cmp 
+        //   << " right=" << Converter::toString(right) << "\n";
+
+            if (!std::holds_alternative<Number>(left) && std::holds_alternative<Number>(right)) {
+            // right is number — put it first (immediate must be first in AT&T)
+                result += "\tcmpq " + Converter::toString(right) + ", " + Converter::toString(left) + "\n";
+                // flipped because we swapped
+                switch (stringToCmpType(cmpVal.cmp)) {
+                    case CmpType::Eq:  result += "\tje ";  break;
+                    case CmpType::Neq: result += "\tjne "; break;
+                    case CmpType::Lt:  result += "\tjg ";  break;  // flipped
+                    case CmpType::Lte: result += "\tjge "; break;  // flipped
+                    case CmpType::Gt:  result += "\tjl ";  break;  // flipped
+                    case CmpType::Gte: result += "\tjle "; break;  // flipped
+                }
+            } else if (std::holds_alternative<Number>(left) && !std::holds_alternative<Number>(right)) {
+                // left is number — already in correct position (first)
+                result += "\tcmpq " + Converter::toString(left) + ", " + Converter::toString(right) + "\n";
+                // no flip needed — number is already first
+                switch (stringToCmpType(cmpVal.cmp)) {
+                    case CmpType::Eq:  result += "\tje ";  break;
+                    case CmpType::Neq: result += "\tjne "; break;
+                    case CmpType::Lt:  result += "\tjl ";  break;
+                    case CmpType::Lte: result += "\tjle "; break;
+                    case CmpType::Gt:  result += "\tjg ";  break;
+                    case CmpType::Gte: result += "\tjge "; break;
+                }
+            } else {
+                // both registers — cmpq left, right computes right - left
+                result += "\tcmpq " + Converter::toString(left) + ", " + Converter::toString(right) + "\n";
+                // must flip because cmpq computes right - left not left - right
+                switch (stringToCmpType(cmpVal.cmp)) {
+                    case CmpType::Eq:  result += "\tje ";  break;  // same
+                    case CmpType::Neq: result += "\tjne "; break;  // same
+                    case CmpType::Lt:  result += "\tjg ";  break;  // flipped
+                    case CmpType::Lte: result += "\tjge "; break;  // flipped
+                    case CmpType::Gt:  result += "\tjl ";  break;  // flipped
+                    case CmpType::Gte: result += "\tjle "; break;  // flipped
+                }
             }
+
+
             result += "_" + instr.label + "\n";
             return result;
         }
@@ -252,37 +286,61 @@ namespace L1{
         }
 
         static std::string generate(const CallInstruction& instr) {
-                if (instr.type == InstructionType::CallPrint){
-                    return "\tcall print # runtime system call\n";
-                }
-                if (instr.type == InstructionType::CallInput){
-                    return "\tcall input # runtime system call\n";
-                }
-                if (instr.type == InstructionType::CallAllocate){
-                    return "\tcall allocate # runtime system call\n";
-                }
-                
-                // Call tensor-error note implemented in runtime system yet. 
-
-                if (instr.type == InstructionType::CallUN){
-                    std::string callee_str = Converter::toString(instr.callee.value());
-                        std::string result;
-                        if (instr.arg.value() > 6){
-                            result += "\tsubq $" + std::to_string(instr.arg.value()*8 + 8) + ", %rsp #allocate space for arguments and return address\n";
-                        }else{
-                            result += "\tsubq $8, %rsp #allocate space for return address only\n";
-
-                        }
-                        if (std::holds_alternative<Label>(instr.callee.value())){
-                            result += "\tjmp " + callee_str + "# callee jump\n";  
-                        } else if (std::holds_alternative<Register>(instr.callee.value())){
-                            result += "\tjmp *" + callee_str + "# callee jump but register\n";
-                        }
-                        return result;
+            if (instr.type == InstructionType::CallPrint) {
+                return "\tcall print\n";
             }
-                //    call input # runtime system call
+            if (instr.type == InstructionType::CallInput) {
+                return "\tcall input\n";
+            }
+            if (instr.type == InstructionType::CallAllocate) {
+                return "\tcall allocate\n";
+            }
+            if (instr.type == InstructionType::CallTupleError) {
+                return "\tcall tuple_error\n";
+            }
+            if (instr.type == InstructionType::CallTensorError) {
+                return "\tcall array_tensor_error_null\n";
+            }
 
-                return "Error in CallInstruction generation: unrecognized call type\n";
+            if (instr.type == InstructionType::CallUN) {
+                assert(instr.callee.has_value());
+                assert(instr.arg.has_value());
+
+                std::string result;
+                int64_t num_args = instr.arg.value();
+
+                // how many args go on stack (beyond the 6 register args)
+                int64_t stack_args = std::max((int64_t)0, num_args - 6);
+
+                // total stack space = stack_args * 8 + 8 (return address)
+                int64_t stack_space = (stack_args + 1) * 8;
+
+                // get callee string
+                std::string callee_str;
+                if (std::holds_alternative<Label>(instr.callee.value())) {
+                    // @foo -> _foo
+                    const std::string& lbl = std::get<Label>(instr.callee.value());
+                    callee_str = "_" + lbl;  // strip @ add _
+                } else if (std::holds_alternative<Register>(instr.callee.value())) {
+                    callee_str = Converter::toString(instr.callee.value());
+                }
+
+                // write return address to stack manually
+                // the return label is generated by the caller — we don't have it here
+                // so we use the rsp-relative write pattern
+                result += "\tsubq $" + std::to_string(stack_space) + ", %rsp\n";
+
+                // jump to callee
+                if (std::holds_alternative<Label>(instr.callee.value())) {
+                    result += "\tjmp " + callee_str + "\n";
+                } else {
+                    result += "\tjmp *" + callee_str + "\n";  // indirect jump for register
+                }
+
+                return result;
+            }
+
+            return "# ERROR: unrecognized call type\n";
         }
 
         static std::string generate(const ReturnInstruction& instr, int numLocals = 0, int numArgs = 0) {
