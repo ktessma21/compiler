@@ -18,7 +18,7 @@ mkdir ../$dirName/LA ;
 mkdir ../$dirName/LB ;
 mkdir ../$dirName/LC ;
 
-# Copy each source folder and the util folder
+# Copy each source folder and Makefile
 cp -r L1/src ../$dirName/L1 ;
 cp -r L2/src ../$dirName/L2 ;
 cp -r L3/src ../$dirName/L3 ;
@@ -28,19 +28,38 @@ cp -r LB/src ../$dirName/LB ;
 cp -r LC/src ../$dirName/LC ;
 cp -r util ../$dirName/ ;
 
-# Copy the lib folder and remove common library files
+cp Makefile ../$dirName/Makefile ;
+cp L1/Makefile ../$dirName/L1/Makefile ;
+cp L2/Makefile ../$dirName/L2/Makefile ;
+cp L3/Makefile ../$dirName/L3/Makefile ;
+cp IR/Makefile ../$dirName/IR/Makefile ;
+cp LA/Makefile ../$dirName/LA/Makefile ;
+cp LB/Makefile ../$dirName/LB/Makefile ;
+cp LC/Makefile ../$dirName/LC/Makefile ;
+
+# Copy the lib folder
 cp -r lib ../$dirName/ ;
-rm -r ../$dirName/lib/PEGTL/ ;
-rm -r ../$dirName/lib/runtime.c ;
+
+# Go into the new directory to clean stuff up
+cd ../$dirName/
+
+# Remove nonsense files
+rm -rf .[a-z]* ;
+rm -rf .[A-Z]* ;
+rm -f */src/*.zip ;
+rm -f */prog.* ;
+rm -rf `find ./ -name .cache`
+rm -rf `find ./ -name .DS_Store`
+rm -f `find ./ -iname *.swp`
+rm -f `find ./ -iname *.tar.bz2`
 
 # Change permissions in each source folder
-cd ../$dirName/
 chmod 644 */src/*.cpp &> /dev/null ;
 chmod 644 -f */src/*.hpp &> /dev/null ;
 chmod 644 -f */src/*.h &> /dev/null ;
 
 # Create the package
-echo "e149bbb20cfdsfdssdf5604b3a7d8c89c2871a802fc2e0d3" > signature.txt ;
+echo "1b220f1e5dc6f903f59918c6d6e9abae5084990573c6f21b8de6" > signature.txt ;
 tar cfj ../${dirName}.tar.bz2 ./ ;
 cd ../ ;
 rm -r ${dirName} ;

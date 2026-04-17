@@ -13,6 +13,9 @@
 #include <vector>
 
 #include <utils.h>
+#include <parser.h>
+// #include <generator.h>
+#include <string.h>
 
 void print_help(char *progName) {
   std::cerr << "Usage: " << progName
