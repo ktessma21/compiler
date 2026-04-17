@@ -345,8 +345,14 @@ namespace L1{
 
         static std::string generate(const ReturnInstruction& instr, int numLocals = 0, int numArgs = 0) {
             std::string result;
+
+            // std::cerr << numLocals << "total" << numArgs <<std::endl;
             if (numLocals > 0){
-                result += "\taddq $" + std::to_string(numLocals * 8 + numArgs * 8) + ", %rsp #Deallocate locals\n";
+                if (numArgs > 6){
+                    result += "\taddq $" + std::to_string(numLocals * 8 + (numArgs - 6) * 8) + ", %rsp #Deallocate locals < 6\n";
+                }else{
+                    result += "\taddq $" + std::to_string(numLocals * 8 + numArgs * 8) + ", %rsp #Deallocate locals\n";
+                }
             }
             result += "\tretq\n";
             return result;
