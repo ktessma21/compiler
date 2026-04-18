@@ -14,6 +14,7 @@
 
 #include <utils.h>
 #include <parser.h>
+#include <spiller.h>
 // #include <generator.h>
 #include <string.h>
 
@@ -80,12 +81,20 @@ int main(int argc, char **argv) {
   /*
    * Parse the input file.
    */
+
+  char *fileName = argv[optind]; 
+
+
   if (spill_only) {
 
     /*
      * Parse an L2 function and the spill arguments.
      */
     // TODO
+    auto spill = L2::parse_spill_file(fileName);
+
+    auto program = spill.program;
+
 
   } else if (liveness_only) {
 
@@ -118,6 +127,8 @@ int main(int argc, char **argv) {
      * Spill.
      */
     // TODO
+
+    
 
     return 0;
   }

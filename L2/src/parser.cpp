@@ -1,11 +1,13 @@
-
 #include <fstream>
 #include "l2.h"
+#include <parser.h>
 #include <memory>
 #include <vector>
+#include <string>
+#include <stdexcept>
 #include <tao/pegtl.hpp>
 #include <tao/pegtl/contrib/analyze.hpp>
-#include <tao/pegtl/contrib/raw_string.hpp> 
+#include <tao/pegtl/contrib/raw_string.hpp>
 #include <cassert>
 
 
@@ -22,13 +24,13 @@ using namespace pegtl;
 
 namespace L2 {
 
-   
- /* 
+
+ /*
    * Grammar rules from now on.
    */
   struct name:
     pegtl::seq<
-      pegtl::plus< 
+      pegtl::plus<
         pegtl::sor<
           pegtl::alpha,
           pegtl::one< '_' >
@@ -43,6 +45,13 @@ namespace L2 {
       >
     > {};
 
+        
+    struct var : 
+            pegtl::seq<
+                pegtl::one<'%'>,
+                name
+            > {};
+
 
   struct number:
     pegtl::seq<
@@ -52,16 +61,16 @@ namespace L2 {
           pegtl::one< '+' >
         >
       >,
-      pegtl::plus< 
+      pegtl::plus<
         pegtl::digit
       >
     >{};
 
 
-    struct comment: 
-        pegtl::disable< 
-        pstring( "//" ), 
-        pegtl::until< pegtl::eolf > 
+    struct comment:
+        pegtl::disable<
+        pstring( "//" ),
+        pegtl::until< pegtl::eolf >
          >{};
 
     struct spaces :
@@ -72,7 +81,7 @@ namespace L2 {
             >
         > { };
 
-    struct seps : 
+    struct seps :
         pegtl::star<
             pegtl::seq<
                 spaces,
@@ -80,7 +89,7 @@ namespace L2 {
             >
         > { };
 
-    struct seps_with_comments : 
+    struct seps_with_comments :
         pegtl::star<
             pegtl::seq<
                 spaces,
@@ -95,34 +104,30 @@ namespace L2 {
 
 
         /* MY CODE GOES HERE */
-struct entry_point_rule; // early declaration. 
+struct entry_point_rule; // early declaration.
 struct l;
 
-struct sx: pstring("rcx"){};
+struct sx: 
+    pegtl::sor<
+        pstring("rcx"), 
+        var
+    >{};
 
 struct a :
     pegtl::sor<
             sx,
-            pstring("rdi"), 
-            pstring("rsi"), 
+            pstring("rdi"),
+            pstring("rsi"),
             pstring("rdx"),
-            pstring("r8"), 
+            pstring("r8"),
             pstring("r9")
     > {};
 
 
 struct W :
         pegtl::sor<
-            a, 
-            pstring("rax"), 
-            pstring("rbx"), 
-            pstring("rbp"), 
-            pstring("r10"), 
-            pstring("r11"), 
-            pstring("r12"), 
-            pstring("r13"), 
-            pstring("r14"),
-            pstring("r15")
+            a,
+            pstring("rax")
     > {};
 
 struct aop :
@@ -163,37 +168,38 @@ struct F :
 
 struct label :
         pegtl::seq<
-            pegtl::one<':'>, 
+            pegtl::one<':'>,
             name
         > {};
 
 struct label_instruction_block :
         pegtl::seq<
-            pegtl::one<':'>, 
+            pegtl::one<':'>,
             name
         > {};
 
+
 struct u :
         pegtl::sor<
-            W, 
+            W,
             l
         > {};
 
 struct X :
         pegtl::sor<
-            W, 
+            W,
             pstring("rsp")
         > {};
 
 struct t :
         pegtl::sor <
-            X, 
+            X,
             number
         > {};
 
 struct S :
     pegtl::sor<
-        l, 
+        l,
         label,
         t
     >{};
@@ -204,91 +210,91 @@ struct M : number {};
 /* All instructions set defined from here */
 struct memory_access_block :
     pegtl::seq<
-        pstring("mem"), 
-                spaces, 
-                X, 
-                spaces, 
+        pstring("mem"),
+                spaces,
+                X,
+                spaces,
                 M
     >{};
 
 
 struct assignWfromMemory:
         pegtl::seq<
-            W, 
+            W,
             spaces,
             pstring("<-"),
-            spaces, 
+            spaces,
             memory_access_block
         >{};
 
 struct assignWfromS :
         pegtl::seq<
-            W, 
+            W,
             spaces,
             pstring("<-"),
-            spaces, 
+            spaces,
             S
         >{};
 
 struct WaopT:
     pegtl::seq<
-            W, 
+            W,
             spaces,
             aop,
-            spaces, 
+            spaces,
             t
         >{};
 
 struct WsopSx:
     pegtl::seq<
-                W, 
+                W,
                 spaces,
                 sop,
-                spaces, 
+                spaces,
                 sx
             >{};
 
 struct WsopN:
     pegtl::seq<
-                W, 
+                W,
                 spaces,
                 sop,
-                spaces, 
+                spaces,
                 number
-            >{};    
+            >{};
 
 struct memoryIncDecT:
     pegtl::seq<
         memory_access_block,
-        spaces, 
+        spaces,
         pegtl::sor<
-            pstring("+="), 
+            pstring("+="),
             pstring("-=")>,
-        spaces, 
+        spaces,
         t
     >{};
 
 struct wIncDecMemory:
     pegtl::seq<
-        W, 
-        spaces, 
+        W,
+        spaces,
         pegtl::sor<
-            pstring("+="), 
+            pstring("+="),
             pstring("-=")>,
-        spaces, 
+        spaces,
         memory_access_block
     >{};
-        
+
 struct compareAssign:
     pegtl::seq<
-        W, 
-        spaces, 
-        pstring("<-"), 
+        W,
         spaces,
-        t, 
-        spaces, 
+        pstring("<-"),
+        spaces,
+        t,
+        spaces,
         cmp,
-        spaces, 
+        spaces,
         t
     >{};
 
@@ -296,11 +302,11 @@ struct cjump:
     pegtl::seq<
         pstring("cjump"),
         spaces,
-        t, 
+        t,
         spaces,
         cmp,
         spaces,
-        t, 
+        t,
         spaces,
         label
     >{};
@@ -367,7 +373,7 @@ struct callInstruction_block :
             callInput,        // call input 0        (specific string)
             callAllocate,     // call allocate 2     (specific string)
             calltupleError,   // call tuple-error 3  (specific string)
-            calltensorError           
+            calltensorError
         >
     >{};
 
@@ -376,7 +382,7 @@ struct wIncDec:
             W,
             spaces,
             pegtl::sor<
-                pstring("++"), 
+                pstring("++"),
                 pstring("--")>
     >{};
 
@@ -402,6 +408,19 @@ struct assignMemoryFromS :
         S
     >{};
 
+struct wStackM :
+    pegtl::seq<
+        W,
+        spaces, 
+        pstring("<-"), 
+        spaces,
+        var, 
+        spaces,
+        M
+    >{};
+        
+
+
 
 struct returnINS : pstring("return"){};
 
@@ -410,9 +429,10 @@ struct assignment_block :
             compareAssign,      // W <- t cmp t   (before assignWfromS)
             assignWfromMemory,  // W <- mem ...   (before assignWfromS, "mem" is specific)
             assignWfromS,       // W <- S         (generic <- fallback)
-            assignMemoryFromS> {};
+            assignMemoryFromS, 
+            wStackM> {};
 
-struct Instruction_block : 
+struct Instruction_block :
         pegtl::sor<
             assignment_block,
             wIncDecMemory,      // W op= mem ...  (before WaopT, "mem" is specific)
@@ -433,8 +453,8 @@ struct Instruction_block :
 
 
 
-// Don't touch from now on. Extremely stable parsing code. 
-struct InstructionFormat : 
+// Don't touch from now on. Extremely stable parsing code.
+struct InstructionFormat :
     pegtl::seq<
         spaces,
         Instruction_block,
@@ -444,29 +464,15 @@ struct InstructionFormat :
 
 struct functionFormat :
     pegtl::seq<
-        number, 
-        seps_with_comments, 
-        spaces, // allow new lines too
-        number, 
+        number,     // in l2 we only have one number 
         seps_with_comments,
         pegtl::plus<InstructionFormat>
     > {};
 
 
-// struct functionDef :
-//     pegtl::seq<
-//         seps_with_comments,
-//         pegtl::seq<spaces, pegtl::one<'('>>,
-//         l,
-//         seps_with_comments,
-//         functionFormat,
-//         pegtl::seq<spaces, pegtl::one<')'>>,
-//         seps_with_comments
-//     > {};
-
-struct programORfunction : 
+struct programORfunction :
     pegtl::seq<
-        spaces, 
+        spaces,
         pegtl::sor<
             pegtl::plus<functionFormat>,       // multiple functions ← fix
             pegtl::plus<entry_point_rule>   // nested programs
@@ -474,10 +480,10 @@ struct programORfunction :
     >{};
 
 
-// clean entry format 
+// clean entry format
     struct l :
         pegtl::seq<
-            pegtl::one<'@'>, 
+            pegtl::one<'@'>,
             name> {};
 
     struct entry_point_rule:
@@ -491,10 +497,58 @@ struct programORfunction :
             seps_with_comments
         > { };
 
-    struct grammar : 
-        pegtl::must< 
+    struct grammar :
+        pegtl::must<
             entry_point_rule
         > {};
+
+
+    /* ------------------------------------------------------------------
+     *  Tokenizer — splits a string on whitespace and hands out tokens
+     *  one at a time. Replaces all the manual pos++ / find / substr
+     *  scaffolding the actions used to do by hand.
+     * ------------------------------------------------------------------ */
+    class Tokenizer {
+        std::vector<std::string> tokens;
+        size_t pos = 0;
+
+    public:
+        explicit Tokenizer(const std::string& s) {
+            std::string cur;
+            for (char c : s) {
+                if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
+                    if (!cur.empty()) { tokens.push_back(cur); cur.clear(); }
+                } else {
+                    cur += c;
+                }
+            }
+            if (!cur.empty()) tokens.push_back(cur);
+        }
+
+        // get next token and advance
+        std::string next() {
+            if (pos >= tokens.size())
+                throw std::runtime_error("tokenizer: no more tokens");
+            return tokens[pos++];
+        }
+
+        // look without advancing
+        const std::string& peek(size_t offset = 0) const {
+            if (pos + offset >= tokens.size())
+                throw std::runtime_error("tokenizer: peek past end");
+            return tokens[pos + offset];
+        }
+
+        bool done() const { return pos >= tokens.size(); }
+        size_t remaining() const { return tokens.size() - pos; }
+
+        // consume and verify (useful for "mem", "<-", etc.)
+        void expect(const std::string& s) {
+            std::string t = next();
+            if (t != s)
+                throw std::runtime_error("tokenizer: expected '" + s + "' got '" + t + "'");
+        }
+    };
 
 
     inline Register stringToRegister(const std::string& s) {
@@ -523,19 +577,19 @@ struct programORfunction :
     if (s == "*=") return AopType::MulEq;
     return AopType::AndEq;  // &=
     }
-    
+
     inline SopType parseSop(const std::string& s){
         if (s == "<<=") return SopType::LShift;
-        return SopType::RShift; 
+        return SopType::RShift;
     }
-        
+
     inline VALUE parseS(const std::string& str) {
         if (!str.empty() && str[0] == '@') return Label(str);
         if (!str.empty() && str[0] == ':') return Label(str);
-        try { 
-            return stringToRegister(str); 
-        } catch (...) { 
-            return Number(std::stoll(str)); 
+        try {
+            return stringToRegister(str);
+        } catch (...) {
+            return Number(std::stoll(str));
         }
     }
 
@@ -547,23 +601,13 @@ struct programORfunction :
             return Number(std::stoll(str));
         }
     }
+
     /* FUll ITEM collecting */
-    //  std::vector<std::unique_ptr<ASTNode>> items;
     bool new_function = false;
 
 
     template<typename Rule>
     struct action : pegtl::normal<Rule> {};
-
-
-    // struct assignment_block :
-    //     pegtl::sor<
-    //         compareAssign,      // W <- t cmp t   (before assignWfromS)
-    //         assignWfromMemory,  // W <- mem ...   (before assignWfromS, "mem" is specific)
-    //         assignWfromS,       // W <- S         (generic <- fallback)
-    //         assignMemoryFromS> {};
-
-    // InstructionType currentInstructionType = InstructionType::Unknown;
 
 
     template<> struct action <wIncDec> {
@@ -572,28 +616,33 @@ struct programORfunction :
             assert(!p.label.empty());
             assert(!p.functions.empty());
 
-            std::string s = in.string();
-            size_t pos = 0;
+            // wIncDec has no space between reg and ++/-- (e.g. "rax++").
+            // Tokenizer would give us one blob, so split that blob.
+            Tokenizer tk(in.string());
+            std::string blob = tk.next();
 
-            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
-
-            size_t reg_start = pos;
-            while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t' && (s[pos] != '+') && (s[pos] != '-')) pos++;
-            std::string reg_str = s.substr(reg_start, pos - reg_start);
-
-            VALUE reg = stringToRegister(reg_str);
-            auto instr = std::make_unique<IncDecInstruction>();
-            instr->setDst(reg);
-
-            if (s.substr(pos, 2) == "++"){
-                instr->setIsInc(true);
-            } else if (s.substr(pos, 2) == "--"){
-                instr->setIsInc(false);
-            }else{
-                throw std::runtime_error("invalid increment/decrement instruction: " + s);
+            std::string reg_str;
+            bool is_inc;
+            if (blob.size() >= 2 && blob.substr(blob.size()-2) == "++") {
+                reg_str = blob.substr(0, blob.size()-2);
+                is_inc = true;
+            } else if (blob.size() >= 2 && blob.substr(blob.size()-2) == "--") {
+                reg_str = blob.substr(0, blob.size()-2);
+                is_inc = false;
+            } else {
+                // tolerate the case where there *is* whitespace:
+                // blob was just the register, next token is ++/--
+                reg_str = blob;
+                std::string op = tk.next();
+                if (op == "++") is_inc = true;
+                else if (op == "--") is_inc = false;
+                else throw std::runtime_error("invalid increment/decrement: " + in.string());
             }
-            p.functions.back().instructions.push_back(std::move(instr));
 
+            auto instr = std::make_unique<IncDecInstruction>();
+            instr->setDst(stringToRegister(reg_str));
+            instr->setIsInc(is_inc);
+            p.functions.back().instructions.push_back(std::move(instr));
         }
     };
 
@@ -603,111 +652,76 @@ struct programORfunction :
             assert(!p.label.empty());
             assert(!p.functions.empty());
 
-            std::string s = in.string();
-            size_t pos = 0;
-
-            // skip spaces
-            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
-            // read dst W
-            size_t dst_start = pos;
-            while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t') pos++;
-            std::string dst_str = s.substr(dst_start, pos - dst_start);
-
-            // skip spaces, skip @
-            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
-            assert(s[pos] == '@');
-            pos++;
-
-            // skip spaces
-            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
-            // read base W
-            size_t base_start = pos;
-            while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t') pos++;
-            std::string base_str = s.substr(base_start, pos - base_start);
-
-            // skip spaces
-            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
-            // read idx W
-            size_t idx_start = pos;
-            while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t') pos++;
-            std::string idx_str = s.substr(idx_start, pos - idx_start);
-
-            // skip spaces
-            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
-            // read E — rest of string trimmed
-            std::string e_str = s.substr(pos);
-            while (!e_str.empty() && (e_str.back()==' '||e_str.back()=='\t')) e_str.pop_back();
+            Tokenizer tk(in.string());
+            std::string dst_str  = tk.next();   // W
+            tk.expect("@");
+            std::string base_str = tk.next();   // W
+            std::string idx_str  = tk.next();   // W
+            std::string e_str    = tk.next();   // E
 
             auto instr = std::make_unique<WWWEInstruction>();
             instr->setDst(stringToRegister(dst_str));
             instr->setBase(stringToRegister(base_str));
             instr->setIdx(stringToRegister(idx_str));
             instr->setScale(std::stoll(e_str));
-
             p.functions.back().instructions.push_back(std::move(instr));
         }
-        };
+    };
 
-        template<> struct action<WaopT> {
-            template<typename Input>
-            static void apply(const Input& in, Program& p) {
-                    assert(!p.label.empty());
-                    assert(!p.functions.empty());
 
-                    std::string s = in.string();
-                    size_t pos = 0;
+     template<> struct action<wStackM> {
+        template<typename Input>
+        static void apply(const Input& in, Program& p) {
+            assert(!p.label.empty());
+            assert(!p.functions.empty());
 
-                    // read W
-                    while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
-                    size_t w_start = pos;
-                    while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t') pos++;
-                    std::string w_str = s.substr(w_start, pos - w_start);
+            Tokenizer tk(in.string());
+            std::string dst_str  = tk.next();   // W
+            tk.expect("@");
+            std::string base_str = tk.next();   // W
+            std::string idx_str  = tk.next();   // W
+            std::string e_str    = tk.next();   // E
 
-                    // read aop
-                    while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
-                    size_t aop_start = pos;
-                    while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t') pos++;
-                    std::string aop_str = s.substr(aop_start, pos - aop_start);
+            auto instr = std::make_unique<WWWEInstruction>();
+            instr->setDst(stringToRegister(dst_str));
+            instr->setBase(stringToRegister(base_str));
+            instr->setIdx(stringToRegister(idx_str));
+            instr->setScale(std::stoll(e_str));
+            p.functions.back().instructions.push_back(std::move(instr));
+        }
+    };
 
-                    // read t
-                    while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
-                    std::string t_str = s.substr(pos);
-                    while (!t_str.empty() && (t_str.back()==' '||t_str.back()=='\t')) t_str.pop_back();
 
-                    auto instr = std::make_unique<ArithInstruction>(InstructionType::WaopT);
-                    instr->setDst(stringToRegister(w_str));
-                    instr->setAop(parseAop(aop_str));
-                    instr->setSrc(parseT(t_str));
-                    p.functions.back().instructions.push_back(std::move(instr));
-                }
-        };
+    template<> struct action<WaopT> {
+        template<typename Input>
+        static void apply(const Input& in, Program& p) {
+            assert(!p.label.empty());
+            assert(!p.functions.empty());
 
-   
+            Tokenizer tk(in.string());
+            std::string w_str   = tk.next();
+            std::string aop_str = tk.next();
+            std::string t_str   = tk.next();
+
+            auto instr = std::make_unique<ArithInstruction>(InstructionType::WaopT);
+            instr->setDst(stringToRegister(w_str));
+            instr->setAop(parseAop(aop_str));
+            instr->setSrc(parseT(t_str));
+            p.functions.back().instructions.push_back(std::move(instr));
+        }
+    };
+
+
     template<> struct action<WsopN> {
         template<typename Input>
         static void apply(const Input& in, Program& p) {
             assert(!p.label.empty());
             assert(!p.functions.empty());
 
-            std::string s = in.string();
-            size_t pos = 0;
-
-            // skip spaces, read W
-            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
-            size_t w_start = pos;
-            while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t') pos++;
-            std::string w_str = s.substr(w_start, pos - w_start);
-
-            // skip spaces, read sop
-            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
-            size_t sop_start = pos;
-            while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t') pos++;
-            std::string sop_str = s.substr(sop_start, pos - sop_start);
-
-            // skip spaces, read number
-            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
-            std::string n_str = s.substr(pos);
-            while (!n_str.empty() && (n_str.back()==' '||n_str.back()=='\t')) n_str.pop_back();
+            Tokenizer tk(in.string());
+            std::string w_str   = tk.next();
+            std::string sop_str = tk.next();
+            std::string n_str   = tk.next();
 
             auto instr = std::make_unique<ShiftInstruction>(InstructionType::WsopN);
             instr->setDst(stringToRegister(w_str));
@@ -723,36 +737,13 @@ struct programORfunction :
             assert(!p.label.empty());
             assert(!p.functions.empty());
 
-            std::string s = in.string();
-            size_t pos = 0;
-
-            // read W
-            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
-            size_t w_start = pos;
-            while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t') pos++;
-            std::string w_str = s.substr(w_start, pos - w_start);
-
-            // read aop (+=  or -=)
-            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
-            size_t aop_start = pos;
-            while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t') pos++;
-            std::string aop_str = s.substr(aop_start, pos - aop_start);
-
-            // find mem
-            size_t mem_pos = s.find("mem", pos);
-            assert(mem_pos != std::string::npos);
-            pos = mem_pos + 3;
-
-            // read X
-            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
-            size_t x_start = pos;
-            while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t') pos++;
-            std::string x_str = s.substr(x_start, pos - x_start);
-
-            // read M
-            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
-            std::string m_str = s.substr(pos);
-            while (!m_str.empty() && (m_str.back()==' '||m_str.back()=='\t')) m_str.pop_back();
+            // form:  W aop mem X M
+            Tokenizer tk(in.string());
+            std::string w_str   = tk.next();
+            std::string aop_str = tk.next();
+            tk.expect("mem");
+            std::string x_str   = tk.next();
+            std::string m_str   = tk.next();
 
             memoryAccess m;
             m.x_value = stringToRegister(x_str);
@@ -772,42 +763,27 @@ struct programORfunction :
             assert(!p.label.empty());
             assert(!p.functions.empty());
 
-            std::string s = in.string();
-            size_t pos = s.find("cjump") + 5;
+            // form:  cjump t cmp t :label
+            Tokenizer tk(in.string());
+            tk.expect("cjump");
+            std::string left_str  = tk.next();
+            std::string cmp_str   = tk.next();
+            std::string right_str = tk.next();
+            std::string label_tok = tk.next();   // ":name"
 
-            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
-            size_t left_end = s.find_first_of(" ", pos);
-            std::string left_str = s.substr(pos, left_end - pos);
-            pos = left_end;
-            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
-            size_t cmp_end = s.find_first_of(" ", pos);
-            std::string cmp_str = s.substr(pos, cmp_end - pos);
-            pos = cmp_end;
-            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
-            size_t right_end = s.find_first_of(" ", pos);
-            std::string right_str = s.substr(pos, right_end - pos);
-            pos = right_end;
-            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
-            pos += 1; // skip ':'
-            std::size_t label_end = s.find_first_of(" ", pos);
-            std::string label_str = s.substr(pos, label_end - pos);
-
-
-
+            // strip leading ':'
+            std::string label_str = (!label_tok.empty() && label_tok[0] == ':')
+                                    ? label_tok.substr(1) : label_tok;
 
             compareStruct cav;
-
-            cav.left = std::make_unique<VALUE>(parseT(left_str));
-            cav.cmp = cmp_str;
+            cav.left  = std::make_unique<VALUE>(parseT(left_str));
+            cav.cmp   = cmp_str;
             cav.right = std::make_unique<VALUE>(parseT(right_str));
-            
-            auto instr = std::make_unique<CjumpInstruction>();  // no &
+
+            auto instr = std::make_unique<CjumpInstruction>();
             instr->setCmpVal(cav);
             instr->setLabel(Label(label_str));
             p.functions.back().instructions.push_back(std::move(instr));
-            
-            // std::cerr << "parsed cjump with left\n";
-
         }
     };
 
@@ -817,22 +793,12 @@ struct programORfunction :
             assert(!p.label.empty());
             assert(!p.functions.empty());
 
-            std::string s = in.string();
-            size_t pos = 0;
+            Tokenizer tk(in.string());
+            std::string w_str   = tk.next();
+            std::string sop_str = tk.next();
+            // sx is always rcx; consume it for sanity
+            (void)tk.next();
 
-            // read W
-            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
-            size_t w_start = pos;
-            while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t') pos++;
-            std::string w_str = s.substr(w_start, pos - w_start);
-
-            // read sop
-            while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
-            size_t sop_start = pos;
-            while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t') pos++;
-            std::string sop_str = s.substr(sop_start, pos - sop_start);
-
-            // sx is always rcx
             auto instr = std::make_unique<ShiftInstruction>(InstructionType::WsopSx);
             instr->setDst(stringToRegister(w_str));
             instr->setSop(parseSop(sop_str));
@@ -847,67 +813,48 @@ struct programORfunction :
             assert(!p.label.empty());
             assert(!p.functions.empty());
 
-            std::unique_ptr<ReturnInstruction> ret = std::make_unique<ReturnInstruction>();
+            auto ret = std::make_unique<ReturnInstruction>();
             p.functions.back().instructions.push_back(std::move(ret));
         }
     };
-    
+
     template<> struct action<callInstruction_block> {
         template<typename Input>
         static void apply(const Input& in, Program& p) {
             assert(!p.label.empty());
             assert(!p.functions.empty());
-            // std::cerr << "parsing call instruction : " << in.string() << '\n';
-             
-            std::string s = in.string();
-            size_t pos = s.find_first_of("call") + 4;
 
-                // skip spaces
-            while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
-                // read u value
-            size_t u_end = s.find_first_of(" ", pos);
-            std::string u_str = s.substr(pos, u_end - pos);
+            // form:  call <callee> <num>   OR   call <builtin> <num>
+            Tokenizer tk(in.string());
+            tk.expect("call");
+            std::string u_str = tk.next();
 
-            // std::cerr<< "parsing call instruction with u_str: " << u_str << '\n';
-
-            auto parser = [](const std::string& s) -> InstructionType {
+            auto classify = [](const std::string& s) -> InstructionType {
                 if (s.starts_with("@") || s.starts_with("r")) return InstructionType::CallUN;
-                if (s.contains("print")) return InstructionType::CallPrint;
-                if (s.contains("input")) return InstructionType::CallInput;
-                if (s.contains("allocate")) return InstructionType::CallAllocate;
-                if (s.contains("tuple-error")) return InstructionType::CallTupleError;
+                if (s.contains("print"))        return InstructionType::CallPrint;
+                if (s.contains("input"))        return InstructionType::CallInput;
+                if (s.contains("allocate"))     return InstructionType::CallAllocate;
+                if (s.contains("tuple-error"))  return InstructionType::CallTupleError;
                 if (s.contains("tensor-error")) return InstructionType::CallTensorError;
                 return InstructionType::Unknown;
             };
 
-            std::unique_ptr<CallInstruction> call = std::make_unique<CallInstruction>(parser(u_str));
-
+            auto call = std::make_unique<CallInstruction>(classify(u_str));
             assert(call->type != InstructionType::Unknown);
-            if (call->type == InstructionType::CallUN){
-                    // parse S — label, register, or number
-                auto parseS = [](const std::string& str) -> VALUE {
+
+            if (call->type == InstructionType::CallUN) {
+                auto parseCallee = [](const std::string& str) -> VALUE {
                     if (str[0] == '@') return Label(str.substr(1));
                     return stringToRegister(str);
                 };
-
-                call -> setCallee(parseS(u_str));
-                pos = u_end;
-                // skip spaces
-                while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
-
-// read u value
-                size_t digit = pos;
-                while (pos < s.size() && s[pos] != ' ' && s[pos] != '\t') pos++;
-                std::string digit_str = s.substr(digit, pos - digit);   
-                call -> setNum(std::stoll(digit_str));
+                call->setCallee(parseCallee(u_str));
+                std::string n_str = tk.next();
+                call->setNum(std::stoll(n_str));
             }
-            
-           
 
             p.functions.back().instructions.push_back(std::move(call));
         }
     };
-   
 
 
     template<> struct action<assignMemoryFromS> {
@@ -916,68 +863,28 @@ struct programORfunction :
             assert(!p.label.empty());
             assert(!p.functions.empty());
 
-            std::string s = in.string();
-            size_t pos = 0;
+            // form:  mem X M <- S
+            Tokenizer tk(in.string());
+            tk.expect("mem");
+            std::string x_str = tk.next();
+            std::string m_str = tk.next();
+            tk.expect("<-");
+            std::string s_str = tk.next();
 
-            // skip leading spaces
-            while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
-
-            // find and skip past "mem"
-            size_t mem_pos = s.find("mem", pos);
-            assert(mem_pos != std::string::npos);
-            pos = mem_pos + 3;
-
-            // skip spaces after "mem"
-            while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
-
-            // read X register
-            size_t x_start = pos;
-            while (pos < s.size() && s[pos] != ' ' && s[pos] != '\t') pos++;
-            std::string x_str = s.substr(x_start, pos - x_start);
-
-            // skip spaces
-            while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
-
-            // read M number
-            size_t m_start = pos;
-            while (pos < s.size() && s[pos] != ' ' && s[pos] != '\t') pos++;
-            std::string m_str = s.substr(m_start, pos - m_start);
-
-            // skip spaces
-            while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
-
-            // skip "<-"
-            pos += 2;
-
-            // skip spaces
-            while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
-
-            // read S — rest of string trimmed
-            std::string s_str = s.substr(pos);
-            while (!s_str.empty() && (s_str.back() == ' ' || s_str.back() == '\t')) {
-                s_str.pop_back();
-            }
-
-            // parse S — label, register, or number
-            auto parseS = [](const std::string& str) -> VALUE {
+            auto localParseS = [](const std::string& str) -> VALUE {
                 if (str[0] == '@') return Label(str.substr(1));
                 if (str[0] == ':') return Label(str.substr(1));
-                try {
-                    return stringToRegister(str);
-                } catch (...) {
-                    return Number(std::stoll(str));
-                }
+                try { return stringToRegister(str); }
+                catch (...) { return Number(std::stoll(str)); }
             };
 
-            // build memory access for destination
             memoryAccess m;
             m.x_value = stringToRegister(x_str);
             m.size    = std::stoll(m_str);
 
             auto assign = std::make_unique<AssignInstruction>(InstructionType::AssignMemoryFromS);
-            assign->setTo(VALUE(m));          // mem X M is destination
-            assign->setFrom(parseS(s_str));   // S is source
-
+            assign->setTo(VALUE(m));
+            assign->setFrom(localParseS(s_str));
             p.functions.back().instructions.push_back(std::move(assign));
         }
     };
@@ -985,22 +892,17 @@ struct programORfunction :
     template<> struct action <label_instruction_block> {
         template<typename Input>
         static void apply(const Input& in, Program& p){
-            // std::cerr << "parsing label instruction\n";
             assert(!p.label.empty());
             assert(!p.functions.empty());
 
-            std::string s = in.string();
-            size_t pos = s.find(':');
-            pos += 1;
-            assert(pos != std::string::npos);
-            
-            size_t next = s.find(' ', pos);
-            std::string label_name = s.substr(pos, next - pos);
-            // std::cerr << "parsed label: " << label_name << "\n";
+            // form:  :name
+            Tokenizer tk(in.string());
+            std::string tok = tk.next();
+            std::string label_name = (!tok.empty() && tok[0] == ':')
+                                     ? tok.substr(1) : tok;
 
-            auto label = std::make_unique<LabelInstruction>(label_name);
-            p.functions.back().instructions.push_back(std::move(label));
-
+            auto lbl = std::make_unique<LabelInstruction>(label_name);
+            p.functions.back().instructions.push_back(std::move(lbl));
         }
     };
 
@@ -1010,17 +912,15 @@ struct programORfunction :
             assert(!p.label.empty());
             assert(!p.functions.empty());
 
-            std::string s = in.string();
-            size_t pos = s.find(':');
-            pos += 1;
-            assert(pos != std::string::npos);
-            
-            size_t next = s.find(' ', pos);
-            std::string label_name = s.substr(pos, next - pos);
+            // form:  goto :name
+            Tokenizer tk(in.string());
+            tk.expect("goto");
+            std::string tok = tk.next();
+            std::string label_name = (!tok.empty() && tok[0] == ':')
+                                     ? tok.substr(1) : tok;
 
-            auto label = std::make_unique<GotoInstruction>(label_name);
-            p.functions.back().instructions.push_back(std::move(label));
-
+            auto lbl = std::make_unique<GotoInstruction>(label_name);
+            p.functions.back().instructions.push_back(std::move(lbl));
         }
     };
 
@@ -1030,47 +930,22 @@ struct programORfunction :
             assert(!p.label.empty());
             assert(!p.functions.empty());
 
-            std::string s = in.string();
-            size_t pos = 0;
+            // form:  W <- S
+            Tokenizer tk(in.string());
+            std::string w_str = tk.next();
+            tk.expect("<-");
+            std::string s_str = tk.next();
 
-            // skip leading spaces
-            while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
-
-            // read destination W
-            size_t w_start = pos;
-            while (pos < s.size() && s[pos] != ' ' && s[pos] != '\t') pos++;
-            std::string w_str = s.substr(w_start, pos - w_start);
-
-            // skip spaces
-            while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
-
-            // skip "<-"
-            pos += 2;
-
-            // skip spaces
-            while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
-
-            // read S — rest of string trimmed
-            std::string s_str = s.substr(pos);
-            while (!s_str.empty() && (s_str.back() == ' ' || s_str.back() == '\t')) {
-                s_str.pop_back();
-            }
-
-            // parse S — could be label (@foo), label (:foo), register, or number
-            auto parseS = [](const std::string& str) -> VALUE {
-                if (str[0] == '@') return Label(str.substr(1));       // l
-                if (str[0] == ':') return Label(str.substr(1));       // label
-                try {
-                    return stringToRegister(str);           // register
-                } catch (...) {
-                    return Number(std::stoll(str));         // number
-                }
+            auto localParseS = [](const std::string& str) -> VALUE {
+                if (str[0] == '@') return Label(str.substr(1));
+                if (str[0] == ':') return Label(str.substr(1));
+                try { return stringToRegister(str); }
+                catch (...) { return Number(std::stoll(str)); }
             };
 
             auto assign = std::make_unique<AssignInstruction>(InstructionType::AssignFromS);
             assign->setTo(stringToRegister(w_str));
-            assign->setFrom(parseS(s_str));
-
+            assign->setFrom(localParseS(s_str));
             p.functions.back().instructions.push_back(std::move(assign));
         }
     };
@@ -1081,76 +956,22 @@ struct programORfunction :
             assert(!p.label.empty());
             assert(!p.functions.empty());
 
-            std::string s = in.string();
-            size_t pos = 0;
+            // form:  W <- t cmp t
+            Tokenizer tk(in.string());
+            std::string w_str     = tk.next();
+            tk.expect("<-");
+            std::string left_str  = tk.next();
+            std::string cmp_str   = tk.next();
+            std::string right_str = tk.next();
 
-            // skip leading spaces
-            while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
-
-            // read destination W
-            size_t w_start = pos;
-            while (pos < s.size() && s[pos] != ' ' && s[pos] != '\t') pos++;
-            std::string w_str = s.substr(w_start, pos - w_start);
-
-            // skip spaces
-            while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
-
-            // skip "<-"
-            pos += 2;
-
-            // skip spaces
-            while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
-
-            // read left t operand
-            size_t left_start = pos;
-            while (pos < s.size() && s[pos] != ' ' && s[pos] != '\t') pos++;
-            std::string left_str = s.substr(left_start, pos - left_start);
-
-            // skip spaces
-            while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
-
-            // read cmp operator (<=, <, =)
-            std::string cmp_op;
-            if (pos + 1 < s.size() && s.substr(pos, 2) == "<=") {
-                cmp_op = "<=";
-                pos += 2;
-            } else if (s[pos] == '<') {
-                cmp_op = "<";
-                pos += 1;
-            } else if (s[pos] == '=') {
-                cmp_op = "=";
-                pos += 1;
-            }
-
-            // skip spaces
-            while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
-
-            // read right t operand — rest of string trimmed
-            std::string right_str = s.substr(pos);
-            while (!right_str.empty() && (right_str.back() == ' ' || right_str.back() == '\t')) {
-                right_str.pop_back();
-            }
-
-            // parse a t value — either register or number
-            auto parseT = [](const std::string& str) -> VALUE {
-                try {
-                    return stringToRegister(str);
-                } catch (...) {
-                    return Number(std::stoll(str));
-                }
-            };
-
-            // build compareStruct
             compareStruct cav;
             cav.left  = std::make_unique<VALUE>(parseT(left_str));
-            cav.cmp   = cmp_op;
+            cav.cmp   = cmp_str;
             cav.right = std::make_unique<VALUE>(parseT(right_str));
 
-            // build instruction
             auto assign = std::make_unique<AssignInstruction>(InstructionType::compareAssign);
             assign->setTo(stringToRegister(w_str));
-            assign -> setCmpVal(std::move(cav));
-
+            assign->setCmpVal(std::move(cav));
             p.functions.back().instructions.push_back(std::move(assign));
         }
     };
@@ -1161,131 +982,69 @@ struct programORfunction :
             assert(!p.label.empty());
             assert(!p.functions.empty());
 
-            std::unique_ptr<AssignInstruction> assign = std::make_unique<AssignInstruction>(InstructionType::AssignFromMemory);
-            
-            std::string s = in.string();
+            // form:  W <- mem X M
+            Tokenizer tk(in.string());
+            std::string w_str = tk.next();
+            tk.expect("<-");
+            tk.expect("mem");
+            std::string x_str = tk.next();
+            std::string m_str = tk.next();
 
-
-            size_t pos = 0;
-            // skip any leading spaces.
-            while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
-
-            // read register — everything until next space
-            size_t reg_start = pos;
-            while (pos < s.size() && s[pos] != ' ' && s[pos] != '\t') pos++;
-            std::string reg_str = s.substr(reg_start, pos - reg_start);
-
-            VALUE v = stringToRegister(reg_str);
-            assign -> setTo(v);
-
-            size_t mem_pos = s.find("mem", pos);
-            pos = mem_pos + 3;  // skip past "mem"
-            assert(mem_pos != std::string::npos);
-
-
-            // skip spaces after "mem"
-            while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
-            
-            // read register — everything until next space
-            reg_start = pos;
-            while (pos < s.size() && s[pos] != ' ' && s[pos] != '\t') pos++;
-            reg_str = s.substr(reg_start, pos - reg_start);
-            
-            // skip spaces between register and number
-            while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) pos++;
-            
-            // read number — everything remaining
-            std::string num_str = s.substr(pos);
-
-            // build the memoryAccess
             memoryAccess m;
-            m.x_value = stringToRegister(reg_str);
-            m.size    = std::stoll(num_str);
+            m.x_value = stringToRegister(x_str);
+            m.size    = std::stoll(m_str);
 
-            VALUE mem_value = m;
-            assign -> setFrom(mem_value);
-
+            auto assign = std::make_unique<AssignInstruction>(InstructionType::AssignFromMemory);
+            assign->setTo(stringToRegister(w_str));
+            assign->setFrom(VALUE(m));
             p.functions.back().instructions.push_back(std::move(assign));
-        
         }
-
     };
 
-template<> struct action<memoryIncDecT> {
-    template<typename Input>
-    static void apply(const Input& in, Program& p) {
-        assert(!p.label.empty());
-        assert(!p.functions.empty());
+    template<> struct action<memoryIncDecT> {
+        template<typename Input>
+        static void apply(const Input& in, Program& p) {
+            assert(!p.label.empty());
+            assert(!p.functions.empty());
 
-        std::string s = in.string();
-        size_t pos = 0;
+            // form:  mem X M aop t
+            Tokenizer tk(in.string());
+            tk.expect("mem");
+            std::string x_str   = tk.next();
+            std::string m_str   = tk.next();
+            std::string aop_str = tk.next();
+            std::string t_str   = tk.next();
 
-        // skip leading spaces
-        while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
+            memoryAccess m;
+            m.x_value = stringToRegister(x_str);
+            m.size    = std::stoll(m_str);
 
-        // skip "mem"
-        pos = s.find("mem", pos) + 3;
+            auto instr = std::make_unique<MemIncDecInstruction>();
+            instr->setMem(m);
+            instr->setAop(parseAop(aop_str));
+            instr->setSrc(parseT(t_str));
+            p.functions.back().instructions.push_back(std::move(instr));
+        }
+    };
 
-        // skip spaces
-        while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
 
-        // read X register
-        size_t x_start = pos;
-        while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t') pos++;
-        std::string x_str = s.substr(x_start, pos - x_start);
-
-        // skip spaces
-        while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
-
-        // read M number
-        size_t m_start = pos;
-        while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t') pos++;
-        std::string m_str = s.substr(m_start, pos - m_start);
-
-        // skip spaces
-        while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
-
-        // read aop (+= or -=)
-        size_t aop_start = pos;
-        while (pos < s.size() && s[pos]!=' ' && s[pos]!='\t') pos++;
-        std::string aop_str = s.substr(aop_start, pos - aop_start);
-
-        // skip spaces
-        while (pos < s.size() && (s[pos]==' '||s[pos]=='\t')) pos++;
-
-        // read t — rest of string trimmed
-        std::string t_str = s.substr(pos);
-        while (!t_str.empty() && (t_str.back()==' '||t_str.back()=='\t')) t_str.pop_back();
-
-        memoryAccess m;
-        m.x_value = stringToRegister(x_str);
-        m.size    = std::stoll(m_str);
-
-        auto instr = std::make_unique<MemIncDecInstruction>();
-        instr->setMem(m);
-        instr->setAop(parseAop(aop_str));
-        instr->setSrc(parseT(t_str));
-
-        p.functions.back().instructions.push_back(std::move(instr));
-    }
-};
-
-    
 
     template<> struct action < l > {
         template< typename Input >
         static void apply( const Input& in, Program& p){
-            size_t pos = in.string().find('@');
-            pos += 1;
-            assert(pos != std::string::npos);
-            std::string str_label = in.string().substr(pos);
+            // form:  @name
+            std::string s = in.string();
+            size_t at = s.find('@');
+            assert(at != std::string::npos);
+            std::string str_label = s.substr(at + 1);
+
             if (p.label.empty()){
                 p.label = str_label;
                 return;
             }
             if (!new_function){
                 new_function = true;
-                p.functions.push_back(Function()); // there must be at least one function 
+                p.functions.push_back(Function()); // there must be at least one function
                 p.functions.back().setLabel(str_label);
             }
         }
@@ -1296,21 +1055,12 @@ template<> struct action<memoryIncDecT> {
         template< typename Input >
         static void apply( const Input& in, Program& p){
             new_function = false;
-            std::string s = in.string();
-            size_t pos = 0;
-            // skip leading spaces 
-            while (pos < s.size() && (s[pos] == ' '|| s[pos] == '\t')) pos++;
 
-            size_t num_args_start = in.string().find(' ', pos);
-            std::string num_args_str = s.substr(pos, num_args_start - pos);
-            pos = num_args_start + 1;
-            while (pos < s.size() && (s[pos] == ' '|| s[pos] == '\t')) pos++;
-            size_t num_args_local = in.string().find(' ', pos);
-            std::string num_local_str= s.substr(pos, num_args_local - pos);
+            // form begins with:  <num_args> 
+            Tokenizer tk(in.string());
+            std::string num_args_str  = tk.next();
 
             p.functions.back().setNumArgs(std::stoll(num_args_str));
-            p.functions.back().setNumLocals(std::stoll(num_local_str));
-
         }
     };
 
@@ -1320,10 +1070,10 @@ template<> struct action<memoryIncDecT> {
             if (p.label.empty()){
                 return;  // this is just a program
             }
-
             // else it must be a function
-             // this would be okay because there is no nested functions
-            // current_function = &p.functions.back(); dangerous idea because when the push_back needs more space it will reallocate the entire to another address so the pointer will be dangling. 
+            // this would be okay because there is no nested functions
+            // current_function = &p.functions.back(); dangerous idea because when the push_back needs more space
+            // it will reallocate the entire to another address so the pointer will be dangling.
             return;
         }
     };
@@ -1352,46 +1102,60 @@ template<> struct action<memoryIncDecT> {
         }
     };
 
-// to:
 
-    
-    // template<> struct action < grammar > {
-    //     template< typename Input >
-    //     static void apply( const Input& in, Program& p){
-    //         std::cout << in.string() << std::endl;
+    // Program parse_file (char *fileName){
+
+    //     FILE *file = fopen(fileName, "r");
+
+    //     if (!file){
+    //         std::cerr << fileName << " : file not found." << std::endl;
+    //         exit(1);
     //     }
-    // };
 
-    // fetch the last function
+    //     /*
+    //     * Check the grammar for some possible issues.
+    //     */
+    //     if (pegtl::analyze< grammar >() != 0){
+    //       std::cerr << "There are problems with the grammar" << std::endl;
+    //       exit(1);
+    //     }
 
-    Program parse_file (char *fileName){
-    
-    FILE *file = fopen(fileName, "r");
+    //     /*
+    //     * Parse.
+    //     */
+    //     file_input< > fileInput(fileName);
+    //     Program p;
+    //     parse<grammar, action, my_tracer>(fileInput, p);
 
-    if (!file){
-        std::cerr <<fileName << " : file not found." << std::endl;
-        exit(1);
+    //     return p;
+    // }
+
+  
+    L2::SpillInput parse_spill_file(const char* fileName) {
+        // 1. Read whole file
+        std::ifstream f(fileName);
+        std::stringstream ss;
+        ss << f.rdbuf();
+        std::string contents = ss.str();
+
+        // 2. Find the closing ')' of the function
+        size_t close = contents.rfind(')');
+        if (close == std::string::npos)
+            throw std::runtime_error("spill file: no closing ')'");
+
+        std::string prog_part = contents.substr(0, close + 1);
+        std::string tail_part = contents.substr(close + 1);
+
+        // 3. Parse the function with PEGTL
+        L2::SpillInput result;
+        pegtl::memory_input<> in(prog_part, fileName);
+        pegtl::parse<grammar, action, my_tracer>(in, result.program);
+
+        // 4. Read the two vars with std::istringstream
+        std::istringstream iss(tail_part);
+        if (!(iss >> result.target >> result.prefix))
+            throw std::runtime_error("spill file: expected <target> <prefix> after function");
+
+        return result;
     }
-
-    /* 
-     * Check the grammar for some possible issues.
-     */
-    if (pegtl::analyze< grammar >() != 0){
-      std::cerr << "There are problems with the grammar" << std::endl;
-      exit(1);
-    }
-
-    /*
-     * Parse.
-     */
-
-    // Only matching one function. 
-    file_input< > fileInput(fileName);
-    Program p;
-    parse<grammar, action, my_tracer>(fileInput, p);
-    // std::cout << p.to_string() << std::endl ;
-
-    return p;
-  }
 }
-

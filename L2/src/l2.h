@@ -30,6 +30,7 @@ namespace L2 {
         AssignFromMemory,   // W <- mem X M
         AssignFromS,        // W <- S
         AssignMemoryFromS,  // mem X M <- S
+        AssignFromStack,  // w <- stack-arg M
 
         // arithmetic/logic
         WaopT,              // W aop t
@@ -162,9 +163,14 @@ namespace L2 {
         int64_t size = 0;
     };
 
+
+    struct stackAccess {
+        std::optional<std::string> variable;  // some sentinel default
+        int64_t size = 0;
+    };
     
 
-    using VALUE = std::variant<memoryAccess, Register, Label, Number>;
+    using VALUE = std::variant<memoryAccess, Register, Label, Number, stackAccess>;
    
     
     struct compareStruct {
@@ -179,7 +185,8 @@ namespace L2 {
         return t == InstructionType::compareAssign    ||
             t == InstructionType::AssignFromMemory ||
             t == InstructionType::AssignFromS      ||
-            t == InstructionType::AssignMemoryFromS;
+            t == InstructionType::AssignMemoryFromS ||
+            t == InstructionType::AssignFromStack;
     }
 
     class CjumpInstruction : public Instruction {
@@ -563,16 +570,14 @@ namespace L2 {
             
             std::vector<std::unique_ptr<Instruction>> instructions;
             int num_args = 0;
-            int num_locals = 0;
             bool args_set = false;
-            bool local_set = false;
 
             Function() = default;
             std::string to_string() const override {
                 std::string result;
                 result += '\t';
                 result += "(@" + label + "\n\t\t";
-                result += std::to_string(num_args) + ' ' + std::to_string(num_locals) + '\n';
+                result += std::to_string(num_args) + '\n';
                 for (auto& instruction : instructions) {
                     result += instruction->to_string();  // -> and semicolon
                 }
@@ -583,12 +588,10 @@ namespace L2 {
             // getters
             std::string getLabel()   const { return label; }
             int getNumArgs()         const { return num_args; }
-            int getNumLocals()       const { return num_locals; }
 
             // setters
             void setLabel(std::string l)  { label = l; }
             void setNumArgs(int n)        { args_set = true; num_args = n; }
-            void setNumLocals(int n)      { local_set = true; num_locals = n; }
 
 
             

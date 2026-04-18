@@ -1,6 +1,5 @@
 CPP_FILES       := $(wildcard src/*.cpp) ../util/utils.cpp
 OBJ_FILES       := $(addprefix obj/,$(notdir $(CPP_FILES:.cpp=.o)))
-OBJ_FILES		:= $(addprefix obj/,$(notdir $(CPP_FILES:.cpp=.o)))
 CC_FLAGS		:= --std=c++23 -I./src -I../lib/PEGTL/include -I../lib -I../util -g3 -DDEBUG -pedantic -pedantic-errors -Werror=pedantic
 CC				:= g++
 PL_CLASS        := L1
