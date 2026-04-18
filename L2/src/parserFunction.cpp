@@ -426,11 +426,12 @@ struct returnINS : pstring("return"){};
 
 struct assignment_block :
         pegtl::sor<
+            wStackM,
             compareAssign,      // W <- t cmp t   (before assignWfromS)
             assignWfromMemory,  // W <- mem ...   (before assignWfromS, "mem" is specific)
             assignWfromS,       // W <- S         (generic <- fallback)
-            assignMemoryFromS, 
-            wStackM> {};
+            assignMemoryFromS
+            > {};
 
 struct Instruction_block :
         pegtl::sor<
@@ -464,20 +465,11 @@ struct InstructionFormat :
 
 struct functionFormat :
     pegtl::seq<
+        spaces,
         number,     // in l2 we only have one number 
         seps_with_comments,
         pegtl::plus<InstructionFormat>
     > {};
-
-
-struct programORfunction :
-    pegtl::seq<
-        spaces,
-        pegtl::sor<
-            pegtl::plus<functionFormat>,       // multiple functions ← fix
-            pegtl::plus<entry_point_rule>   // nested programs
-        >
-    >{};
 
 
 // clean entry format
@@ -492,7 +484,7 @@ struct programORfunction :
             pegtl::seq<spaces, pegtl::one< '(' >>,
             l,
             seps_with_comments,
-            programORfunction,      // it used to be a program, so now wait for function from now on. or it's function wait for number
+            functionFormat,      // it used to be a Function, so now wait for function from now on. or it's function wait for number
             pegtl::seq<spaces, pegtl::one< ')' >>,
             seps_with_comments
         > { };
@@ -571,7 +563,7 @@ struct programORfunction :
         throw std::runtime_error("unknown register: " + s);
     }
 
-   inline AopType parseAop(const std::string& s) {
+    inline AopType parseAop(const std::string& s) {
     if (s == "+=") return AopType::AddEq;
     if (s == "-=") return AopType::SubEq;
     if (s == "*=") return AopType::MulEq;
@@ -586,6 +578,7 @@ struct programORfunction :
     inline VALUE parseS(const std::string& str) {
         if (!str.empty() && str[0] == '@') return Label(str);
         if (!str.empty() && str[0] == ':') return Label(str);
+        if (!str.empty() && str[0] == '%') return Label(str);
         try {
             return stringToRegister(str);
         } catch (...) {
@@ -594,16 +587,17 @@ struct programORfunction :
     }
 
     inline VALUE parseT(const std::string& str){
-        if (!str.empty() && str[0] == 'r'){
-            return stringToRegister(str);
-
-        }else{
-            return Number(std::stoll(str));
-        }
+        if (str.empty()) throw std::runtime_error("parseT: empty");
+        if (str[0] == '%') return Label(str);         // variable (using Label to carry it for now)
+        if (str[0] == 'r') return stringToRegister(str);
+        return Number(std::stoll(str));
     }
 
-    /* FUll ITEM collecting */
-    bool new_function = false;
+    inline VALUE parseW (const std::string& s) {
+                if (!s.empty() && s[0] == '%') return Label(s);   // variable
+                return stringToRegister(s);
+    }
+
 
 
     template<typename Rule>
@@ -612,9 +606,8 @@ struct programORfunction :
 
     template<> struct action <wIncDec> {
         template<typename Input>
-        static void apply(const Input& in, Program& p){
-            assert(!p.label.empty());
-            assert(!p.functions.empty());
+        static void apply(const Input& in, Function& f){
+            assert(f.getLabel() != "");
 
             // wIncDec has no space between reg and ++/-- (e.g. "rax++").
             // Tokenizer would give us one blob, so split that blob.
@@ -640,17 +633,16 @@ struct programORfunction :
             }
 
             auto instr = std::make_unique<IncDecInstruction>();
-            instr->setDst(stringToRegister(reg_str));
+            instr->setDst(parseW(reg_str));
             instr->setIsInc(is_inc);
-            p.functions.back().instructions.push_back(std::move(instr));
+            f.instructions.push_back(std::move(instr));
         }
     };
 
     template<> struct action<wAtWWE> {
         template<typename Input>
-        static void apply(const Input& in, Program& p) {
-            assert(!p.label.empty());
-            assert(!p.functions.empty());
+        static void apply(const Input& in, Function& f) {
+            assert(f.getLabel() != "");
 
             Tokenizer tk(in.string());
             std::string dst_str  = tk.next();   // W
@@ -664,16 +656,15 @@ struct programORfunction :
             instr->setBase(stringToRegister(base_str));
             instr->setIdx(stringToRegister(idx_str));
             instr->setScale(std::stoll(e_str));
-            p.functions.back().instructions.push_back(std::move(instr));
+            f.instructions.push_back(std::move(instr));
         }
     };
 
 
      template<> struct action<wStackM> {
         template<typename Input>
-        static void apply(const Input& in, Program& p) {
-            assert(!p.label.empty());
-            assert(!p.functions.empty());
+        static void apply(const Input& in, Function& f) {
+            assert(f.getLabel() != "");
 
             Tokenizer tk(in.string());
             std::string dst_str  = tk.next();   // W
@@ -687,16 +678,15 @@ struct programORfunction :
             instr->setBase(stringToRegister(base_str));
             instr->setIdx(stringToRegister(idx_str));
             instr->setScale(std::stoll(e_str));
-            p.functions.back().instructions.push_back(std::move(instr));
+            f.instructions.push_back(std::move(instr));
         }
     };
 
 
     template<> struct action<WaopT> {
         template<typename Input>
-        static void apply(const Input& in, Program& p) {
-            assert(!p.label.empty());
-            assert(!p.functions.empty());
+        static void apply(const Input& in, Function& f) {
+            assert(f.getLabel() != "");
 
             Tokenizer tk(in.string());
             std::string w_str   = tk.next();
@@ -704,19 +694,18 @@ struct programORfunction :
             std::string t_str   = tk.next();
 
             auto instr = std::make_unique<ArithInstruction>(InstructionType::WaopT);
-            instr->setDst(stringToRegister(w_str));
+            instr->setDst(parseW(w_str));
             instr->setAop(parseAop(aop_str));
             instr->setSrc(parseT(t_str));
-            p.functions.back().instructions.push_back(std::move(instr));
+            f.instructions.push_back(std::move(instr));
         }
     };
 
 
     template<> struct action<WsopN> {
         template<typename Input>
-        static void apply(const Input& in, Program& p) {
-            assert(!p.label.empty());
-            assert(!p.functions.empty());
+        static void apply(const Input& in, Function& f) {
+           assert(f.getLabel() != "");
 
             Tokenizer tk(in.string());
             std::string w_str   = tk.next();
@@ -724,18 +713,17 @@ struct programORfunction :
             std::string n_str   = tk.next();
 
             auto instr = std::make_unique<ShiftInstruction>(InstructionType::WsopN);
-            instr->setDst(stringToRegister(w_str));
+            instr->setDst(parseW(w_str));
             instr->setSop(parseSop(sop_str));
             instr->setSrc(Number(std::stoll(n_str)));
-            p.functions.back().instructions.push_back(std::move(instr));
+            f.instructions.push_back(std::move(instr));
         }
     };
 
     template<> struct action<wIncDecMemory> {
         template<typename Input>
-        static void apply(const Input& in, Program& p) {
-            assert(!p.label.empty());
-            assert(!p.functions.empty());
+        static void apply(const Input& in, Function& f) {
+           assert(f.getLabel() != "");
 
             // form:  W aop mem X M
             Tokenizer tk(in.string());
@@ -746,22 +734,25 @@ struct programORfunction :
             std::string m_str   = tk.next();
 
             memoryAccess m;
-            m.x_value = stringToRegister(x_str);
-            m.size    = std::stoll(m_str);
+            if (x_str[0] == '%'){
+                m.base = x_str;                        // std::string goes in the variant
+            } else {
+                m.base = stringToRegister(x_str);      // Register goes in the variant
+            }
+            m.size = std::stoll(m_str);
 
             auto instr = std::make_unique<ArithInstruction>(InstructionType::WIncDecMemory);
-            instr->setDst(stringToRegister(w_str));
+            instr->setDst(parseW(w_str));
             instr->setAop(parseAop(aop_str));
             instr->setSrc(VALUE(m));
-            p.functions.back().instructions.push_back(std::move(instr));
+            f.instructions.push_back(std::move(instr));
         }
     };
 
     template<> struct action<cjump> {
         template<typename Input>
-        static void apply(const Input& in, Program& p){
-            assert(!p.label.empty());
-            assert(!p.functions.empty());
+        static void apply(const Input& in, Function& f){
+            assert(f.getLabel() != "");
 
             // form:  cjump t cmp t :label
             Tokenizer tk(in.string());
@@ -783,15 +774,14 @@ struct programORfunction :
             auto instr = std::make_unique<CjumpInstruction>();
             instr->setCmpVal(cav);
             instr->setLabel(Label(label_str));
-            p.functions.back().instructions.push_back(std::move(instr));
+            f.instructions.push_back(std::move(instr));
         }
     };
 
     template<> struct action<WsopSx> {
         template<typename Input>
-        static void apply(const Input& in, Program& p) {
-            assert(!p.label.empty());
-            assert(!p.functions.empty());
+        static void apply(const Input& in, Function& f) {
+            assert(f.getLabel() != "");
 
             Tokenizer tk(in.string());
             std::string w_str   = tk.next();
@@ -800,29 +790,27 @@ struct programORfunction :
             (void)tk.next();
 
             auto instr = std::make_unique<ShiftInstruction>(InstructionType::WsopSx);
-            instr->setDst(stringToRegister(w_str));
+            instr->setDst(parseW(w_str));
             instr->setSop(parseSop(sop_str));
             instr->setSrc(Register::rcx);
-            p.functions.back().instructions.push_back(std::move(instr));
+            f.instructions.push_back(std::move(instr));
         }
     };
 
     template<> struct action<returnINS> {
         template<typename Input>
-        static void apply(const Input& in, Program& p) {
-            assert(!p.label.empty());
-            assert(!p.functions.empty());
+        static void apply(const Input& in, Function& f) {
+            assert(f.getLabel() != "");
 
             auto ret = std::make_unique<ReturnInstruction>();
-            p.functions.back().instructions.push_back(std::move(ret));
+            f.instructions.push_back(std::move(ret));
         }
     };
 
     template<> struct action<callInstruction_block> {
         template<typename Input>
-        static void apply(const Input& in, Program& p) {
-            assert(!p.label.empty());
-            assert(!p.functions.empty());
+        static void apply(const Input& in, Function& f) {
+            assert(f.getLabel() != "");
 
             // form:  call <callee> <num>   OR   call <builtin> <num>
             Tokenizer tk(in.string());
@@ -830,7 +818,7 @@ struct programORfunction :
             std::string u_str = tk.next();
 
             auto classify = [](const std::string& s) -> InstructionType {
-                if (s.starts_with("@") || s.starts_with("r")) return InstructionType::CallUN;
+                if (s.starts_with("@") || s.starts_with("r") || s.starts_with("%")) return InstructionType::CallUN;
                 if (s.contains("print"))        return InstructionType::CallPrint;
                 if (s.contains("input"))        return InstructionType::CallInput;
                 if (s.contains("allocate"))     return InstructionType::CallAllocate;
@@ -844,7 +832,8 @@ struct programORfunction :
 
             if (call->type == InstructionType::CallUN) {
                 auto parseCallee = [](const std::string& str) -> VALUE {
-                    if (str[0] == '@') return Label(str.substr(1));
+                    if (str[0] == '@') return Label(str);
+                    if (str[0] == '%') return Label(str);
                     return stringToRegister(str);
                 };
                 call->setCallee(parseCallee(u_str));
@@ -852,16 +841,15 @@ struct programORfunction :
                 call->setNum(std::stoll(n_str));
             }
 
-            p.functions.back().instructions.push_back(std::move(call));
+            f.instructions.push_back(std::move(call));
         }
     };
 
 
     template<> struct action<assignMemoryFromS> {
         template<typename Input>
-        static void apply(const Input& in, Program& p) {
-            assert(!p.label.empty());
-            assert(!p.functions.empty());
+        static void apply(const Input& in, Function& f) {
+            assert(f.getLabel() != "");
 
             // form:  mem X M <- S
             Tokenizer tk(in.string());
@@ -871,64 +859,58 @@ struct programORfunction :
             tk.expect("<-");
             std::string s_str = tk.next();
 
-            auto localParseS = [](const std::string& str) -> VALUE {
-                if (str[0] == '@') return Label(str.substr(1));
-                if (str[0] == ':') return Label(str.substr(1));
-                try { return stringToRegister(str); }
-                catch (...) { return Number(std::stoll(str)); }
-            };
-
+            
             memoryAccess m;
-            m.x_value = stringToRegister(x_str);
-            m.size    = std::stoll(m_str);
+            if (x_str[0] == '%'){
+                m.base = x_str;                        // std::string goes in the variant
+            } else {
+                m.base = stringToRegister(x_str);      // Register goes in the variant
+            }
+            m.size = std::stoll(m_str);
 
             auto assign = std::make_unique<AssignInstruction>(InstructionType::AssignMemoryFromS);
             assign->setTo(VALUE(m));
-            assign->setFrom(localParseS(s_str));
-            p.functions.back().instructions.push_back(std::move(assign));
+            assign->setFrom(parseS(s_str));
+            f.instructions.push_back(std::move(assign));
         }
     };
 
     template<> struct action <label_instruction_block> {
         template<typename Input>
-        static void apply(const Input& in, Program& p){
-            assert(!p.label.empty());
-            assert(!p.functions.empty());
-
+        static void apply(const Input& in, Function& f){
+            assert(f.getLabel() != "");
             // form:  :name
             Tokenizer tk(in.string());
             std::string tok = tk.next();
             std::string label_name = (!tok.empty() && tok[0] == ':')
-                                     ? tok.substr(1) : tok;
+                                     ? tok : tok;
 
             auto lbl = std::make_unique<LabelInstruction>(label_name);
-            p.functions.back().instructions.push_back(std::move(lbl));
+            f.instructions.push_back(std::move(lbl));
         }
     };
 
     template<> struct action <gotoLabel> {
         template<typename Input>
-        static void apply(const Input& in, Program& p){
-            assert(!p.label.empty());
-            assert(!p.functions.empty());
+        static void apply(const Input& in, Function& f){
+            assert(f.getLabel() != "");
 
             // form:  goto :name
             Tokenizer tk(in.string());
             tk.expect("goto");
             std::string tok = tk.next();
             std::string label_name = (!tok.empty() && tok[0] == ':')
-                                     ? tok.substr(1) : tok;
+                                     ? tok : tok;
 
             auto lbl = std::make_unique<GotoInstruction>(label_name);
-            p.functions.back().instructions.push_back(std::move(lbl));
+            f.instructions.push_back(std::move(lbl));
         }
     };
 
     template<> struct action<assignWfromS> {
         template<typename Input>
-        static void apply(const Input& in, Program& p) {
-            assert(!p.label.empty());
-            assert(!p.functions.empty());
+        static void apply(const Input& in, Function& f) {
+            assert(f.getLabel() != "");
 
             // form:  W <- S
             Tokenizer tk(in.string());
@@ -936,25 +918,19 @@ struct programORfunction :
             tk.expect("<-");
             std::string s_str = tk.next();
 
-            auto localParseS = [](const std::string& str) -> VALUE {
-                if (str[0] == '@') return Label(str.substr(1));
-                if (str[0] == ':') return Label(str.substr(1));
-                try { return stringToRegister(str); }
-                catch (...) { return Number(std::stoll(str)); }
-            };
+           
 
             auto assign = std::make_unique<AssignInstruction>(InstructionType::AssignFromS);
-            assign->setTo(stringToRegister(w_str));
-            assign->setFrom(localParseS(s_str));
-            p.functions.back().instructions.push_back(std::move(assign));
+            assign->setTo(parseW(w_str));
+            assign->setFrom(parseS(s_str));
+            f.instructions.push_back(std::move(assign));
         }
     };
 
     template<> struct action<compareAssign> {
         template<typename Input>
-        static void apply(const Input& in, Program& p) {
-            assert(!p.label.empty());
-            assert(!p.functions.empty());
+        static void apply(const Input& in, Function& f) {
+            assert(f.getLabel() != "");
 
             // form:  W <- t cmp t
             Tokenizer tk(in.string());
@@ -970,17 +946,16 @@ struct programORfunction :
             cav.right = std::make_unique<VALUE>(parseT(right_str));
 
             auto assign = std::make_unique<AssignInstruction>(InstructionType::compareAssign);
-            assign->setTo(stringToRegister(w_str));
+            assign->setTo(parseW(w_str));
             assign->setCmpVal(std::move(cav));
-            p.functions.back().instructions.push_back(std::move(assign));
+            f.instructions.push_back(std::move(assign));
         }
     };
 
     template<> struct action < assignWfromMemory > {
         template< typename Input >
-        static void apply( const Input& in, Program& p){
-            assert(!p.label.empty());
-            assert(!p.functions.empty());
+        static void apply( const Input& in, Function& f){
+            assert(f.getLabel() != "");
 
             // form:  W <- mem X M
             Tokenizer tk(in.string());
@@ -991,21 +966,24 @@ struct programORfunction :
             std::string m_str = tk.next();
 
             memoryAccess m;
-            m.x_value = stringToRegister(x_str);
-            m.size    = std::stoll(m_str);
+            if (x_str[0] == '%'){
+                m.base = x_str;                        // std::string goes in the variant
+            } else {
+                m.base = stringToRegister(x_str);      // Register goes in the variant
+            }
+            m.size = std::stoll(m_str);
 
             auto assign = std::make_unique<AssignInstruction>(InstructionType::AssignFromMemory);
-            assign->setTo(stringToRegister(w_str));
+            assign->setTo(parseW(w_str));
             assign->setFrom(VALUE(m));
-            p.functions.back().instructions.push_back(std::move(assign));
+            f.instructions.push_back(std::move(assign));
         }
     };
 
     template<> struct action<memoryIncDecT> {
         template<typename Input>
-        static void apply(const Input& in, Program& p) {
-            assert(!p.label.empty());
-            assert(!p.functions.empty());
+        static void apply(const Input& in, Function& f) {
+            assert(f.getLabel() != "");
 
             // form:  mem X M aop t
             Tokenizer tk(in.string());
@@ -1015,15 +993,21 @@ struct programORfunction :
             std::string aop_str = tk.next();
             std::string t_str   = tk.next();
 
-            memoryAccess m;
-            m.x_value = stringToRegister(x_str);
-            m.size    = std::stoll(m_str);
-
             auto instr = std::make_unique<MemIncDecInstruction>();
+
+            memoryAccess m;
+            if (x_str[0] == '%'){
+                m.base = x_str;                        // std::string goes in the variant
+            } else {
+                m.base = stringToRegister(x_str);      // Register goes in the variant
+            }
+            m.size = std::stoll(m_str);
+
+            
             instr->setMem(m);
             instr->setAop(parseAop(aop_str));
             instr->setSrc(parseT(t_str));
-            p.functions.back().instructions.push_back(std::move(instr));
+            f.instructions.push_back(std::move(instr));
         }
     };
 
@@ -1031,55 +1015,38 @@ struct programORfunction :
 
     template<> struct action < l > {
         template< typename Input >
-        static void apply( const Input& in, Program& p){
+        static void apply( const Input& in, Function& f){
             // form:  @name
             std::string s = in.string();
             size_t at = s.find('@');
             assert(at != std::string::npos);
-            std::string str_label = s.substr(at + 1);
+            std::string str_label = s.substr(at);
 
-            if (p.label.empty()){
-                p.label = str_label;
+            if (f.getLabel() == ""){
+                f.setLabel(str_label);
                 return;
             }
-            if (!new_function){
-                new_function = true;
-                p.functions.push_back(Function()); // there must be at least one function
-                p.functions.back().setLabel(str_label);
-            }
+           
         }
     };
 
 
     template<> struct action < functionFormat > {
         template< typename Input >
-        static void apply( const Input& in, Program& p){
-            new_function = false;
-
+        static void apply( const Input& in, Function& f){
+            
             // form begins with:  <num_args> 
             Tokenizer tk(in.string());
             std::string num_args_str  = tk.next();
+            f.setNumArgs(std::stoll(num_args_str));
 
-            p.functions.back().setNumArgs(std::stoll(num_args_str));
         }
     };
 
-    template<> struct action < entry_point_rule > {
-        template< typename Input >
-        static void apply( const Input& in, Program& p){
-            if (p.label.empty()){
-                return;  // this is just a program
-            }
-            // else it must be a function
-            // this would be okay because there is no nested functions
-            // current_function = &p.functions.back(); dangerous idea because when the push_back needs more space
-            // it will reallocate the entire to another address so the pointer will be dangling.
-            return;
-        }
-    };
+   
 
 
-    bool TRACE = false;
+    static bool TRACE = true;
 
     template<typename Rule>
     struct my_tracer : pegtl::normal<Rule> {
@@ -1103,33 +1070,6 @@ struct programORfunction :
     };
 
 
-    // Program parse_file (char *fileName){
-
-    //     FILE *file = fopen(fileName, "r");
-
-    //     if (!file){
-    //         std::cerr << fileName << " : file not found." << std::endl;
-    //         exit(1);
-    //     }
-
-    //     /*
-    //     * Check the grammar for some possible issues.
-    //     */
-    //     if (pegtl::analyze< grammar >() != 0){
-    //       std::cerr << "There are problems with the grammar" << std::endl;
-    //       exit(1);
-    //     }
-
-    //     /*
-    //     * Parse.
-    //     */
-    //     file_input< > fileInput(fileName);
-    //     Program p;
-    //     parse<grammar, action, my_tracer>(fileInput, p);
-
-    //     return p;
-    // }
-
   
     L2::SpillInput parse_spill_file(const char* fileName) {
         // 1. Read whole file
@@ -1146,10 +1086,11 @@ struct programORfunction :
         std::string prog_part = contents.substr(0, close + 1);
         std::string tail_part = contents.substr(close + 1);
 
+        std::cerr << prog_part <<'\n';
         // 3. Parse the function with PEGTL
         L2::SpillInput result;
         pegtl::memory_input<> in(prog_part, fileName);
-        pegtl::parse<grammar, action, my_tracer>(in, result.program);
+        pegtl::parse<grammar, action, my_tracer>(in, result.function);
 
         // 4. Read the two vars with std::istringstream
         std::istringstream iss(tail_part);

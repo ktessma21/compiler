@@ -26,7 +26,7 @@ void print_help(char *progName) {
 
 int main(int argc, char **argv) {
   auto enable_code_generator = true;
-  auto spill_only = false;
+  auto spill_only = true;
   auto interference_only = false;
   auto liveness_only = false;
   int32_t optLevel = 3;
@@ -93,7 +93,10 @@ int main(int argc, char **argv) {
     // TODO
     auto spill = L2::parse_spill_file(fileName);
 
-    auto program = spill.program;
+    auto& function = spill.function;
+
+    std::cerr << function.to_string() << std::endl;
+    std::cerr << spill.target << " and " << spill.prefix << std::endl;
 
 
   } else if (liveness_only) {

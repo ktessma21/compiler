@@ -159,18 +159,14 @@ namespace L2 {
 
 
     struct memoryAccess {
-        Register x_value = Register::rsp;  // some sentinel default
+        std::variant<Register, std::string> base = Register::rsp;  // the string is associated with the variable 
         int64_t size = 0;
     };
 
 
-    struct stackAccess {
-        std::optional<std::string> variable;  // some sentinel default
-        int64_t size = 0;
-    };
     
 
-    using VALUE = std::variant<memoryAccess, Register, Label, Number, stackAccess>;
+    using VALUE = std::variant<memoryAccess, Register, Label, Number>;
    
     
     struct compareStruct {
@@ -187,6 +183,14 @@ namespace L2 {
             t == InstructionType::AssignFromS      ||
             t == InstructionType::AssignMemoryFromS ||
             t == InstructionType::AssignFromStack;
+    }
+
+    inline std::string memBaseToString(const memoryAccess& m) {
+        return std::visit([](const auto& b) -> std::string {
+            using T = std::decay_t<decltype(b)>;
+            if constexpr (std::is_same_v<T, Register>) return registerToString(b);
+            else return b;  // std::string (variable name)
+        }, m.base);
     }
 
     class CjumpInstruction : public Instruction {
@@ -209,7 +213,7 @@ namespace L2 {
                         if constexpr (std::is_same_v<T, Register>) {
                             return registerToString(val);
                         } else if constexpr (std::is_same_v<T, memoryAccess>){
-                            return "mem " + registerToString(val.x_value) + " " + std::to_string(val.size);
+                            return "mem " + memBaseToString(val) + " " + std::to_string(val.size);
                         } else if constexpr (std::is_same_v<T, Label>) {
                             return val;
                         } else if constexpr (std::is_same_v<T, Number>) {
@@ -284,7 +288,7 @@ namespace L2 {
                         if constexpr (std::is_same_v<T, Register>) {
                             return registerToString(val);
                         } else if constexpr (std::is_same_v<T, memoryAccess>){
-                            return "mem " + registerToString(val.x_value) + " " + std::to_string(val.size);
+                            return "mem " + memBaseToString(val) + " " + std::to_string(val.size);
                         } else if constexpr (std::is_same_v<T, Label>) {
                             return val;
                         } else if constexpr (std::is_same_v<T, Number>) {
@@ -447,7 +451,7 @@ namespace L2 {
                         if constexpr (std::is_same_v<T, Register>)    return registerToString(val);
                         else if constexpr (std::is_same_v<T, Number>) return std::to_string(val.getValue());
                         else if constexpr (std::is_same_v<T, memoryAccess>) 
-                            return "mem " + registerToString(val.x_value) + " " + std::to_string(val.size);
+                            return "mem " + memBaseToString(val) + " " + std::to_string(val.size);
                         else return "";
                     }, v);
                 };
@@ -498,9 +502,13 @@ namespace L2 {
             void setIsInc(bool inc)   { isIncrement = inc; }
 
             std::string to_string() const override {
-                return std::get<Register>(dst.value()) == Register::rax ?
-                    "\t\t" + registerToString(std::get<Register>(dst.value())) + (isIncrement ? "++" : "--") + "\n" :
-                    "\t\t" + registerToString(std::get<Register>(dst.value())) + (isIncrement ? "++" : "--") + "\n";
+                std::string dstStr = std::visit([](const auto& val) -> std::string {
+                    using T = std::decay_t<decltype(val)>;
+                    if constexpr (std::is_same_v<T, Register>) return registerToString(val);
+                    else if constexpr (std::is_same_v<T, Label>) return val;
+                    else return "";
+                }, dst.value());
+                return "\t\t" + dstStr + (isIncrement ? "++" : "--") + "\n";
             }
         };
 
@@ -545,7 +553,7 @@ namespace L2 {
                     else if constexpr (std::is_same_v<T, Number>) return std::to_string(val.getValue());
                     else return "";
                 }, src.value());
-                return "\t\tmem " + registerToString(mem.x_value) + " " + 
+                return "\t\tmem " + memBaseToString(mem) + " " + 
                     std::to_string(mem.size) + " " + aopStr + " " + src_str + "\n";
             }
 
@@ -576,7 +584,7 @@ namespace L2 {
             std::string to_string() const override {
                 std::string result;
                 result += '\t';
-                result += "(@" + label + "\n\t\t";
+                result += label + "\n\t\t";
                 result += std::to_string(num_args) + '\n';
                 for (auto& instruction : instructions) {
                     result += instruction->to_string();  // -> and semicolon
@@ -593,6 +601,11 @@ namespace L2 {
             void setLabel(std::string l)  { label = l; }
             void setNumArgs(int n)        { args_set = true; num_args = n; }
 
+            // Function(const Function&) = delete;          
+            // Function& operator=(const Function&) = delete; 
+            // Function(Function&&) = default;                
+            // Function& operator=(Function&&) = default;     
+
 
             
 
@@ -608,6 +621,7 @@ namespace L2 {
             std::vector<Function> functions;
 
             Program() = default;
+
             std::string to_string() const override {
                 std::string result;
                 result += '(';
@@ -626,6 +640,11 @@ namespace L2 {
                 std::cerr << "no matching function with a program label\n";
                 return false;
             }
+
+            // Program(const Program&) = delete;            
+            // Program& operator=(const Program&) = delete; 
+            // Program(Program&&) = default;                
+            // Program& operator=(Program&&) = default;     
 
           
     };
