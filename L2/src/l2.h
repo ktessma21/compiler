@@ -37,6 +37,8 @@ namespace L2 {
         explicit Variable(std::string s) : name(std::move(s)) {}
         bool operator==(const Variable&) const = default;
         bool operator<(const Variable& other) const { return name < other.name; }
+        bool operator==(const std::string& other) const { return name == other; }
+        bool operator<(const std::string& other) const { return name < other; }
     };
 
     class Number : public ASTNode {

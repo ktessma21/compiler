@@ -9,12 +9,15 @@
 namespace L2 {
 
 
-    static void helperSpill(Function& f, std::string to_be_allocated, std::string replacer, bool& splilled){
+    static void helperSpill(Function& f, std::string to_be_allocated, std::string replacer, bool& spilled){
 
         for (auto& instr : f.instructions){
-            continue;
+            const auto& all_variables = instr -> reads();
+            if (all_variables.contains(Variable(to_be_allocated))){
+                spilled = true;
+            }
         }
-        splilled = true;
+        spilled = false;
     };
 
     void Spill(Function& f, std::string to_be_allocated, std::string replacer){
