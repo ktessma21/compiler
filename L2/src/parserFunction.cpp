@@ -578,7 +578,7 @@ struct functionFormat :
     inline VALUE parseS(const std::string& str) {
         if (!str.empty() && str[0] == '@') return Label(str);
         if (!str.empty() && str[0] == ':') return Label(str);
-        if (!str.empty() && str[0] == '%') return Label(str);
+        if (!str.empty() && str[0] == '%') return Variable(str);
         try {
             return stringToRegister(str);
         } catch (...) {
@@ -588,14 +588,14 @@ struct functionFormat :
 
     inline VALUE parseT(const std::string& str){
         if (str.empty()) throw std::runtime_error("parseT: empty");
-        if (str[0] == '%') return Label(str);         // variable (using Label to carry it for now)
+        if (str[0] == '%') return Variable(str);         // variable (using Label to carry it for now)
         if (str[0] == 'r') return stringToRegister(str);
         return Number(std::stoll(str));
     }
 
-    inline VALUE parseW (const std::string& s) {
-                if (!s.empty() && s[0] == '%') return Label(s);   // variable
-                return stringToRegister(s);
+    inline VALUE parseW(const std::string& s) {
+        if (!s.empty() && s[0] == '%') return Variable(s);   // variable
+        return stringToRegister(s);                           // register
     }
 
 
@@ -735,7 +735,7 @@ struct functionFormat :
 
             memoryAccess m;
             if (x_str[0] == '%'){
-                m.base = x_str;                        // std::string goes in the variant
+                m.base = Variable(x_str);                        // std::string goes in the variant
             } else {
                 m.base = stringToRegister(x_str);      // Register goes in the variant
             }
@@ -767,9 +767,9 @@ struct functionFormat :
                                     ? label_tok.substr(1) : label_tok;
 
             compareStruct cav;
-            cav.left  = std::make_unique<VALUE>(parseT(left_str));
+            cav.left  = parseT(left_str);
             cav.cmp   = cmp_str;
-            cav.right = std::make_unique<VALUE>(parseT(right_str));
+            cav.right = parseT(right_str);
 
             auto instr = std::make_unique<CjumpInstruction>();
             instr->setCmpVal(cav);
@@ -862,7 +862,7 @@ struct functionFormat :
             
             memoryAccess m;
             if (x_str[0] == '%'){
-                m.base = x_str;                        // std::string goes in the variant
+                m.base = Variable(x_str);                        // std::string goes in the variant
             } else {
                 m.base = stringToRegister(x_str);      // Register goes in the variant
             }
@@ -885,7 +885,7 @@ struct functionFormat :
             std::string label_name = (!tok.empty() && tok[0] == ':')
                                      ? tok : tok;
 
-            auto lbl = std::make_unique<LabelInstruction>(label_name);
+            auto lbl = std::make_unique<LabelInstruction>(Label(label_name));
             f.instructions.push_back(std::move(lbl));
         }
     };
@@ -902,7 +902,7 @@ struct functionFormat :
             std::string label_name = (!tok.empty() && tok[0] == ':')
                                      ? tok : tok;
 
-            auto lbl = std::make_unique<GotoInstruction>(label_name);
+            auto lbl = std::make_unique<GotoInstruction>(Label(label_name));
             f.instructions.push_back(std::move(lbl));
         }
     };
@@ -941,9 +941,9 @@ struct functionFormat :
             std::string right_str = tk.next();
 
             compareStruct cav;
-            cav.left  = std::make_unique<VALUE>(parseT(left_str));
+            cav.left  = parseT(left_str);
             cav.cmp   = cmp_str;
-            cav.right = std::make_unique<VALUE>(parseT(right_str));
+            cav.right = parseT(right_str);
 
             auto assign = std::make_unique<AssignInstruction>(InstructionType::compareAssign);
             assign->setTo(parseW(w_str));
@@ -967,7 +967,7 @@ struct functionFormat :
 
             memoryAccess m;
             if (x_str[0] == '%'){
-                m.base = x_str;                        // std::string goes in the variant
+                m.base = Variable(x_str);                        // std::string goes in the variant
             } else {
                 m.base = stringToRegister(x_str);      // Register goes in the variant
             }
@@ -997,7 +997,7 @@ struct functionFormat :
 
             memoryAccess m;
             if (x_str[0] == '%'){
-                m.base = x_str;                        // std::string goes in the variant
+                m.base = Variable(x_str);                       // std::string goes in the variant
             } else {
                 m.base = stringToRegister(x_str);      // Register goes in the variant
             }
@@ -1086,17 +1086,22 @@ struct functionFormat :
         std::string prog_part = contents.substr(0, close + 1);
         std::string tail_part = contents.substr(close + 1);
 
-        std::cerr << prog_part <<'\n';
+        // std::cerr << prog_part <<'\n';
         // 3. Parse the function with PEGTL
         L2::SpillInput result;
         pegtl::memory_input<> in(prog_part, fileName);
         pegtl::parse<grammar, action, my_tracer>(in, result.function);
+
+        // assert(false);
+
+       
 
         // 4. Read the two vars with std::istringstream
         std::istringstream iss(tail_part);
         if (!(iss >> result.target >> result.prefix))
             throw std::runtime_error("spill file: expected <target> <prefix> after function");
 
+        std::cerr << result.target << result.prefix << '\n';
         return result;
     }
 }

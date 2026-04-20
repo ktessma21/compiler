@@ -1,4 +1,3 @@
-
 #pragma once
 
 #include <string>
@@ -9,115 +8,95 @@
 #include <vector>
 #include <cassert>
 #include <optional>
+#include <set>
 
 namespace L2 {
+
+    // ---------- Forward declarations of core types ----------
+
     class ASTNode {
-        public:
-            virtual ~ASTNode() = default;
-            virtual std::string to_string() const = 0;
-            virtual bool verify() const { return true; }
+    public:
+        virtual ~ASTNode() = default;
+        virtual std::string to_string() const = 0;
+        virtual bool verify() const { return true; }
     };
 
-    // label is just another string. 
-    using Label = std::string;
-
-    enum class InstructionType {
-
-        // default value
-        Unknown, 
-        // assignment instructions
-        compareAssign,      // W <- t cmp t
-        AssignFromMemory,   // W <- mem X M
-        AssignFromS,        // W <- S
-        AssignMemoryFromS,  // mem X M <- S
-        AssignFromStack,  // w <- stack-arg M
-
-        // arithmetic/logic
-        WaopT,              // W aop t
-        WsopSx,             // W sop sx
-        WsopN,              // W sop number
-
-        // increment/decrement
-        WIncDec,            // W++ / W--
-        MemoryIncDecT,      // mem X M += t
-        WIncDecMemory,      // W += mem X M 
-
-        // address computation
-        WAtWWE,             // W @ W W E
-
-        // call instructions
-        CallPrint,          // call print 1
-        CallInput,          // call input 0
-        CallAllocate,       // call allocate 2
-        CallTupleError,     // call tuple-error 3
-        CallTensorError,    // call tensor-error F
-        CallUN,             // call u number
-
-        // control flow
-        CJump,              // cjump t cmp t label
-        Goto,               // goto label
-        Label,              // :label
-        Return              // return
-
-        
+    // Label and Variable both wrap a std::string, but must be distinct
+    // types so they can appear as separate alternatives in std::variant.
+    struct Label {
+        std::string name;
+        Label() = default;
+        explicit Label(std::string s) : name(std::move(s)) {}
+        bool operator==(const Label&) const = default;
     };
 
-    class Instruction : public ASTNode {
-        public:
-            InstructionType type;
-            Instruction() = delete;
-
-            Instruction(InstructionType t) : type(t) {}
-            virtual ~Instruction() = default;
-            bool verify() const override { return true; }
-           
-     
+    struct Variable {
+        std::string name;
+        Variable() = default;
+        explicit Variable(std::string s) : name(std::move(s)) {}
+        bool operator==(const Variable&) const = default;
+        // Needed so std::set<Variable> can order them.
+        bool operator<(const Variable& other) const { return name < other.name; }
     };
 
-    
-    // this could be a variant or I mean a UNION
     class Number : public ASTNode {
         int64_t value;
-        public:
-            Number() : value(0) {}
-            Number(int64_t _value) : value(_value) { }
-            std::string to_string() const override {
-                return std::to_string(value);
-            }
-            int64_t getValue() const { return value;}
-            bool verify() const override { return true; }
-            
+    public:
+        Number() : value(0) {}
+        Number(int64_t v) : value(v) {}
+        std::string to_string() const override { return std::to_string(value); }
+        int64_t getValue() const { return value; }
     };
 
-    
-    
     enum class Register {
-        // sx
         rcx,
-
-        // a registers (includes sx)
-        rdi,
-        rsi,
-        rdx,
-        r8,
-        r9,
-
-        // w registers (includes a)
-        rax,
-        rbx,
-        rbp,
-        r10,
-        r11,
-        r12,
-        r13,
-        r14,
-        r15,
-
-        // special
+        rdi, rsi, rdx, r8, r9,
+        rax, rbx, rbp, r10, r11, r12, r13, r14, r15,
         rsp
     };
 
-     inline std::string registerToString(Register r) {
+    enum class AopType { AddEq, SubEq, MulEq, AndEq };
+    enum class SopType { LShift, RShift };
+    enum class CmpType { Eq, Neq, Lt, Lte, Gt, Gte };
+
+    struct memoryAccess {
+        std::variant<Register, Variable> base = Register::rsp;
+        int64_t size = 0;
+    };
+
+    using VALUE = std::variant<memoryAccess, Register, Label, Number, Variable>;
+
+    struct compareStruct {
+        VALUE left;
+        std::string cmp;
+        VALUE right;
+    };
+
+    enum class InstructionType {
+        Unknown,
+        compareAssign, AssignFromMemory, AssignFromS, AssignMemoryFromS, AssignFromStack,
+        WaopT, WsopSx, WsopN,
+        WIncDec, MemoryIncDecT, WIncDecMemory,
+        WAtWWE,
+        CallPrint, CallInput, CallAllocate, CallTupleError, CallTensorError, CallUN,
+        CJump, Goto, Label, Return
+    };
+
+    inline bool isAssignType(InstructionType t) {
+        return t == InstructionType::compareAssign    ||
+               t == InstructionType::AssignFromMemory ||
+               t == InstructionType::AssignFromS      ||
+               t == InstructionType::AssignMemoryFromS ||
+               t == InstructionType::AssignFromStack;
+    }
+
+    // ---------- Shared string-conversion helpers ----------
+    //
+    // These were inline lambdas duplicated in every Instruction subclass.
+    // Pulling them out here means there's exactly one place to fix bugs
+    // or extend behavior when the IR grows.
+
+    inline std::string registerToString(Register r) {
         switch (r) {
             case Register::rcx: return "rcx";
             case Register::rdi: return "rdi";
@@ -139,13 +118,6 @@ namespace L2 {
         return "";
     }
 
-    enum class AopType { AddEq, SubEq, MulEq, AndEq };
-    enum class SopType { LShift, RShift };
-    enum class CmpType { Eq, Neq, Lt, Lte, Gt, Gte };
-
-
-      
-
     inline CmpType stringToCmpType(const std::string& cmp) {
         if (cmp == "=")  return CmpType::Eq;
         if (cmp == "!=") return CmpType::Neq;
@@ -154,500 +126,562 @@ namespace L2 {
         if (cmp == ">")  return CmpType::Gt;
         if (cmp == ">=") return CmpType::Gte;
         assert(false && "unknown cmp operator");
-        return CmpType::Eq; // unreachable
+        return CmpType::Eq;
     }
 
+    inline std::string aopToString(AopType a) {
+        switch (a) {
+            case AopType::AddEq: return "+=";
+            case AopType::SubEq: return "-=";
+            case AopType::MulEq: return "*=";
+            case AopType::AndEq: return "&=";
+        }
+        return "";
+    }
 
-    struct memoryAccess {
-        std::variant<Register, std::string> base = Register::rsp;  // the string is associated with the variable 
-        int64_t size = 0;
-    };
-
-
-    
-
-    using VALUE = std::variant<memoryAccess, Register, Label, Number>;
-   
-    
-    struct compareStruct {
-            std::unique_ptr<VALUE>left;
-            std::string cmp;
-            std::unique_ptr<VALUE> right;
-        };
-    
-    
-
-    inline bool isAssignType(InstructionType t) {
-        return t == InstructionType::compareAssign    ||
-            t == InstructionType::AssignFromMemory ||
-            t == InstructionType::AssignFromS      ||
-            t == InstructionType::AssignMemoryFromS ||
-            t == InstructionType::AssignFromStack;
+    inline std::string sopToString(SopType s) {
+        switch (s) {
+            case SopType::LShift: return "<<=";
+            case SopType::RShift: return ">>=";
+        }
+        return "";
     }
 
     inline std::string memBaseToString(const memoryAccess& m) {
         return std::visit([](const auto& b) -> std::string {
             using T = std::decay_t<decltype(b)>;
             if constexpr (std::is_same_v<T, Register>) return registerToString(b);
-            else return b;  // std::string (variable name)
+            else                                       return b.name;  // Variable
         }, m.base);
     }
 
-    class CjumpInstruction : public Instruction {
-        public:
-            std::optional<compareStruct> cmp_val;
-            Label label;
-
-            CjumpInstruction() : Instruction(InstructionType::CJump) {
-                // std::cerr << "vinitalized cjump instruction\n";
-
-            }  // add this
-
-            void setCmpVal(compareStruct& cv) { cmp_val = std::move(cv);} 
-            void setLabel(const Label& lbl) { label = lbl;}
-            
-            std::string to_string() const override{
-                auto valueToString = [](const VALUE& v) -> std::string {
-                    return std::visit([](const auto& val) -> std::string {
-                        using T = std::decay_t<decltype(val)>;
-                        if constexpr (std::is_same_v<T, Register>) {
-                            return registerToString(val);
-                        } else if constexpr (std::is_same_v<T, memoryAccess>){
-                            return "mem " + memBaseToString(val) + " " + std::to_string(val.size);
-                        } else if constexpr (std::is_same_v<T, Label>) {
-                            return val;
-                        } else if constexpr (std::is_same_v<T, Number>) {
-                            return val.to_string();
-                        } else {
-                            assert(false && "unknown VALUE type");
-                            return "";
-                        }
-                    }, v);
-                };
-
-                std::string result;
-                result += "\t\tcjump ";
-                result += valueToString(*cmp_val->left);
-                result += " " + cmp_val->cmp + " ";
-                result += valueToString(*cmp_val->left);
-                result += " " + label + "\n";
-                return result;
+    // The one and only VALUE -> string function. Replaces every
+    // per-class valueToString lambda.
+    inline std::string valueToString(const VALUE& v) {
+        return std::visit([](const auto& val) -> std::string {
+            using T = std::decay_t<decltype(val)>;
+            if constexpr (std::is_same_v<T, Register>)     return registerToString(val);
+            else if constexpr (std::is_same_v<T, Number>)  return val.to_string();
+            else if constexpr (std::is_same_v<T, Label>)   return val.name;
+            else if constexpr (std::is_same_v<T, Variable>) return val.name;
+            else if constexpr (std::is_same_v<T, memoryAccess>)
+                return "mem " + memBaseToString(val) + " " + std::to_string(val.size);
+            else {
+                assert(false && "unknown VALUE type");
+                return "";
             }
+        }, v);
+    }
 
-            bool verify() const override { return true; }
+    // Convenience helper: if a VALUE is a Variable, return it wrapped in
+    // a set; otherwise return empty. Used to build reads()/writes() sets.
+    inline std::set<Variable> varsIn(const VALUE& v) {
+        std::set<Variable> out;
+        if (auto* var = std::get_if<Variable>(&v)) {
+            out.insert(*var);
+        } else if (auto* mem = std::get_if<memoryAccess>(&v)) {
+            if (auto* baseVar = std::get_if<Variable>(&mem->base)) out.insert(*baseVar);
+        }
+        return out;
+    }
 
+    // ---------- Instruction hierarchy ----------
 
+    class Instruction : public ASTNode {
+    public:
+        InstructionType type;
+        Instruction() = delete;
+        Instruction(InstructionType t) : type(t) {}
+        virtual ~Instruction() = default;
+
+        bool verify() const override { return true; }
+
+        // Every concrete instruction must say which variables it touches
+        // and how to rewrite them. Default to "none" so instructions with
+        // no variable operands (return, label, goto) don't need to override.
+        virtual std::set<Variable> reads()  const { return {}; }
+        virtual std::set<Variable> writes() const { return {}; }
+        virtual void replaceVar(const Variable& /*from*/, const Variable& /*to*/) {}
+    };
+
+    class CjumpInstruction : public Instruction {
+    public:
+        std::optional<compareStruct> cmp_val;
+        Label label;
+
+        CjumpInstruction() : Instruction(InstructionType::CJump) {}
+
+        void setCmpVal(compareStruct& cv) { cmp_val = std::move(cv); }
+        void setLabel(const Label& lbl)   { label = lbl; }
+
+        std::string to_string() const override {
+            std::string result = "\t\tcjump ";
+            result += valueToString(cmp_val->left);
+            result += " " + cmp_val->cmp + " ";
+            result += valueToString(cmp_val->right);
+            result += " :" + label.name + "\n";
+            return result;
+        }
+
+        std::set<Variable> reads() const override {
+            std::set<Variable> r;
+            if (cmp_val) {
+                auto l  = varsIn(cmp_val->left);  r.insert(l.begin(), l.end());
+                auto rr = varsIn(cmp_val->right); r.insert(rr.begin(), rr.end());
+            }
+            return r;
+        }
+
+        void replaceVar(const Variable& from, const Variable& to) override {
+            if (!cmp_val) return;
+            if (auto* v = std::get_if<Variable>(&cmp_val->left);  v && *v == from) *v = to;
+            if (auto* v = std::get_if<Variable>(&cmp_val->right); v && *v == from) *v = to;
+        }
     };
 
     class AssignInstruction : public Instruction {
-        public:
-            std::optional<VALUE> from;
-            std::optional<VALUE> to;
-            std::optional<compareStruct> cmp_val;  // separate, not inside VALUE
+    public:
+        std::optional<VALUE> from;
+        std::optional<VALUE> to;
+        std::optional<compareStruct> cmp_val;
 
+        AssignInstruction() : Instruction(InstructionType::Unknown) {}
+        AssignInstruction(InstructionType t) : Instruction(t) { assert(isAssignType(t)); }
 
-            AssignInstruction() : Instruction(InstructionType::Unknown) {}
-            AssignInstruction(InstructionType t) : Instruction(t) {
-                assert(isAssignType(t));
+        void setType(InstructionType t) { assert(isAssignType(t)); type = t; }
+        void setFrom(VALUE v)           { from = std::move(v); }
+        void setTo(VALUE v)             { to   = std::move(v); }
+        void setCmpVal(compareStruct cv) { cmp_val = std::move(cv); }
+
+        InstructionType getType() const { return type; }
+        const std::optional<VALUE>& getFrom() const { return from; }
+        const std::optional<VALUE>& getTo()   const { return to; }
+        const std::optional<compareStruct>& getCmpVal() const { return cmp_val; }
+
+        bool hasFrom() const { return from.has_value(); }
+        bool hasTo()   const { return to.has_value(); }
+        bool isCmpAssign() const { return type == InstructionType::compareAssign; }
+        bool isComplete() const {
+            return type != InstructionType::Unknown &&
+                   (from.has_value() || cmp_val.has_value()) &&
+                   to.has_value();
+        }
+
+        bool verify() const override { return isComplete(); }
+
+        std::string to_string() const override {
+            assert(isComplete());
+            std::string result = "\t\t";
+
+            switch (type) {
+                case InstructionType::AssignFromS:
+                case InstructionType::AssignFromMemory:
+                case InstructionType::AssignMemoryFromS:
+                    result += valueToString(to.value());
+                    result += " <- ";
+                    result += valueToString(from.value());
+                    break;
+
+                case InstructionType::compareAssign:
+                    result += valueToString(to.value());
+                    result += " <- ";
+                    result += valueToString(cmp_val->left);
+                    result += " " + cmp_val->cmp + " ";
+                    result += valueToString(cmp_val->right);
+                    break;
+
+                default:
+                    assert(false && "unknown assign type");
             }
 
-            // setters
-            void setType(InstructionType t) {
-                assert(isAssignType(t));
-                type = t;
+            return result + "\n";
+        }
+
+        std::set<Variable> reads() const override {
+            std::set<Variable> r;
+            // W <- mem X M and W <- S read the source.
+            // mem X M <- S reads both the memory base and the source.
+            if (from) {
+                auto fr = varsIn(*from);
+                r.insert(fr.begin(), fr.end());
             }
-            void setFrom(VALUE v) { from = std::move(v); }
-            void setTo(VALUE v)   { to   = std::move(v); }
-            void setCmpVal(compareStruct cv) { cmp_val  = std::move(cv); }
-
-            // getters
-            InstructionType getType() const { return type; }
-            
-            const std::optional<VALUE>& getFrom() const { return from; }
-            const std::optional<VALUE>& getTo()   const { return to; }
-            const std::optional<compareStruct>& getCmpVal() const { return cmp_val; }
-
-            // safety checks
-            bool hasFrom() const { return from.has_value(); }
-            bool hasTo()   const { return to.has_value(); }
-            bool isCmpAssign() const {return type == InstructionType::compareAssign;}
-            bool isComplete() const { 
-                return type != InstructionType::Unknown && 
-                    (from.has_value() || cmp_val.has_value()) && 
-                    to.has_value() ; 
+            if (type == InstructionType::AssignMemoryFromS && to) {
+                // The destination is a memory access; its base is READ
+                // (we're not overwriting the base register/variable).
+                auto tr = varsIn(*to);
+                r.insert(tr.begin(), tr.end());
             }
+            if (cmp_val) {
+                auto l  = varsIn(cmp_val->left);  r.insert(l.begin(), l.end());
+                auto rr = varsIn(cmp_val->right); r.insert(rr.begin(), rr.end());
+            }
+            return r;
+        }
 
-            bool verify() const override { return isComplete(); }
+        std::set<Variable> writes() const override {
+            // Only W-destinations are written. Memory-store destinations
+            // do not "write" a variable in the live-analysis sense.
+            if (type == InstructionType::AssignMemoryFromS) return {};
+            if (to) return varsIn(*to);
+            return {};
+        }
 
-            std::string to_string() const override {
-                assert(isComplete());
-                
-                auto valueToString = [](const VALUE& v) -> std::string {
-                    return std::visit([](const auto& val) -> std::string {
-                        using T = std::decay_t<decltype(val)>;
-                        if constexpr (std::is_same_v<T, Register>) {
-                            return registerToString(val);
-                        } else if constexpr (std::is_same_v<T, memoryAccess>){
-                            return "mem " + memBaseToString(val) + " " + std::to_string(val.size);
-                        } else if constexpr (std::is_same_v<T, Label>) {
-                            return val;
-                        } else if constexpr (std::is_same_v<T, Number>) {
-                            return val.to_string();
-                        } else {
-                            assert(false && "unknown VALUE type");
-                            return "";
-                        }
-                    }, v);
-                };
-
-                std::string result;
-                result += "\t\t";
-
-                switch (type) {
-                    case InstructionType::AssignFromS:
-                    case InstructionType::AssignFromMemory:
-                        // W <- S  or  W <- mem X M
-                        result += valueToString(to.value());
-                        result += " <- ";
-                        result += valueToString(from.value());
-                        break;
-
-                    case InstructionType::AssignMemoryFromS:
-                        // mem X M <- S
-                        result += valueToString(to.value());
-                        result += " <- ";
-                        result += valueToString(from.value());
-                        break;
-
-                    case InstructionType::compareAssign:
-                        // W <- t cmp t  -- need extra fields for cmp and second t
-                        result += valueToString(to.value());
-                        result += " <- ";
-                        result += valueToString(*cmp_val->left);
-                        result += " " + cmp_val->cmp + " ";
-                        result += valueToString(*cmp_val->right);
-                        // TODO: add cmp and second opernd fields to AssignInstruction
-                        break;
-
-                    default:
-                        assert(false && "unknown assign type");
+        void replaceVar(const Variable& fromV, const Variable& toV) override {
+            auto replace_in = [&](VALUE& v) {
+                if (auto* var = std::get_if<Variable>(&v)) {
+                    if (*var == fromV) *var = toV;
+                } else if (auto* mem = std::get_if<memoryAccess>(&v)) {
+                    if (auto* b = std::get_if<Variable>(&mem->base); b && *b == fromV) *b = toV;
                 }
-
-                return result + "\n";
+            };
+            if (from) replace_in(*from);
+            if (to)   replace_in(*to);
+            if (cmp_val) {
+                if (auto* v = std::get_if<Variable>(&cmp_val->left);  v && *v == fromV) *v = toV;
+                if (auto* v = std::get_if<Variable>(&cmp_val->right); v && *v == fromV) *v = toV;
             }
-          
-        };
-    // class WaopT
-    
+        }
+    };
+
     class CallInstruction : public Instruction {
-        public:
-            
-            std::optional<VALUE> callee;    // for CallUN: the u (Register or Label)
-            std::optional<int64_t> arg;     // for CallUN: the number argument
+    public:
+        std::optional<VALUE> callee;
+        std::optional<int64_t> arg;
 
-            void setCallee(VALUE v)   { callee = std::move(v); }
-            void setNum(int64_t n)    { arg = n; }
-            
-            CallInstruction(InstructionType t, int64_t argument = 0) : Instruction(t) {
-                assert(t == InstructionType::CallPrint    ||
-                    t == InstructionType::CallInput    ||
-                    t == InstructionType::CallAllocate ||
-                    t == InstructionType::CallTupleError ||
-                    t == InstructionType::CallTensorError ||
-                    t == InstructionType::CallUN);
+        void setCallee(VALUE v) { callee = std::move(v); }
+        void setNum(int64_t n)  { arg = n; }
 
-                    if (t == InstructionType::CallPrint){
-                        arg = 1;
-                    } else if (t == InstructionType::CallInput){
-                        arg = 0;
-                    } else if (t == InstructionType::CallAllocate){
-                        arg = 2;
-                    } else if (t == InstructionType::CallTensorError){
-                        arg = -1;
-                    } else if (t == InstructionType::CallUN){
-                        arg = argument;
-                    }
+        CallInstruction(InstructionType t, int64_t argument = 0) : Instruction(t) {
+            assert(t == InstructionType::CallPrint       ||
+                   t == InstructionType::CallInput       ||
+                   t == InstructionType::CallAllocate    ||
+                   t == InstructionType::CallTupleError  ||
+                   t == InstructionType::CallTensorError ||
+                   t == InstructionType::CallUN);
+
+            switch (t) {
+                case InstructionType::CallPrint:       arg = 1; break;
+                case InstructionType::CallInput:       arg = 0; break;
+                case InstructionType::CallAllocate:    arg = 2; break;
+                case InstructionType::CallTensorError: arg = -1; break;
+                case InstructionType::CallUN:          arg = argument; break;
+                default: break;
             }
+        }
 
-            std::string to_string() const override {
-                switch (type) {
-                    case InstructionType::CallPrint:       return "\t\tcall print 1\n";
-                    case InstructionType::CallInput:       return "\t\tcall input 0\n";
-                    case InstructionType::CallAllocate:    return "\t\tcall allocate 2\n";
-                    case InstructionType::CallTupleError:  return "\t\tcall tuple-error 3\n";
-                    case InstructionType::CallTensorError: return "\t\tcall tensor-error\n";
-                    case InstructionType::CallUN:          return "\t\tcall u" + std::to_string(arg.value()) + "\n";
-                    default:                               return "";
-                }
+        std::string to_string() const override {
+            switch (type) {
+                case InstructionType::CallPrint:       return "\t\tcall print 1\n";
+                case InstructionType::CallInput:       return "\t\tcall input 0\n";
+                case InstructionType::CallAllocate:    return "\t\tcall allocate 2\n";
+                case InstructionType::CallTupleError:  return "\t\tcall tuple-error 3\n";
+                case InstructionType::CallTensorError: return "\t\tcall tensor-error\n";
+                case InstructionType::CallUN:
+                    return "\t\tcall " + (callee ? valueToString(*callee) : std::string{})
+                         + " " + std::to_string(arg.value()) + "\n";
+                default: return "";
             }
-        };
+        }
 
+        std::set<Variable> reads() const override {
+            // The callee itself might be a variable (call %f N).
+            if (callee) return varsIn(*callee);
+            return {};
+        }
+
+        void replaceVar(const Variable& from, const Variable& to) override {
+            if (callee) {
+                if (auto* v = std::get_if<Variable>(&*callee); v && *v == from) *v = to;
+            }
+        }
+    };
 
     class ReturnInstruction : public Instruction {
-        public:
-            ReturnInstruction() : Instruction(InstructionType::Return) {}
-            std::string to_string() const override {
-                    return "\t\treturn\n";
-            }
-           
+    public:
+        ReturnInstruction() : Instruction(InstructionType::Return) {}
+        std::string to_string() const override { return "\t\treturn\n"; }
     };
 
     class LabelInstruction : public Instruction {
-        public:
-            Label label = "";
+    public:
+        Label label;
 
-            LabelInstruction(Label _label) : Instruction(InstructionType::Label), label(_label) {}
-            std::string to_string() const override {
-                    return "\t\t:" + label + '\n';
-            }
-            
-    }; 
-    
-    class GotoInstruction : public Instruction {
-        public:
-            Label label = "";
+        LabelInstruction(Label _label)
+            : Instruction(InstructionType::Label), label(std::move(_label)) {}
 
-            GotoInstruction(Label _label) : Instruction(InstructionType::Goto), label(_label) {}
-            std::string to_string() const override {
-                    return "\t\tgoto :" + label + '\n';
-            }
-           
+        std::string to_string() const override {
+            return "\t\t:" + label.name + "\n";
+        }
     };
 
+    class GotoInstruction : public Instruction {
+    public:
+        Label label;
 
+        GotoInstruction(Label _label)
+            : Instruction(InstructionType::Goto), label(std::move(_label)) {}
 
+        std::string to_string() const override {
+            return "\t\tgoto :" + label.name + "\n";
+        }
+    };
 
-      
-        class ArithInstruction : public Instruction {
-        public:
-            std::optional<VALUE> dst;   // W
-            AopType aop;
-            std::optional<VALUE> src;   // t or mem X M
+    class ArithInstruction : public Instruction {
+    public:
+        std::optional<VALUE> dst;
+        AopType aop;
+        std::optional<VALUE> src;
 
-            ArithInstruction(InstructionType t) : Instruction(t) {
-                // std::cerr << "intialized arith instruction with type " << std::endl;
+        ArithInstruction(InstructionType t) : Instruction(t) {}
+
+        void setDst(VALUE v)   { dst = std::move(v); }
+        void setSrc(VALUE v)   { src = std::move(v); }
+        void setAop(AopType a) { aop = a; }
+
+        const std::optional<VALUE>& getDst() const { return dst; }
+        const std::optional<VALUE>& getSrc() const { return src; }
+        AopType getAop() const                     { return aop; }
+
+        std::string to_string() const override {
+            return "\t\t" + valueToString(dst.value()) + " "
+                 + aopToString(aop) + " "
+                 + valueToString(src.value()) + "\n";
+        }
+
+        std::set<Variable> reads() const override {
+            // W op= t reads BOTH dst (we need the old value) and src.
+            std::set<Variable> r;
+            if (dst) { auto d = varsIn(*dst); r.insert(d.begin(), d.end()); }
+            if (src) { auto s = varsIn(*src); r.insert(s.begin(), s.end()); }
+            return r;
+        }
+
+        std::set<Variable> writes() const override {
+            if (dst) return varsIn(*dst);
+            return {};
+        }
+
+        void replaceVar(const Variable& from, const Variable& to) override {
+            auto replace_in = [&](VALUE& v) {
+                if (auto* var = std::get_if<Variable>(&v); var && *var == from) *var = to;
+                else if (auto* mem = std::get_if<memoryAccess>(&v)) {
+                    if (auto* b = std::get_if<Variable>(&mem->base); b && *b == from) *b = to;
+                }
+            };
+            if (dst) replace_in(*dst);
+            if (src) replace_in(*src);
+        }
+    };
+
+    class ShiftInstruction : public Instruction {
+    public:
+        std::optional<VALUE> dst;
+        SopType sop;
+        std::optional<VALUE> src;
+
+        ShiftInstruction(InstructionType t) : Instruction(t) {}
+
+        void setDst(VALUE v)   { dst = std::move(v); }
+        void setSrc(VALUE v)   { src = std::move(v); }
+        void setSop(SopType s) { sop = s; }
+
+        std::string to_string() const override {
+            return "\t\t" + valueToString(dst.value()) + " "
+                 + sopToString(sop) + " "
+                 + valueToString(src.value()) + "\n";
+        }
+
+        std::set<Variable> reads() const override {
+            std::set<Variable> r;
+            if (dst) { auto d = varsIn(*dst); r.insert(d.begin(), d.end()); }
+            if (src) { auto s = varsIn(*src); r.insert(s.begin(), s.end()); }
+            return r;
+        }
+
+        std::set<Variable> writes() const override {
+            if (dst) return varsIn(*dst);
+            return {};
+        }
+
+        void replaceVar(const Variable& from, const Variable& to) override {
+            if (dst) {
+                if (auto* v = std::get_if<Variable>(&*dst); v && *v == from) *v = to;
             }
-            void setDst(VALUE v) { dst = std::move(v); }
-            void setSrc(VALUE v) { src = std::move(v); }
-            void setAop(AopType a) { aop = a; }
-
-            const std::optional<VALUE>& getDst() const { return dst; }
-            const std::optional<VALUE>& getSrc() const { return src; }
-            AopType getAop()                     const { return aop; }
-
-            std::string to_string() const override {
-                auto aopStr = [](AopType a) -> std::string {
-                    switch(a) {
-                        case AopType::AddEq: return "+=";
-                        case AopType::SubEq: return "-=";
-                        case AopType::MulEq: return "*=";
-                        case AopType::AndEq: return "&=";
-                    }
-                    return "";
-                };
-                auto valueToString = [](const VALUE& v) -> std::string {
-                    return std::visit([](const auto& val) -> std::string {
-                        using T = std::decay_t<decltype(val)>;
-                        if constexpr (std::is_same_v<T, Register>)    return registerToString(val);
-                        else if constexpr (std::is_same_v<T, Number>) return std::to_string(val.getValue());
-                        else if constexpr (std::is_same_v<T, memoryAccess>) 
-                            return "mem " + memBaseToString(val) + " " + std::to_string(val.size);
-                        else return "";
-                    }, v);
-                };
-                return "\t\t" + valueToString(dst.value()) + " " + aopStr(aop) + " " + valueToString(src.value()) + "\n";
+            if (src) {
+                if (auto* v = std::get_if<Variable>(&*src); v && *v == from) *v = to;
             }
+        }
+    };
 
-           
-        };
+    class IncDecInstruction : public Instruction {
+    public:
+        std::optional<VALUE> dst;
+        bool isIncrement;
 
-        class ShiftInstruction : public Instruction {
-        public:
-            std::optional<VALUE> dst;   // W
-            SopType sop;
-            std::optional<VALUE> src;   // sx or number
+        IncDecInstruction() : Instruction(InstructionType::WIncDec) {}
+        void setDst(VALUE v)    { dst = std::move(v); }
+        void setIsInc(bool inc) { isIncrement = inc; }
 
-            ShiftInstruction(InstructionType t) : Instruction(t) {}
-            void setDst(VALUE v)   { dst = std::move(v); }
-            void setSrc(VALUE v)   { src = std::move(v); }
-            void setSop(SopType s) { sop = s; }
+        std::string to_string() const override {
+            return "\t\t" + valueToString(dst.value())
+                 + (isIncrement ? "++" : "--") + "\n";
+        }
 
-            std::string to_string() const override {
-                auto sopStr = [](SopType s) -> std::string {
-                    switch(s) {
-                        case SopType::LShift: return "<<=";
-                        case SopType::RShift: return ">>=";
-                    }
-                    return "";
-                };
-                auto valueToString = [](const VALUE& v) -> std::string {
-                    return std::visit([](const auto& val) -> std::string {
-                        using T = std::decay_t<decltype(val)>;
-                        if constexpr (std::is_same_v<T, Register>)    return registerToString(val);
-                        else if constexpr (std::is_same_v<T, Number>) return std::to_string(val.getValue());
-                        else return "";
-                    }, v);
-                };
-                return "\t\t" + valueToString(dst.value()) + " " + sopStr(sop) + " " + valueToString(src.value()) + "\n";
-                   }
-        };
+        std::set<Variable> reads() const override {
+            // ++ and -- read the current value of dst.
+            if (dst) return varsIn(*dst);
+            return {};
+        }
 
-        class IncDecInstruction : public Instruction {
-        public:
-            std::optional<VALUE> dst;  // W
-            bool isIncrement;          // true = ++, false = --
+        std::set<Variable> writes() const override {
+            if (dst) return varsIn(*dst);
+            return {};
+        }
 
-            IncDecInstruction() : Instruction(InstructionType::WIncDec) {}
-            void setDst(VALUE v)      { dst = std::move(v); }
-            void setIsInc(bool inc)   { isIncrement = inc; }
-
-            std::string to_string() const override {
-                std::string dstStr = std::visit([](const auto& val) -> std::string {
-                    using T = std::decay_t<decltype(val)>;
-                    if constexpr (std::is_same_v<T, Register>) return registerToString(val);
-                    else if constexpr (std::is_same_v<T, Label>) return val;
-                    else return "";
-                }, dst.value());
-                return "\t\t" + dstStr + (isIncrement ? "++" : "--") + "\n";
+        void replaceVar(const Variable& from, const Variable& to) override {
+            if (dst) {
+                if (auto* v = std::get_if<Variable>(&*dst); v && *v == from) *v = to;
             }
-        };
+        }
+    };
 
-        class WWWEInstruction : public Instruction {
-        public:
-            std::optional<VALUE> dst;   // W
-            std::optional<VALUE> base;  // W
-            std::optional<VALUE> idx;   // W
-            int64_t scale;              
+    class WWWEInstruction : public Instruction {
+    public:
+        std::optional<VALUE> dst;
+        std::optional<VALUE> base;
+        std::optional<VALUE> idx;
+        int64_t scale;
 
-            WWWEInstruction() : Instruction(InstructionType::WAtWWE) {}
-            void setDst(VALUE v)  { dst  = std::move(v); }
-            void setBase(VALUE v) { base = std::move(v); }
-            void setIdx(VALUE v)  { idx  = std::move(v); }
-            void setScale(int64_t s) { scale = s; }
+        WWWEInstruction() : Instruction(InstructionType::WAtWWE) {}
+        void setDst(VALUE v)     { dst  = std::move(v); }
+        void setBase(VALUE v)    { base = std::move(v); }
+        void setIdx(VALUE v)     { idx  = std::move(v); }
+        void setScale(int64_t s) { scale = s; }
 
-            std::string to_string() const override {
-                return "\t\t" + registerToString(std::get<Register>(dst.value()))  + " @ " +
-                    registerToString(std::get<Register>(base.value())) + " "   +
-                    registerToString(std::get<Register>(idx.value()))  + " "   +
-                    std::to_string(scale) + "\n";
+        std::string to_string() const override {
+            return "\t\t" + valueToString(dst.value())  + " @ "
+                 + valueToString(base.value()) + " "
+                 + valueToString(idx.value())  + " "
+                 + std::to_string(scale) + "\n";
+        }
+
+        std::set<Variable> reads() const override {
+            std::set<Variable> r;
+            if (base) { auto b = varsIn(*base); r.insert(b.begin(), b.end()); }
+            if (idx)  { auto i = varsIn(*idx);  r.insert(i.begin(), i.end()); }
+            return r;
+        }
+
+        std::set<Variable> writes() const override {
+            if (dst) return varsIn(*dst);
+            return {};
+        }
+
+        void replaceVar(const Variable& from, const Variable& to) override {
+            auto replace = [&](std::optional<VALUE>& o) {
+                if (!o) return;
+                if (auto* v = std::get_if<Variable>(&*o); v && *v == from) *v = to;
+            };
+            replace(dst);
+            replace(base);
+            replace(idx);
+        }
+    };
+
+    class MemIncDecInstruction : public Instruction {
+    public:
+        memoryAccess mem;
+        AopType aop;
+        std::optional<VALUE> src;
+
+        MemIncDecInstruction() : Instruction(InstructionType::MemoryIncDecT) {}
+        void setMem(memoryAccess m) { mem = m; }
+        void setAop(AopType a)      { aop = a; }
+        void setSrc(VALUE v)        { src = std::move(v); }
+
+        std::string to_string() const override {
+            return "\t\tmem " + memBaseToString(mem) + " "
+                 + std::to_string(mem.size) + " "
+                 + aopToString(aop) + " "
+                 + valueToString(src.value()) + "\n";
+        }
+
+        std::set<Variable> reads() const override {
+            std::set<Variable> r;
+            // The memory base is read (we need it to form the address).
+            if (auto* b = std::get_if<Variable>(&mem.base)) r.insert(*b);
+            if (src) { auto s = varsIn(*src); r.insert(s.begin(), s.end()); }
+            return r;
+        }
+
+        // This instruction writes memory, not a variable, so writes() is empty.
+
+        void replaceVar(const Variable& from, const Variable& to) override {
+            if (auto* b = std::get_if<Variable>(&mem.base); b && *b == from) *b = to;
+            if (src) {
+                if (auto* v = std::get_if<Variable>(&*src); v && *v == from) *v = to;
             }
-           
-        };
+        }
+    };
 
-        class MemIncDecInstruction : public Instruction {
-        public:
-            memoryAccess mem;
-            AopType aop;               // += or -=
-            std::optional<VALUE> src;  // t
-
-            MemIncDecInstruction() : Instruction(InstructionType::MemoryIncDecT) {}
-            void setMem(memoryAccess m)  { mem = m; }
-            void setAop(AopType a)       { aop = a; }
-            void setSrc(VALUE v)         { src = std::move(v); }
-
-            std::string to_string() const override {
-                std::string aopStr = (aop == AopType::AddEq) ? "+=" : "-=";
-                std::string src_str = std::visit([](const auto& val) -> std::string {
-                    using T = std::decay_t<decltype(val)>;
-                    if constexpr (std::is_same_v<T, Register>) return registerToString(val);
-                    else if constexpr (std::is_same_v<T, Number>) return std::to_string(val.getValue());
-                    else return "";
-                }, src.value());
-                return "\t\tmem " + memBaseToString(mem) + " " + 
-                    std::to_string(mem.size) + " " + aopStr + " " + src_str + "\n";
-            }
-
-            
-
-        };
-
-
-
-
-
-
-        /// functions 
-
-
-
+    // ---------- Function / Program ----------
 
     class Function : public ASTNode {
-        Label label = "";
-        
-        public:
-            
-            std::vector<std::unique_ptr<Instruction>> instructions;
-            int num_args = 0;
-            bool args_set = false;
+        Label label;
+    public:
+        std::vector<std::unique_ptr<Instruction>> instructions;
+        int num_args = 0;
+        int num_locals = 0;      // stack slots reserved for spilled variables
+        bool args_set = false;
 
-            Function() = default;
-            std::string to_string() const override {
-                std::string result;
-                result += '\t';
-                result += label + "\n\t\t";
-                result += std::to_string(num_args) + '\n';
-                for (auto& instruction : instructions) {
-                    result += instruction->to_string();  // -> and semicolon
-                }
-                result += "\t)\n";
-                return result;  // semicolon
+        Function() = default;
+
+        std::string to_string() const override {
+            std::string result;
+            result += "\t" + label.name + "\n\t\t";
+            result += std::to_string(num_args) + "\n";
+            for (auto& instruction : instructions) {
+                result += instruction->to_string();
             }
+            result += "\t)\n";
+            return result;
+        }
 
-            // getters
-            std::string getLabel()   const { return label; }
-            int getNumArgs()         const { return num_args; }
+        std::string getLabel() const { return label.name; }
+        int getNumArgs()       const { return num_args; }
 
-            // setters
-            void setLabel(std::string l)  { label = l; }
-            void setNumArgs(int n)        { args_set = true; num_args = n; }
+        void setLabel(std::string l) { label = Label(std::move(l)); }
+        void setNumArgs(int n)       { args_set = true; num_args = n; }
 
-            // Function(const Function&) = delete;          
-            // Function& operator=(const Function&) = delete; 
-            // Function(Function&&) = default;                
-            // Function& operator=(Function&&) = default;     
-
-
-            
-
-
-        
+        bool verify() const override {
+            return args_set && !instructions.empty();
+        }
     };
-
-    // Note label[0] is always the head. 
 
     class Program : public ASTNode {
-        public:
-            Label label;
-            std::vector<Function> functions;
+    public:
+        Label label;
+        std::vector<Function> functions;
 
-            Program() = default;
+        Program() = default;
 
-            std::string to_string() const override {
-                std::string result;
-                result += '(';
-                result += label + "\n";
-                for (auto& function: functions){
-                    result += function.to_string();
-                }
-                result += ')';
-                return result;
+        std::string to_string() const override {
+            std::string result;
+            result += "(" + label.name + "\n";
+            for (auto& function : functions) {
+                result += function.to_string();
             }
+            result += ")";
+            return result;
+        }
 
-            bool verify() const override { 
-                for (auto& function: functions){
-                    if (function.getLabel() == label) return true;
-                }
-                std::cerr << "no matching function with a program label\n";
-                return false;
+        bool verify() const override {
+            for (auto& function : functions) {
+                if (function.getLabel() == label.name) return true;
             }
-
-            // Program(const Program&) = delete;            
-            // Program& operator=(const Program&) = delete; 
-            // Program(Program&&) = default;                
-            // Program& operator=(Program&&) = default;     
-
-          
+            std::cerr << "no matching function with a program label\n";
+            return false;
+        }
     };
 
-}
-
+} 
