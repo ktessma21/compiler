@@ -17,7 +17,7 @@ namespace L2 {
         splilled = true;
     };
 
-    void spliller(Function& f, std::string to_be_allocated, std::string replacer){
+    void Spill(Function& f, std::string to_be_allocated, std::string replacer){
 
         if (!f.verify()) throw std::runtime_error("File verification failed!");
 

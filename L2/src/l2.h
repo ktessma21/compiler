@@ -28,6 +28,7 @@ namespace L2 {
         Label() = default;
         explicit Label(std::string s) : name(std::move(s)) {}
         bool operator==(const Label&) const = default;
+        bool empty() {return name == "";}
     };
 
     struct Variable {
@@ -35,7 +36,6 @@ namespace L2 {
         Variable() = default;
         explicit Variable(std::string s) : name(std::move(s)) {}
         bool operator==(const Variable&) const = default;
-        // Needed so std::set<Variable> can order them.
         bool operator<(const Variable& other) const { return name < other.name; }
     };
 
@@ -177,10 +177,13 @@ namespace L2 {
     // a set; otherwise return empty. Used to build reads()/writes() sets.
     inline std::set<Variable> varsIn(const VALUE& v) {
         std::set<Variable> out;
-        if (auto* var = std::get_if<Variable>(&v)) {
-            out.insert(*var);
-        } else if (auto* mem = std::get_if<memoryAccess>(&v)) {
-            if (auto* baseVar = std::get_if<Variable>(&mem->base)) out.insert(*baseVar);
+        if (std::holds_alternative<Variable>(v)) {
+            out.insert(std::get<Variable>(v));
+        } else if (std::holds_alternative<memoryAccess>(v)) {
+            const memoryAccess& m = std::get<memoryAccess>(v);
+            if (std::holds_alternative<Variable>(m.base)) {
+                out.insert(std::get<Variable>(m.base));
+            }
         }
         return out;
     }
@@ -234,8 +237,14 @@ namespace L2 {
 
         void replaceVar(const Variable& from, const Variable& to) override {
             if (!cmp_val) return;
-            if (auto* v = std::get_if<Variable>(&cmp_val->left);  v && *v == from) *v = to;
-            if (auto* v = std::get_if<Variable>(&cmp_val->right); v && *v == from) *v = to;
+            if (std::holds_alternative<Variable>(cmp_val->left) &&
+                std::get<Variable>(cmp_val->left) == from) {
+                cmp_val->left = to;
+            }
+            if (std::holds_alternative<Variable>(cmp_val->right) &&
+                std::get<Variable>(cmp_val->right) == from) {
+                cmp_val->right = to;
+            }
         }
     };
 
@@ -328,17 +337,27 @@ namespace L2 {
 
         void replaceVar(const Variable& fromV, const Variable& toV) override {
             auto replace_in = [&](VALUE& v) {
-                if (auto* var = std::get_if<Variable>(&v)) {
-                    if (*var == fromV) *var = toV;
-                } else if (auto* mem = std::get_if<memoryAccess>(&v)) {
-                    if (auto* b = std::get_if<Variable>(&mem->base); b && *b == fromV) *b = toV;
+                if (std::holds_alternative<Variable>(v)) {
+                    if (std::get<Variable>(v) == fromV) v = toV;
+                } else if (std::holds_alternative<memoryAccess>(v)) {
+                    memoryAccess& m = std::get<memoryAccess>(v);
+                    if (std::holds_alternative<Variable>(m.base) &&
+                        std::get<Variable>(m.base) == fromV) {
+                        m.base = toV;
+                    }
                 }
             };
             if (from) replace_in(*from);
             if (to)   replace_in(*to);
             if (cmp_val) {
-                if (auto* v = std::get_if<Variable>(&cmp_val->left);  v && *v == fromV) *v = toV;
-                if (auto* v = std::get_if<Variable>(&cmp_val->right); v && *v == fromV) *v = toV;
+                if (std::holds_alternative<Variable>(cmp_val->left) &&
+                    std::get<Variable>(cmp_val->left) == fromV) {
+                    cmp_val->left = toV;
+                }
+                if (std::holds_alternative<Variable>(cmp_val->right) &&
+                    std::get<Variable>(cmp_val->right) == fromV) {
+                    cmp_val->right = toV;
+                }
             }
         }
     };
@@ -390,8 +409,10 @@ namespace L2 {
         }
 
         void replaceVar(const Variable& from, const Variable& to) override {
-            if (callee) {
-                if (auto* v = std::get_if<Variable>(&*callee); v && *v == from) *v = to;
+            if (callee &&
+                std::holds_alternative<Variable>(*callee) &&
+                std::get<Variable>(*callee) == from) {
+                *callee = to;
             }
         }
     };
@@ -463,9 +484,14 @@ namespace L2 {
 
         void replaceVar(const Variable& from, const Variable& to) override {
             auto replace_in = [&](VALUE& v) {
-                if (auto* var = std::get_if<Variable>(&v); var && *var == from) *var = to;
-                else if (auto* mem = std::get_if<memoryAccess>(&v)) {
-                    if (auto* b = std::get_if<Variable>(&mem->base); b && *b == from) *b = to;
+                if (std::holds_alternative<Variable>(v)) {
+                    if (std::get<Variable>(v) == from) v = to;
+                } else if (std::holds_alternative<memoryAccess>(v)) {
+                    memoryAccess& m = std::get<memoryAccess>(v);
+                    if (std::holds_alternative<Variable>(m.base) &&
+                        std::get<Variable>(m.base) == from) {
+                        m.base = to;
+                    }
                 }
             };
             if (dst) replace_in(*dst);
@@ -504,11 +530,15 @@ namespace L2 {
         }
 
         void replaceVar(const Variable& from, const Variable& to) override {
-            if (dst) {
-                if (auto* v = std::get_if<Variable>(&*dst); v && *v == from) *v = to;
+            if (dst &&
+                std::holds_alternative<Variable>(*dst) &&
+                std::get<Variable>(*dst) == from) {
+                *dst = to;
             }
-            if (src) {
-                if (auto* v = std::get_if<Variable>(&*src); v && *v == from) *v = to;
+            if (src &&
+                std::holds_alternative<Variable>(*src) &&
+                std::get<Variable>(*src) == from) {
+                *src = to;
             }
         }
     };
@@ -539,8 +569,10 @@ namespace L2 {
         }
 
         void replaceVar(const Variable& from, const Variable& to) override {
-            if (dst) {
-                if (auto* v = std::get_if<Variable>(&*dst); v && *v == from) *v = to;
+            if (dst &&
+                std::holds_alternative<Variable>(*dst) &&
+                std::get<Variable>(*dst) == from) {
+                *dst = to;
             }
         }
     };
@@ -580,7 +612,10 @@ namespace L2 {
         void replaceVar(const Variable& from, const Variable& to) override {
             auto replace = [&](std::optional<VALUE>& o) {
                 if (!o) return;
-                if (auto* v = std::get_if<Variable>(&*o); v && *v == from) *v = to;
+                if (std::holds_alternative<Variable>(*o) &&
+                    std::get<Variable>(*o) == from) {
+                    *o = to;
+                }
             };
             replace(dst);
             replace(base);
@@ -609,7 +644,9 @@ namespace L2 {
         std::set<Variable> reads() const override {
             std::set<Variable> r;
             // The memory base is read (we need it to form the address).
-            if (auto* b = std::get_if<Variable>(&mem.base)) r.insert(*b);
+            if (std::holds_alternative<Variable>(mem.base)) {
+                r.insert(std::get<Variable>(mem.base));
+            }
             if (src) { auto s = varsIn(*src); r.insert(s.begin(), s.end()); }
             return r;
         }
@@ -617,9 +654,14 @@ namespace L2 {
         // This instruction writes memory, not a variable, so writes() is empty.
 
         void replaceVar(const Variable& from, const Variable& to) override {
-            if (auto* b = std::get_if<Variable>(&mem.base); b && *b == from) *b = to;
-            if (src) {
-                if (auto* v = std::get_if<Variable>(&*src); v && *v == from) *v = to;
+            if (std::holds_alternative<Variable>(mem.base) &&
+                std::get<Variable>(mem.base) == from) {
+                mem.base = to;
+            }
+            if (src &&
+                std::holds_alternative<Variable>(*src) &&
+                std::get<Variable>(*src) == from) {
+                *src = to;
             }
         }
     };
@@ -684,4 +726,4 @@ namespace L2 {
         }
     };
 
-} 
+} // namespace L2

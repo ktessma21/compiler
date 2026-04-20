@@ -1046,7 +1046,7 @@ struct functionFormat :
    
 
 
-    static bool TRACE = true;
+    static bool TRACE = false;
 
     template<typename Rule>
     struct my_tracer : pegtl::normal<Rule> {
@@ -1092,16 +1092,43 @@ struct functionFormat :
         pegtl::memory_input<> in(prog_part, fileName);
         pegtl::parse<grammar, action, my_tracer>(in, result.function);
 
-        // assert(false);
 
-       
 
         // 4. Read the two vars with std::istringstream
         std::istringstream iss(tail_part);
         if (!(iss >> result.target >> result.prefix))
             throw std::runtime_error("spill file: expected <target> <prefix> after function");
 
-        std::cerr << result.target << result.prefix << '\n';
+        // std::cerr << result.target << result.prefix << '\n';
         return result;
     }
 }
+
+
+
+// Program parse_file (char *fileName){
+
+//         FILE *file = fopen(fileName, "r");
+
+//         if (!file){
+//             std::cerr << fileName << " : file not found." << std::endl;
+//             exit(1);
+//         }
+
+//         /*
+//         * Check the grammar for some possible issues.
+//         */
+//         if (pegtl::analyze< grammar >() != 0){
+//           std::cerr << "There are problems with the grammar" << std::endl;
+//           exit(1);
+//         }
+
+//         /*
+//         * Parse.
+//         */
+//         file_input< > fileInput(fileName);
+//         Program p;
+//         parse<grammar, action, my_tracer>(fileInput, p);
+
+//         return p;
+//     }

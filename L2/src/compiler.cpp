@@ -95,8 +95,19 @@ int main(int argc, char **argv) {
 
     auto& function = spill.function;
 
-    std::cerr << function.to_string() << std::endl;
-    std::cerr << spill.target << " and " << spill.prefix << std::endl;
+    // std::cerr << "[1] about to print target\n";
+    // std::cerr << "target size=" << spill.target.size() << "\n";
+    // std::cerr << "[2] printing target content: [";
+    // for (char c : spill.target) std::cerr << c;
+    // std::cerr << "]\n";
+
+    // std::cerr << "[3] about to print prefix\n";
+    // std::cerr << "prefix size=" << spill.prefix.size() << "\n";
+    // std::cerr << "[4] printing prefix content: [";
+    // for (char c : spill.prefix) std::cerr << c;
+    // std::cerr << "]\n";
+
+    // std::cerr << "[5] done\n";
 
 
   } else if (liveness_only) {

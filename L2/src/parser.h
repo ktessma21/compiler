@@ -7,8 +7,8 @@ namespace L2 {
 
 	struct SpillInput {
         Function function;
-        std::string target;   // e.g. "%var1"
-        std::string prefix;   // e.g. "%S"
+        std::string target;   
+        std::string prefix;   
     };
 
 
