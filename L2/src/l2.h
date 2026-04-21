@@ -423,6 +423,12 @@ namespace L2 {
     public:
         ReturnInstruction() : Instruction(InstructionType::Return) {}
         std::string to_string() const override { return "\treturn\n"; }
+        
+        // std::set<Variable> reads() const override {
+        //     // The callee itself might be a variable (call %f N).
+        //     if (callee) return varsIn(*callee);
+        //     return {};
+        // }
     };
 
     class LabelInstruction : public Instruction {
