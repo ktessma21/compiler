@@ -48,6 +48,8 @@ namespace L2 {
         Number(int64_t v) : value(v) {}
         std::string to_string() const override { return std::to_string(value); }
         int64_t getValue() const { return value; }
+        bool operator==(const Number& other) const { return value == other.value; }
+
     };
 
     enum class Register {
@@ -64,6 +66,9 @@ namespace L2 {
     struct memoryAccess {
         std::variant<Register, Variable> base = Register::rsp;
         int64_t size = 0;
+        bool operator==(const memoryAccess& other) const {
+            return base == other.base && size == other.size;
+        }
     };
 
     using VALUE = std::variant<memoryAccess, Register, Label, Number, Variable>;

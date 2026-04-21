@@ -27,9 +27,9 @@ void print_help(char *progName) {
 
 int main(int argc, char **argv) {
   auto enable_code_generator = true;
-  auto spill_only = true;
+  auto spill_only = false;
   auto interference_only = false;
-  auto liveness_only = false;
+  auto liveness_only = true;
   int32_t optLevel = 3;
 
   /*

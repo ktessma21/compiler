@@ -13,12 +13,15 @@ namespace L2 {
     // std::vector<std::vector<size_t>> successors;
 
    struct LiveCompare {
-        bool operator()(const VALUE& a, const VALUE& b) const {     // ← const
+        bool operator()(const VALUE& a, const VALUE& b) const {
             if (a.index() != b.index()) return a.index() < b.index();
+
             if (std::holds_alternative<Register>(a))
-                return std::get<Register>(a) < std::get<Register>(b);
+                return registerToString(std::get<Register>(a)) < registerToString(std::get<Register>(b));
+
             if (std::holds_alternative<Variable>(a))
                 return std::get<Variable>(a) < std::get<Variable>(b);
+
             return false;
         }
     };
@@ -39,16 +42,18 @@ namespace L2 {
             for (int i = (int)f.instructions.size() - 1; i >= 0; i--) {
 
                 
+                
+
+                // in[i] = (out[i] - writes) ∪ reads
+                LiveSet liveIn = out[i];
+                if (!liveIn.empty()) for (const auto& w : f.instructions[i]->writes()) liveIn.erase(VALUE(w));
+                for (const auto& r : f.instructions[i]->reads())  liveIn.insert(VALUE(r));
+
                 // out[i] = union of in[successor] for each successor
                 LiveSet liveOut;
                 for (size_t s : sc.successors[i]) {
                     liveOut.insert(in[s].begin(), in[s].end());
                 }
-
-                // in[i] = (out[i] - writes) ∪ reads
-                LiveSet liveIn = liveOut;
-                for (const auto& w : f.instructions[i]->writes()) liveIn.erase(VALUE(w));
-                for (const auto& r : f.instructions[i]->reads())  liveIn.insert(VALUE(r));
 
 
                 // special case handle
@@ -76,7 +81,7 @@ namespace L2 {
                     }
 
                     auto* call = dynamic_cast<CallInstruction*>(f.instructions[i].get());
-                    int n = call->arg.value_or(0);
+                    int n = call->arg.value();
                     std::vector<Register> argRegs = {Register::rdi, Register::rsi, Register::rdx,
                                                     Register::rcx, Register::r8,  Register::r9};
                     for (int k = 0; k < std::min(n, (int)argRegs.size()); k++) {
@@ -99,8 +104,34 @@ namespace L2 {
         }
 
         std::cout << '(' << '\n';
-        std::cout << '(in' << '\n';
+        std::cout << "(in" << '\n';
+        for (auto& ele : in) {
+            std::cout << '(';
+            bool first = true;
+            for (auto& val : ele) {
+                if (!first) std::cout << ' ';
+                std::cout << valueToString(val);
+                first = false;
+            }
+            std::cout << ")\n";
+        }
+        std::cout << ")\n\n";
 
+        std::cout << "(out" << '\n';
+
+        for (auto& ele : out){
+            std::cout << '(';
+            bool first = true;
+            for (auto& val : ele) {
+                if (!first) std::cout << ' ';
+                std::cout << valueToString(val);
+                first = false;
+            }
+            std::cout << ")\n";
+          
+        }
+        std::cout << ")\n\n";
+        std::cout << ')' << '\n';
 
     }
 
