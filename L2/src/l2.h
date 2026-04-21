@@ -220,7 +220,7 @@ namespace L2 {
         void setLabel(const Label& lbl)   { label = lbl; }
 
         std::string to_string() const override {
-            std::string result = "\t\tcjump ";
+            std::string result = "\tcjump ";
             result += valueToString(cmp_val->left);
             result += " " + cmp_val->cmp + " ";
             result += valueToString(cmp_val->right);
@@ -282,7 +282,7 @@ namespace L2 {
 
         std::string to_string() const override {
             assert(isComplete());
-            std::string result = "\t\t";
+            std::string result = "\t";
 
             switch (type) {
                 case InstructionType::AssignFromS:
@@ -392,13 +392,13 @@ namespace L2 {
 
         std::string to_string() const override {
             switch (type) {
-                case InstructionType::CallPrint:       return "\t\tcall print 1\n";
-                case InstructionType::CallInput:       return "\t\tcall input 0\n";
-                case InstructionType::CallAllocate:    return "\t\tcall allocate 2\n";
-                case InstructionType::CallTupleError:  return "\t\tcall tuple-error 3\n";
-                case InstructionType::CallTensorError: return "\t\tcall tensor-error\n";
+                case InstructionType::CallPrint:       return "\tcall print 1\n";
+                case InstructionType::CallInput:       return "\tcall input 0\n";
+                case InstructionType::CallAllocate:    return "\tcall allocate 2\n";
+                case InstructionType::CallTupleError:  return "\tcall tuple-error 3\n";
+                case InstructionType::CallTensorError: return "\tcall tensor-error\n";
                 case InstructionType::CallUN:
-                    return "\t\tcall " + (callee ? valueToString(*callee) : std::string{})
+                    return "\tcall " + (callee ? valueToString(*callee) : std::string{})
                          + " " + std::to_string(arg.value()) + "\n";
                 default: return "";
             }
@@ -422,7 +422,7 @@ namespace L2 {
     class ReturnInstruction : public Instruction {
     public:
         ReturnInstruction() : Instruction(InstructionType::Return) {}
-        std::string to_string() const override { return "\t\treturn\n"; }
+        std::string to_string() const override { return "\treturn\n"; }
     };
 
     class LabelInstruction : public Instruction {
@@ -433,7 +433,7 @@ namespace L2 {
             : Instruction(InstructionType::Label), label(std::move(_label)) {}
 
         std::string to_string() const override {
-            return "\t\t:" + label.name + "\n";
+            return "\t" + label.name + "\n";
         }
     };
 
@@ -445,7 +445,7 @@ namespace L2 {
             : Instruction(InstructionType::Goto), label(std::move(_label)) {}
 
         std::string to_string() const override {
-            return "\t\tgoto :" + label.name + "\n";
+            return "\tgoto " + label.name + "\n";
         }
     };
 
@@ -466,7 +466,7 @@ namespace L2 {
         AopType getAop() const                     { return aop; }
 
         std::string to_string() const override {
-            return "\t\t" + valueToString(dst.value()) + " "
+            return "\t" + valueToString(dst.value()) + " "
                  + aopToString(aop) + " "
                  + valueToString(src.value()) + "\n";
         }
@@ -514,7 +514,7 @@ namespace L2 {
         void setSop(SopType s) { sop = s; }
 
         std::string to_string() const override {
-            return "\t\t" + valueToString(dst.value()) + " "
+            return "\t" + valueToString(dst.value()) + " "
                  + sopToString(sop) + " "
                  + valueToString(src.value()) + "\n";
         }
@@ -555,7 +555,7 @@ namespace L2 {
         void setIsInc(bool inc) { isIncrement = inc; }
 
         std::string to_string() const override {
-            return "\t\t" + valueToString(dst.value())
+            return "\t" + valueToString(dst.value())
                  + (isIncrement ? "++" : "--") + "\n";
         }
 
@@ -593,7 +593,7 @@ namespace L2 {
         void setScale(int64_t s) { scale = s; }
 
         std::string to_string() const override {
-            return "\t\t" + valueToString(dst.value())  + " @ "
+            return "\t" + valueToString(dst.value())  + " @ "
                  + valueToString(base.value()) + " "
                  + valueToString(idx.value())  + " "
                  + std::to_string(scale) + "\n";
@@ -637,7 +637,7 @@ namespace L2 {
         void setSrc(VALUE v)        { src = std::move(v); }
 
         std::string to_string() const override {
-            return "\t\tmem " + memBaseToString(mem) + " "
+            return "\tmem " + memBaseToString(mem) + " "
                  + std::to_string(mem.size) + " "
                  + aopToString(aop) + " "
                  + valueToString(src.value()) + "\n";
@@ -682,7 +682,7 @@ namespace L2 {
 
         std::string to_string() const override {
             std::string result;
-            result += "\t" + label.name + "\n\t\t";
+            result += "\t" + label.name + "\n\t";
             result += std::to_string(num_args) + "\n";
             for (auto& instruction : instructions) {
                 result += instruction->to_string();

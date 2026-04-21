@@ -833,7 +833,7 @@ struct functionFormat :
             if (call->type == InstructionType::CallUN) {
                 auto parseCallee = [](const std::string& str) -> VALUE {
                     if (str[0] == '@') return Label(str);
-                    if (str[0] == '%') return Label(str);
+                    if (str[0] == '%') return Variable(str);
                     return stringToRegister(str);
                 };
                 call->setCallee(parseCallee(u_str));
@@ -1070,7 +1070,32 @@ struct functionFormat :
     };
 
 
-  
+    L2::Function parse_l2_function(const char* fileName){
+        // 1. Read whole file
+        std::ifstream f(fileName);
+        std::stringstream ss;
+        ss << f.rdbuf();
+        std::string contents = ss.str();
+
+        // 2. Find the closing ')' of the function
+        size_t close = contents.rfind(')');
+        if (close == std::string::npos)
+            throw std::runtime_error("spill file: no closing ')'");
+
+        std::string prog_part = contents.substr(0, close + 1);
+        std::string tail_part = contents.substr(close + 1);
+
+        // std::cerr << prog_part <<'\n';
+        // 3. Parse the function with PEGTL
+        L2::Function result;
+        pegtl::memory_input<> in(prog_part, fileName);
+        pegtl::parse<grammar, action, my_tracer>(in, result);
+
+        return result;
+
+    }
+
+    
     L2::SpillInput parse_spill_file(const char* fileName) {
         // 1. Read whole file
         std::ifstream f(fileName);

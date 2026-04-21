@@ -12,7 +12,9 @@ namespace L2 {
     };
 
 
-	Program parse_file(char* fileName);
+	L2::Program parse_file(char* fileName);
 
 	SpillInput parse_spill_file(const char* fileName);
+
+    L2::Function parse_l2_function(const char* fileName);
 }

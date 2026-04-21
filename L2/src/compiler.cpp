@@ -15,6 +15,7 @@
 #include <utils.h>
 #include <parser.h>
 #include <spiller.h>
+#include <liveness.h>
 // #include <generator.h>
 #include <string.h>
 
@@ -95,19 +96,8 @@ int main(int argc, char **argv) {
 
     auto& function = spill.function;
 
-    // std::cerr << "[1] about to print target\n";
-    // std::cerr << "target size=" << spill.target.size() << "\n";
-    // std::cerr << "[2] printing target content: [";
-    // for (char c : spill.target) std::cerr << c;
-    // std::cerr << "]\n";
+    L2::Spill(spill.function, spill.target, spill.prefix);
 
-    // std::cerr << "[3] about to print prefix\n";
-    // std::cerr << "prefix size=" << spill.prefix.size() << "\n";
-    // std::cerr << "[4] printing prefix content: [";
-    // for (char c : spill.prefix) std::cerr << c;
-    // std::cerr << "]\n";
-
-    // std::cerr << "[5] done\n";
 
 
   } else if (liveness_only) {
@@ -116,6 +106,9 @@ int main(int argc, char **argv) {
      * Parse an L2 function.
      */
     // TODO
+    auto function = L2::parse_l2_function(fileName);
+
+    L2::Liveness(function);
 
   } else if (interference_only) {
 
