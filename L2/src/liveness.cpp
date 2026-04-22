@@ -15,11 +15,16 @@ namespace L2 {
    struct LiveCompare {
     bool operator()(const VALUE& a, const VALUE& b) const {
             auto key = [](const VALUE& v) -> std::string {
+                std::string s;
                 if (std::holds_alternative<Variable>(v)) {
                     // Drop the leading '%' so "%val_to_test" compares after "r15"
-                    return std::get<Variable>(v).name.substr(1);
+                    s = std::get<Variable>(v).name.substr(1);
+                }else{
+                    s = valueToString(v);
                 }
-                return valueToString(v);
+                // Lowercase for case-insensitive comparison because of test 1
+                for (char& c : s) c = std::tolower((unsigned char)c);
+                return s;
             };
             return key(a) < key(b);
         }

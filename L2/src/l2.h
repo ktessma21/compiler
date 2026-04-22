@@ -451,7 +451,7 @@ namespace L2 {
                 case InstructionType::CallInput:       arg = 0;  break;
                 case InstructionType::CallAllocate:    arg = 2;  break;
                 case InstructionType::CallTupleError:  arg = 3;  break;
-                case InstructionType::CallTensorError: arg = -1; break;
+                case InstructionType::CallTensorError: arg = argument; break;
                 case InstructionType::CallUN:          arg = argument; break;
                 default: break;
             }
@@ -482,7 +482,7 @@ namespace L2 {
         std::set<VALUE> readsLive() const override {
             std::set<VALUE> r;
 
-            int n = arg.value_or(0);
+            int n = arg.value();
             const auto& args = argRegs();
             for (int k = 0; k < std::min(n, (int)args.size()); k++) {
                 r.insert(VALUE(args[k]));

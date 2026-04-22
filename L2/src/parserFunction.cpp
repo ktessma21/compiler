@@ -669,9 +669,9 @@ struct functionFormat :
             std::string e_str    = tk.next();   // E
 
             auto instr = std::make_unique<WWWEInstruction>();
-            instr->setDst(stringToRegister(dst_str));
-            instr->setBase(stringToRegister(base_str));
-            instr->setIdx(stringToRegister(idx_str));
+            instr->setDst(parseW(dst_str));
+            instr->setBase(parseW(base_str));
+            instr->setIdx(parseW(idx_str));
             instr->setScale(std::stoll(e_str));
             f.instructions.push_back(std::move(instr));
         }
@@ -849,6 +849,11 @@ struct functionFormat :
 
             auto call = std::make_unique<CallInstruction>(classify(u_str));
             assert(call->type != InstructionType::Unknown);
+
+            if (call->type == InstructionType::CallTensorError){
+                std::string n_str = tk.next();
+                call->setNum(std::stoll(n_str));
+            }
 
             if (call->type == InstructionType::CallUN) {
                 auto parseCallee = [](const std::string& str) -> VALUE {
