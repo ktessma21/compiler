@@ -208,6 +208,22 @@ struct M : number {};
 
 
 /* All instructions set defined from here */
+struct stackArg :
+    pegtl::seq<
+        pstring("stack-arg"),
+        spaces,
+        M
+    >{};
+
+struct wFromStackArg :
+    pegtl::seq<
+        W,
+        spaces,
+        pstring("<-"),
+        spaces,
+        stackArg
+    >{};
+
 struct memory_access_block :
     pegtl::seq<
         pstring("mem"),
@@ -426,6 +442,7 @@ struct returnINS : pstring("return"){};
 
 struct assignment_block :
         pegtl::sor<
+            wFromStackArg,
             wStackM,
             compareAssign,      // W <- t cmp t   (before assignWfromS)
             assignWfromMemory,  // W <- mem ...   (before assignWfromS, "mem" is specific)
@@ -786,13 +803,16 @@ struct functionFormat :
             Tokenizer tk(in.string());
             std::string w_str   = tk.next();
             std::string sop_str = tk.next();
-            // sx is always rcx; consume it for sanity
-            (void)tk.next();
+            std::string sx_str = tk.next();
+
+            
+          
 
             auto instr = std::make_unique<ShiftInstruction>(InstructionType::WsopSx);
             instr->setDst(parseW(w_str));
             instr->setSop(parseSop(sop_str));
-            instr->setSrc(Register::rcx);
+            if (sx_str[0] == '%') instr->setSrc(parseW(sx_str)); // this must be a variable 
+            else instr->setSrc(Register::rcx); // else it is always rcx
             f.instructions.push_back(std::move(instr));
         }
     };
@@ -842,6 +862,34 @@ struct functionFormat :
             }
 
             f.instructions.push_back(std::move(call));
+        }
+    };
+
+    template<> struct action<wFromStackArg> {
+        template<typename Input>
+        static void apply(const Input& in, Function& f) {
+            assert(f.getLabel() != "");
+
+            Tokenizer tk(in.string());
+            std::string w_str = tk.next();
+            tk.expect("<-");
+            tk.expect("stack-arg");
+            std::string m_str = tk.next();
+
+            int64_t stackIdx = std::stoll(m_str);
+
+            // Model stack-arg as: w <- mem rsp <offset>
+            // Offset = stackIdx * 8 + (num_locals * 8) + 8
+            // (the +8 skips the return address; num_locals*8 skips locals)
+            memoryAccess m;
+            m.base = Register::rsp;
+            m.size = stackIdx * 8 + f.num_locals * 8 + 8;   // changes made to STACK-arg. specifically how it calculates the f.num_locals
+            
+
+            auto assign = std::make_unique<AssignInstruction>(InstructionType::AssignFromStack);
+            assign->setTo(parseW(w_str));
+            assign->setFrom(VALUE(m));
+            f.instructions.push_back(std::move(assign));
         }
     };
 
