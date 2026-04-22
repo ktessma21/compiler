@@ -764,7 +764,7 @@ struct functionFormat :
 
             // strip leading ':'
             std::string label_str = (!label_tok.empty() && label_tok[0] == ':')
-                                    ? label_tok.substr(1) : label_tok;
+                                    ? label_tok : label_tok;
 
             compareStruct cav;
             cav.left  = parseT(left_str);

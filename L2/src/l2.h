@@ -12,8 +12,6 @@
 
 namespace L2 {
 
-    // ---------- Forward declarations of core types ----------
-
     class ASTNode {
     public:
         virtual ~ASTNode() = default;
@@ -21,14 +19,13 @@ namespace L2 {
         virtual bool verify() const { return true; }
     };
 
-    // Label and Variable both wrap a std::string, but must be distinct
-    // types so they can appear as separate alternatives in std::variant.
     struct Label {
         std::string name;
         Label() = default;
         explicit Label(std::string s) : name(std::move(s)) {}
         bool operator==(const Label&) const = default;
-        bool empty() {return name == "";}
+        bool operator<(const Label& other) const { return name < other.name; }
+        bool empty() { return name == ""; }
     };
 
     struct Variable {
@@ -49,6 +46,7 @@ namespace L2 {
         std::string to_string() const override { return std::to_string(value); }
         int64_t getValue() const { return value; }
         bool operator==(const Number& other) const { return value == other.value; }
+        bool operator<(const Number& other) const { return value < other.value; }
 
     };
 
@@ -68,6 +66,12 @@ namespace L2 {
         int64_t size = 0;
         bool operator==(const memoryAccess& other) const {
             return base == other.base && size == other.size;
+        }
+        bool operator<(const memoryAccess& other) const {
+            if (base.index() != other.base.index()) return base.index() < other.base.index();
+            // size as tiebreaker; variant comparison works if its alternatives have 
+            if (base != other.base) return base < other.base;
+            return size < other.size;
         }
     };
 
@@ -98,10 +102,6 @@ namespace L2 {
     }
 
     // ---------- Shared string-conversion helpers ----------
-    //
-    // These were inline lambdas duplicated in every Instruction subclass.
-    // Pulling them out here means there's exactly one place to fix bugs
-    // or extend behavior when the IR grows.
 
     inline std::string registerToString(Register r) {
         switch (r) {
@@ -158,12 +158,10 @@ namespace L2 {
         return std::visit([](const auto& b) -> std::string {
             using T = std::decay_t<decltype(b)>;
             if constexpr (std::is_same_v<T, Register>) return registerToString(b);
-            else                                       return b.name;  // Variable
+            else                                       return b.name;
         }, m.base);
     }
 
-    // The one and only VALUE -> string function. Replaces every
-    // per-class valueToString lambda.
     inline std::string valueToString(const VALUE& v) {
         return std::visit([](const auto& val) -> std::string {
             using T = std::decay_t<decltype(val)>;
@@ -180,8 +178,6 @@ namespace L2 {
         }, v);
     }
 
-    // Convenience helper: if a VALUE is a Variable, return it wrapped in
-    // a set; otherwise return empty. Used to build reads()/writes() sets.
     inline std::set<Variable> varsIn(const VALUE& v) {
         std::set<Variable> out;
         if (std::holds_alternative<Variable>(v)) {
@@ -195,6 +191,45 @@ namespace L2 {
         return out;
     }
 
+    inline std::set<VALUE> liveItemsIn(const VALUE& v) {
+        std::set<VALUE> out;
+        if (std::holds_alternative<Variable>(v) || std::holds_alternative<Register>(v)) {
+            out.insert(v);
+        } else if (std::holds_alternative<memoryAccess>(v)) {
+            const auto& m = std::get<memoryAccess>(v);
+            if (std::holds_alternative<Variable>(m.base))
+                out.insert(VALUE(std::get<Variable>(m.base)));
+            else if (std::get<Register>(m.base) != Register::rsp)
+                out.insert(VALUE(std::get<Register>(m.base)));
+        }
+        return out;
+    }
+
+    // Calling-convention register groups.
+    inline const std::vector<Register>& callerSaveRegs() {
+        static const std::vector<Register> s = {
+            Register::rax, Register::rcx, Register::rdx, Register::rdi,
+            Register::rsi, Register::r8,  Register::r9,  Register::r10, Register::r11
+        };
+        return s;
+    }
+
+    inline const std::vector<Register>& calleeSaveRegs() {
+        static const std::vector<Register> s = {
+            Register::rbx, Register::rbp, Register::r12,
+            Register::r13, Register::r14, Register::r15
+        };
+        return s;
+    }
+
+    inline const std::vector<Register>& argRegs() {
+        static const std::vector<Register> s = {
+            Register::rdi, Register::rsi, Register::rdx,
+            Register::rcx, Register::r8,  Register::r9
+        };
+        return s;
+    }
+
     // ---------- Instruction hierarchy ----------
 
     class Instruction : public ASTNode {
@@ -206,12 +241,12 @@ namespace L2 {
 
         bool verify() const override { return true; }
 
-        // Every concrete instruction must say which variables it touches
-        // and how to rewrite them. Default to "none" so instructions with
-        // no variable operands (return, label, goto) don't need to override.
         virtual std::set<Variable> reads()  const { return {}; }
         virtual std::set<Variable> writes() const { return {}; }
-        virtual void replaceVar(const Variable& /*from*/, const Variable& /*to*/) {}
+        virtual void replaceVar(const Variable&, const Variable&) {}
+
+        virtual std::set<VALUE> readsLive()  const { return {}; }
+        virtual std::set<VALUE> writesLive() const { return {}; }
     };
 
     class CjumpInstruction : public Instruction {
@@ -238,6 +273,15 @@ namespace L2 {
             if (cmp_val) {
                 auto l  = varsIn(cmp_val->left);  r.insert(l.begin(), l.end());
                 auto rr = varsIn(cmp_val->right); r.insert(rr.begin(), rr.end());
+            }
+            return r;
+        }
+
+        std::set<VALUE> readsLive() const override {
+            std::set<VALUE> r;
+            if (cmp_val) {
+                auto l  = liveItemsIn(cmp_val->left);  r.insert(l.begin(), l.end());
+                auto rr = liveItemsIn(cmp_val->right); r.insert(rr.begin(), rr.end());
             }
             return r;
         }
@@ -315,15 +359,11 @@ namespace L2 {
 
         std::set<Variable> reads() const override {
             std::set<Variable> r;
-            // W <- mem X M and W <- S read the source.
-            // mem X M <- S reads both the memory base and the source.
             if (from) {
                 auto fr = varsIn(*from);
                 r.insert(fr.begin(), fr.end());
             }
             if (type == InstructionType::AssignMemoryFromS && to) {
-                // The destination is a memory access; its base is READ
-                // (we're not overwriting the base register/variable).
                 auto tr = varsIn(*to);
                 r.insert(tr.begin(), tr.end());
             }
@@ -334,11 +374,32 @@ namespace L2 {
             return r;
         }
 
+        std::set<VALUE> readsLive() const override {
+            std::set<VALUE> r;
+            if (from) {
+                auto fr = liveItemsIn(*from);
+                r.insert(fr.begin(), fr.end());
+            }
+            if (type == InstructionType::AssignMemoryFromS && to) {
+                auto tr = liveItemsIn(*to);
+                r.insert(tr.begin(), tr.end());
+            }
+            if (cmp_val) {
+                auto l  = liveItemsIn(cmp_val->left);  r.insert(l.begin(), l.end());
+                auto rr = liveItemsIn(cmp_val->right); r.insert(rr.begin(), rr.end());
+            }
+            return r;
+        }
+
         std::set<Variable> writes() const override {
-            // Only W-destinations are written. Memory-store destinations
-            // do not "write" a variable in the live-analysis sense.
             if (type == InstructionType::AssignMemoryFromS) return {};
             if (to) return varsIn(*to);
+            return {};
+        }
+
+        std::set<VALUE> writesLive() const override {
+            if (type == InstructionType::AssignMemoryFromS) return {};
+            if (to) return liveItemsIn(*to);
             return {};
         }
 
@@ -386,9 +447,10 @@ namespace L2 {
                    t == InstructionType::CallUN);
 
             switch (t) {
-                case InstructionType::CallPrint:       arg = 1; break;
-                case InstructionType::CallInput:       arg = 0; break;
-                case InstructionType::CallAllocate:    arg = 2; break;
+                case InstructionType::CallPrint:       arg = 1;  break;
+                case InstructionType::CallInput:       arg = 0;  break;
+                case InstructionType::CallAllocate:    arg = 2;  break;
+                case InstructionType::CallTupleError:  arg = 3;  break;
                 case InstructionType::CallTensorError: arg = -1; break;
                 case InstructionType::CallUN:          arg = argument; break;
                 default: break;
@@ -410,9 +472,37 @@ namespace L2 {
         }
 
         std::set<Variable> reads() const override {
-            // The callee itself might be a variable (call %f N).
             if (callee) return varsIn(*callee);
             return {};
+        }
+
+        // GEN for a call:
+        //   - the first N argument registers (rdi, rsi, rdx, rcx, r8, r9)
+        //   - the callee itself, if CallUN (since it's read to know where to jump)
+        std::set<VALUE> readsLive() const override {
+            std::set<VALUE> r;
+
+            int n = arg.value_or(0);
+            const auto& args = argRegs();
+            for (int k = 0; k < std::min(n, (int)args.size()); k++) {
+                r.insert(VALUE(args[k]));
+            }
+
+            if (type == InstructionType::CallUN && callee) {
+                if (std::holds_alternative<Variable>(*callee) ||
+                    std::holds_alternative<Register>(*callee)) {
+                    r.insert(*callee);
+                }
+            }
+
+            return r;
+        }
+
+        // KILL for a call: all caller-save registers (the callee may clobber them).
+        std::set<VALUE> writesLive() const override {
+            std::set<VALUE> w;
+            for (Register reg : callerSaveRegs()) w.insert(VALUE(reg));
+            return w;
         }
 
         void replaceVar(const Variable& from, const Variable& to) override {
@@ -428,12 +518,16 @@ namespace L2 {
     public:
         ReturnInstruction() : Instruction(InstructionType::Return) {}
         std::string to_string() const override { return "\treturn\n"; }
-        
-        // std::set<Variable> reads() const override {
-        //     // The callee itself might be a variable (call %f N).
-        //     if (callee) return varsIn(*callee);
-        //     return {};
-        // }
+
+        // GEN for return: rax (return value) + all callee-save registers.
+        std::set<VALUE> readsLive() const override {
+            std::set<VALUE> r;
+            r.insert(VALUE(Register::rax));
+            for (Register reg : calleeSaveRegs()) r.insert(VALUE(reg));
+            return r;
+        }
+
+        // KILL is empty — return writes nothing.
     };
 
     class LabelInstruction : public Instruction {
@@ -483,15 +577,26 @@ namespace L2 {
         }
 
         std::set<Variable> reads() const override {
-            // W op= t reads BOTH dst (we need the old value) and src.
             std::set<Variable> r;
             if (dst) { auto d = varsIn(*dst); r.insert(d.begin(), d.end()); }
             if (src) { auto s = varsIn(*src); r.insert(s.begin(), s.end()); }
             return r;
         }
 
+        std::set<VALUE> readsLive() const override {
+            std::set<VALUE> r;
+            if (dst) { auto d = liveItemsIn(*dst); r.insert(d.begin(), d.end()); }
+            if (src) { auto s = liveItemsIn(*src); r.insert(s.begin(), s.end()); }
+            return r;
+        }
+
         std::set<Variable> writes() const override {
             if (dst) return varsIn(*dst);
+            return {};
+        }
+
+        std::set<VALUE> writesLive() const override {
+            if (dst) return liveItemsIn(*dst);
             return {};
         }
 
@@ -537,8 +642,20 @@ namespace L2 {
             return r;
         }
 
+        std::set<VALUE> readsLive() const override {
+            std::set<VALUE> r;
+            if (dst) { auto d = liveItemsIn(*dst); r.insert(d.begin(), d.end()); }
+            if (src) { auto s = liveItemsIn(*src); r.insert(s.begin(), s.end()); }
+            return r;
+        }
+
         std::set<Variable> writes() const override {
             if (dst) return varsIn(*dst);
+            return {};
+        }
+
+        std::set<VALUE> writesLive() const override {
+            if (dst) return liveItemsIn(*dst);
             return {};
         }
 
@@ -571,13 +688,22 @@ namespace L2 {
         }
 
         std::set<Variable> reads() const override {
-            // ++ and -- read the current value of dst.
             if (dst) return varsIn(*dst);
+            return {};
+        }
+
+        std::set<VALUE> readsLive() const override {
+            if (dst) return liveItemsIn(*dst);
             return {};
         }
 
         std::set<Variable> writes() const override {
             if (dst) return varsIn(*dst);
+            return {};
+        }
+
+        std::set<VALUE> writesLive() const override {
+            if (dst) return liveItemsIn(*dst);
             return {};
         }
 
@@ -617,8 +743,20 @@ namespace L2 {
             return r;
         }
 
+        std::set<VALUE> readsLive() const override {
+            std::set<VALUE> r;
+            if (base) { auto b = liveItemsIn(*base); r.insert(b.begin(), b.end()); }
+            if (idx)  { auto i = liveItemsIn(*idx);  r.insert(i.begin(), i.end()); }
+            return r;
+        }
+
         std::set<Variable> writes() const override {
             if (dst) return varsIn(*dst);
+            return {};
+        }
+
+        std::set<VALUE> writesLive() const override {
+            if (dst) return liveItemsIn(*dst);
             return {};
         }
 
@@ -656,7 +794,6 @@ namespace L2 {
 
         std::set<Variable> reads() const override {
             std::set<Variable> r;
-            // The memory base is read (we need it to form the address).
             if (std::holds_alternative<Variable>(mem.base)) {
                 r.insert(std::get<Variable>(mem.base));
             }
@@ -664,7 +801,19 @@ namespace L2 {
             return r;
         }
 
-        // This instruction writes memory, not a variable, so writes() is empty.
+        std::set<VALUE> readsLive() const override {
+            std::set<VALUE> r;
+            // Memory base is read (needed to form the address).
+            if (std::holds_alternative<Variable>(mem.base)) {
+                r.insert(VALUE(std::get<Variable>(mem.base)));
+            } else {
+                r.insert(VALUE(std::get<Register>(mem.base)));
+            }
+            if (src) { auto s = liveItemsIn(*src); r.insert(s.begin(), s.end()); }
+            return r;
+        }
+
+        // writes() and writesLive() are empty — this writes memory, not a var/register.
 
         void replaceVar(const Variable& from, const Variable& to) override {
             if (std::holds_alternative<Variable>(mem.base) &&
@@ -686,7 +835,7 @@ namespace L2 {
     public:
         std::vector<std::unique_ptr<Instruction>> instructions;
         int num_args = 0;
-        int num_locals = 0;      // stack slots reserved for spilled variables
+        int num_locals = 0;
         bool args_set = false;
 
         Function() = default;
