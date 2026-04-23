@@ -6,6 +6,32 @@
 
 namespace L2 {
 
+		struct VALUEComparator {
+			bool operator()(const VALUE& a, const VALUE& b) const {
+				auto key = [](const VALUE& v) -> std::string {
+					std::string s;
+					if (std::holds_alternative<Variable>(v)) {
+						// Drop the leading '%' so "%val_to_test" compares after "r15"
+						s = std::get<Variable>(v).name.substr(1);
+					} else {
+						s = valueToString(v);
+					}
+					// Lowercase for case-insensitive comparison (test 1)
+					for (char& c : s) c = std::tolower((unsigned char)c);
+
+					// Tiebreak: Variable sorts BEFORE Register when names match.
+					// Without this, set<LiveCompare> treats %r12 and r12 as equivalent
+					// and silently deduplicates one of them.
+					if (std::holds_alternative<Variable>(v))      s += "a";
+					else if (std::holds_alternative<Register>(v)) s += "b";
+					return s;
+				};
+				return key(a) < key(b);
+			}
+    	};
+
+   	 	using LiveSet = std::set<VALUE, VALUEComparator>;
+
 		struct SC {
 
 			
@@ -81,5 +107,6 @@ namespace L2 {
 	
 		};
 	
-	void Liveness(Function& f);
+	void LivenessPrint(Function& f);
+	void Liveness(Function& f, std::vector<LiveSet>& InSet, std::vector<LiveSet>& OutSet);
 }

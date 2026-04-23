@@ -12,32 +12,14 @@
 namespace L2 { 
     // std::vector<std::vector<size_t>> successors;
 
-   struct LiveCompare {
-    bool operator()(const VALUE& a, const VALUE& b) const {
-            auto key = [](const VALUE& v) -> std::string {
-                std::string s;
-                if (std::holds_alternative<Variable>(v)) {
-                    // Drop the leading '%' so "%val_to_test" compares after "r15"
-                    s = std::get<Variable>(v).name.substr(1);
-                }else{
-                    s = valueToString(v);
-                }
-                // Lowercase for case-insensitive comparison because of test 1
-                for (char& c : s) c = std::tolower((unsigned char)c);
-                return s;
-            };
-            return key(a) < key(b);
-        }
-    };
+   
 
-    using LiveSet = std::set<VALUE, LiveCompare>;
-
-    void Liveness(Function& f) {
+    void Liveness(Function& f, std::vector<LiveSet>& InSet, std::vector<LiveSet>& OutSet) {
         L2::SC sc;
         sc.build(f);
 
-        std::vector<LiveSet> in(f.instructions.size());
-        std::vector<LiveSet> out(f.instructions.size());
+        InSet.assign(f.instructions.size(), LiveSet{});
+        OutSet.assign(f.instructions.size(), LiveSet{});
 
         bool keep_going = true;
         while (keep_going) {
@@ -46,21 +28,30 @@ namespace L2 {
             for (int i = (int)f.instructions.size() - 1; i >= 0; i--) {
                 LiveSet liveOut;
                 for (size_t s : sc.successors[i]) {
-                    liveOut.insert(in[s].begin(), in[s].end());
+                    liveOut.insert(InSet[s].begin(), InSet[s].end());
                 }
 
                 LiveSet liveIn = liveOut;
                 for (const auto& w : f.instructions[i]->writesLive()) liveIn.erase(w);
                 for (const auto& r : f.instructions[i]->readsLive())  liveIn.insert(r);
 
-                if (liveIn != in[i] || liveOut != out[i]) {
-                    in[i]  = std::move(liveIn);
-                    out[i] = std::move(liveOut);
+                if (liveIn != InSet[i] || liveOut != OutSet[i]) {
+                    InSet[i]  = std::move(liveIn);
+                    OutSet[i] = std::move(liveOut);
                     keep_going = true;
                 }
             }
-            }
+        }
+    }
+
+    void LivenessPrint(Function& f) {
+
         
+        std::vector<LiveSet> in;
+        std::vector<LiveSet> out;
+
+        Liveness(f, in, out);
+
 
         std::cout << '(' << '\n';
         std::cout << "(in" << '\n';

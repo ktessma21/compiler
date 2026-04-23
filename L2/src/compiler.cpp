@@ -16,6 +16,7 @@
 #include <parser.h>
 #include <spiller.h>
 #include <liveness.h>
+#include <inference.h>
 // #include <generator.h>
 #include <string.h>
 
@@ -28,8 +29,8 @@ void print_help(char *progName) {
 int main(int argc, char **argv) {
   auto enable_code_generator = true;
   auto spill_only = false;
-  auto interference_only = false;
-  auto liveness_only = true;
+  auto interference_only = true;
+  auto liveness_only = false;
   int32_t optLevel = 3;
 
   /*
@@ -108,7 +109,7 @@ int main(int argc, char **argv) {
     // TODO
     auto function = L2::parse_l2_function(fileName);
 
-    L2::Liveness(function);
+    L2::LivenessPrint(function);
 
   } else if (interference_only) {
 
@@ -116,6 +117,9 @@ int main(int argc, char **argv) {
      * Parse an L2 function.
      */
     // TODO
+      auto function = L2::parse_l2_function(fileName);
+
+      L2::Inference(function);
 
   } else {
 
