@@ -19,16 +19,12 @@ namespace L2 {
         Liveness(f, in, out);
 
         Graph g;
-        // for (auto& s : in) g.add(s);
-       
-        // for (auto& instr : f.instructions){
-        //     auto& writes = instr->writesLive();
-        //     s.insert(writes.begin(), writes.end());
-        // }
         for (auto& i : in) g.add(i);
-        for (auto& i : out) g.add(i);
+      
+        for (int i = (int)f.instructions.size() - 1; i >= 0; i--){
+                    // handle special case of sx
+            const auto& instr = f.instructions[i];
 
-        for (const auto& instr : f.instructions){
             if (instr->type == InstructionType::WsopSx) {
                 auto* shift = dynamic_cast<ShiftInstruction*>(instr.get());
                 if (shift && shift->src.has_value() &&
@@ -36,13 +32,14 @@ namespace L2 {
                     g.connect_with_everything_except_sx(shift->src.value());
                 }
             }
-            L2::LiveSet s;
+           
             auto writes = instr->writesLive();
-            auto reads = instr->readsLive();
-            s.insert(reads.begin(), reads.end()); // merge them
-            s.insert(writes.begin(), writes.end());
-            g.add(s); // connect everything. 
+            out[i].insert(writes.begin(), writes.end()); // merge i.e connect kill[i] and out[i]
+            
         }
+
+        
+        for (auto& i : out) g.add(i);
 
         // after we connect all the in and out. 
         

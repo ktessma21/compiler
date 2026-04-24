@@ -17,13 +17,15 @@ namespace L2 {
 						s = valueToString(v);
 					}
 					// Lowercase for case-insensitive comparison (test 1)
+					s.erase(std::remove(s.begin(), s.end(), '_'), s.end());
+
 					for (char& c : s) c = std::tolower((unsigned char)c);
 
 					// Tiebreak: Variable sorts BEFORE Register when names match.
 					// Without this, set<LiveCompare> treats %r12 and r12 as equivalent
 					// and silently deduplicates one of them.
-					if (std::holds_alternative<Variable>(v))      s += "a";
-					else if (std::holds_alternative<Register>(v)) s += "b";
+					if (std::holds_alternative<Variable>(v))      s += "\x01a";
+					else if (std::holds_alternative<Register>(v)) s += "\x01b";
 					return s;
 				};
 				return key(a) < key(b);
