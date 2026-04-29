@@ -331,7 +331,19 @@ namespace L1{
                 return "\tcall tuple_error\n";
             }
             if (instr.type == InstructionType::CallTensorError) {
-                return "\tcall array_tensor_error_null\n";
+                // if (instr.arg.)
+                assert(instr.arg.has_value());
+                int64_t num_args = instr.arg.value();
+
+                if (num_args == 1){
+                    return "\tcall array_tensor_error_null # runtime system call\n";
+                }
+                if (num_args == 3){
+                    return "\tcall array_error # runtime system call\n";
+                }
+                assert(num_args == 4);
+                return "\tcall tensor_error\n";  // else it has to be 4
+                
             }
 
             if (instr.type == InstructionType::CallUN) {

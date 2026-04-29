@@ -802,6 +802,11 @@ struct programORfunction :
             auto call = std::make_unique<CallInstruction>(classify(u_str));
             assert(call->type != InstructionType::Unknown);
 
+            if (call->type == InstructionType::CallTensorError){
+                std::string n_str = tk.next();
+                call->setNum(std::stoll(n_str));
+            }
+
             if (call->type == InstructionType::CallUN) {
                 auto parseCallee = [](const std::string& str) -> VALUE {
                     if (str[0] == '@') return Label(str.substr(1));

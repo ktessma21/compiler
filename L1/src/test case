@@ -7,3 +7,22 @@ valgrind --leak-check=full --track-origins=yes bin/L1 tests/test33.L1
 
 
 make copy_instructor_bin
+
+
+
+failed:
+FAILED:  test1312.L1 passed
+FAILED:  test1314.L1 passed
+FAILED:  test1815.L1
+FAILED:  test1917.L1
+FAILED:  test1918.L1
+FAILED:  test2684.L1
+FAILED:  test2688.L1
+FAILED:  test4990.L1
+FAILED:  test5030.L1
+FAILED:  test5077.L1
+FAILED:  test5093.L1
+FAILED:  test5155.L1
+FAILED:  test5199.L1
+FAILED:  test5201.L1
+FAILED:  test5243.L1
