@@ -1046,7 +1046,7 @@ struct programORfunction :
     };
 
 
-    bool TRACE = false;
+    bool TRACE = true;
 
     template<typename Rule>
     struct my_tracer : pegtl::normal<Rule> {
