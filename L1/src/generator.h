@@ -169,14 +169,14 @@ namespace L1{
             if (!std::holds_alternative<Number>(left) && std::holds_alternative<Number>(right)) {
             // right is number — put it first (immediate must be first in AT&T)
                 result += "\tcmpq " + Converter::toString(right) + ", " + Converter::toString(left) + "\n";
-                // flipped because we swapped
+                
                 switch (stringToCmpType(cmpVal.cmp)) {
                     case CmpType::Eq:  result += "\tje ";  break;
                     case CmpType::Neq: result += "\tjne "; break;
-                    case CmpType::Lt:  result += "\tjl ";  break;  // flipped
-                    case CmpType::Lte: result += "\tjle "; break;  // flipped
-                    case CmpType::Gt:  result += "\tjg ";  break;  // flipped
-                    case CmpType::Gte: result += "\tjge "; break;  // flipped
+                    case CmpType::Lt:  result += "\tjl ";  break;  
+                    case CmpType::Lte: result += "\tjle "; break;  
+                    case CmpType::Gt:  result += "\tjg ";  break;  
+                    case CmpType::Gte: result += "\tjge "; break;  
                 }
             } else if (std::holds_alternative<Number>(left) && !std::holds_alternative<Number>(right)) {
                 // left is number — already in correct position (first)
@@ -228,51 +228,82 @@ namespace L1{
         }
           // more red flag !!!!! 
         static std::string generate(const AssignInstruction& instr) {
+                
+
                 if (instr.isCmpAssign()){
                     const auto& cmpVal = instr.getCmpVal().value();
                     const auto& left = *cmpVal.left;
                     const auto& right = *cmpVal.right;
-
-                    // check if any of them are just numbers if so you need a specific ordering 
                     const auto& recieveReg = instr.getTo().value();
-                    
+
                     std::string cmpStr;
 
+                    // Compile-time case: both operands are numbers
                     if (std::holds_alternative<Number>(left) && std::holds_alternative<Number>(right)){
                         int64_t l = std::get<Number>(left).getValue();
                         int64_t r = std::get<Number>(right).getValue();
 
-                        std::string result;
+                        bool result = false;
                         switch (stringToCmpType(cmpVal.cmp)) {
-                            case CmpType::Eq:  result = (l == r ? "1" : "0"); break;
-                            case CmpType::Neq: result = (l != r ? "1" : "0"); break;
-                            case CmpType::Lt:  result = (l <  r ? "1" : "0"); break;
-                            case CmpType::Lte: result = (l <= r ? "1" : "0"); break;
-                            case CmpType::Gt:  result = (l >  r ? "1" : "0"); break;
-                            case CmpType::Gte: result = (l >= r ? "1" : "0"); break;
+                            case CmpType::Eq:  result = (l == r); break;
+                            case CmpType::Neq: result = (l != r); break;
+                            case CmpType::Lt:  result = (l <  r); break;
+                            case CmpType::Lte: result = (l <= r); break;
+                            case CmpType::Gt:  result = (l >  r); break;
+                            case CmpType::Gte: result = (l >= r); break;
                         }
-                                                return cmpStr; // validate the solution in compile time. 
+                        // Materialize the boolean directly into the destination register
+                        cmpStr += "\tmovq $" + std::string(result ? "1" : "0")
+                            + ", " + Converter::toString(recieveReg) + "\n";
+                        return cmpStr;
                     }
+
+                    // Case A: left is number, right is register/variable
+                    // Emit cmpq left, right  -> right is second -> FLIP the set
                     else if (std::holds_alternative<Number>(left) && !std::holds_alternative<Number>(right)){
                         cmpStr += "\tcmpq " + Converter::toString(left) + ", " + Converter::toString(right) + "\n";
-                    }else if (!std::holds_alternative<Number>(left) && std::holds_alternative<Number>(right)){
+                        switch (stringToCmpType(cmpVal.cmp)) {
+                            case CmpType::Eq:  cmpStr += "\tsete  " + registerToByteString(recieveReg) + "\n"; break;
+                            case CmpType::Neq: cmpStr += "\tsetne " + registerToByteString(recieveReg) + "\n"; break;
+                            case CmpType::Lt:  cmpStr += "\tsetg  " + registerToByteString(recieveReg) + "\n"; break; // flipped
+                            case CmpType::Lte: cmpStr += "\tsetge " + registerToByteString(recieveReg) + "\n"; break; // flipped
+                            case CmpType::Gt:  cmpStr += "\tsetl  " + registerToByteString(recieveReg) + "\n"; break; // flipped
+                            case CmpType::Gte: cmpStr += "\tsetle " + registerToByteString(recieveReg) + "\n"; break; // flipped
+                        }
+                    }
+
+                    // Case B: left is register/variable, right is number
+                    // Emit cmpq right, left  -> left is second -> NATURAL set (no flip)
+                    else if (!std::holds_alternative<Number>(left) && std::holds_alternative<Number>(right)){
                         cmpStr += "\tcmpq " + Converter::toString(right) + ", " + Converter::toString(left) + "\n";
-                    }else{
+                        switch (stringToCmpType(cmpVal.cmp)) {
+                            case CmpType::Eq:  cmpStr += "\tsete  " + registerToByteString(recieveReg) + "\n"; break;
+                            case CmpType::Neq: cmpStr += "\tsetne " + registerToByteString(recieveReg) + "\n"; break;
+                            case CmpType::Lt:  cmpStr += "\tsetl  " + registerToByteString(recieveReg) + "\n"; break; // natural
+                            case CmpType::Lte: cmpStr += "\tsetle " + registerToByteString(recieveReg) + "\n"; break; // natural
+                            case CmpType::Gt:  cmpStr += "\tsetg  " + registerToByteString(recieveReg) + "\n"; break; // natural
+                            case CmpType::Gte: cmpStr += "\tsetge " + registerToByteString(recieveReg) + "\n"; break; // natural
+                        }
+                    }
+
+                    // Case C: both are registers/variables
+                    // Emit cmpq left, right  -> right is second -> FLIP the set
+                    else {
                         cmpStr += "\tcmpq " + Converter::toString(left) + ", " + Converter::toString(right) + "\n";
+                        switch (stringToCmpType(cmpVal.cmp)) {
+                            case CmpType::Eq:  cmpStr += "\tsete  " + registerToByteString(recieveReg) + "\n"; break;
+                            case CmpType::Neq: cmpStr += "\tsetne " + registerToByteString(recieveReg) + "\n"; break;
+                            case CmpType::Lt:  cmpStr += "\tsetg  " + registerToByteString(recieveReg) + "\n"; break; // flipped
+                            case CmpType::Lte: cmpStr += "\tsetge " + registerToByteString(recieveReg) + "\n"; break; // flipped
+                            case CmpType::Gt:  cmpStr += "\tsetl  " + registerToByteString(recieveReg) + "\n"; break; // flipped
+                            case CmpType::Gte: cmpStr += "\tsetle " + registerToByteString(recieveReg) + "\n"; break; // flipped
+                        }
                     }
-                    
-                    
-                    switch (stringToCmpType(cmpVal.cmp)) {
-                        case CmpType::Eq: cmpStr += "\tsete " + registerToByteString(recieveReg) + "\n"; break;
-                        case CmpType::Neq: cmpStr += "\tsetne " + registerToByteString(recieveReg) + "\n"; break;
-                        case CmpType::Lt: cmpStr += "\tsetl " + registerToByteString(recieveReg) + "\n"; break;
-                        case CmpType::Lte: cmpStr += "\tsetle " + registerToByteString(recieveReg) + "\n"; break;
-                        case CmpType::Gt: cmpStr += "\tsetg " + registerToByteString(recieveReg) + "\n"; break;
-                        case CmpType::Gte: cmpStr += "\tsetge " + registerToByteString(recieveReg) + "\n"; break;
-                    }
-                    cmpStr += "\tmovzbq " + registerToByteString(recieveReg) + ", " + Converter::toString(instr.getTo().value()) + '\n';
+
+                    cmpStr += "\tmovzbq " + registerToByteString(recieveReg) + ", "
+                        + Converter::toString(recieveReg) + "\n";
                     return cmpStr;
-                  }
+                }
                 
                 if (std::holds_alternative<Label>(instr.getFrom().value())){
                     // std::cerr << Converter::toString(instr.getFrom().value()) << std::endl;

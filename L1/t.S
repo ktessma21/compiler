@@ -52,7 +52,7 @@ lea (%rdi, %rax, 4), %rdi
 	call print
 	movq 8(%rsp), %rdi
 	cmpq $2, %rdi
-	setl  %dil
+	setg %dil
 	movzbq %dil, %rdi
 	movq %rdi, %rdi
 	salq $1, %rdi
