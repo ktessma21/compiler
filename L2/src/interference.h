@@ -56,14 +56,15 @@ namespace L2 {
 
             std::optional<VALUE> node_with_less_than_15_neighbors() {
                 auto it = std::find_if(graph.begin(), graph.end(), [](const auto& entry) {
-                    return entry.second.size() < 15;
+                    return std::holds_alternative<Variable>(entry.first)
+                        && entry.second.size() < 15;
                 });
 
                 if (it != graph.end()) {
-                    return it->first; // Automatically wraps in std::optional
+                    return it->first;
                 }
 
-                return std::nullopt; // Explicitly return "nothing"
+                return std::nullopt;
             }
 
             void removeNode(const VALUE& v) {

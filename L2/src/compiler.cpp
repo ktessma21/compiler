@@ -118,7 +118,7 @@ int main(int argc, char **argv) {
         auto graph = L2::Interference(function);
         
 
-        // L2::GraphColoring(graph, function);
+        L2::GraphColoring(graph, function);
 
         return 0;
     }
