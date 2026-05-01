@@ -65,7 +65,7 @@ namespace L2 {
             }
     };
 
-    void Inference(Function& f);
+    void Interference(Function& f);
 
     
 };

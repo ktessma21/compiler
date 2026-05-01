@@ -264,7 +264,7 @@ namespace L2 {
             result += valueToString(cmp_val->left);
             result += " " + cmp_val->cmp + " ";
             result += valueToString(cmp_val->right);
-            result += " :" + label.name + "\n";
+            result += " " + label.name + "\n";
             return result;
         }
 

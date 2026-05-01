@@ -104,7 +104,7 @@ namespace L2 {
 
 
         /* MY CODE GOES HERE */
-struct entry_point_rule; // early declaration.
+
 struct l;
 
 struct sx: 
@@ -495,7 +495,7 @@ struct functionFormat :
             pegtl::one<'@'>,
             name> {};
 
-    struct entry_point_rule:
+    struct function_def:
         pegtl::seq<
             seps_with_comments,
             pegtl::seq<spaces, pegtl::one< '(' >>,
@@ -506,58 +506,27 @@ struct functionFormat :
             seps_with_comments
         > { };
 
-    struct grammar :
+    struct entry_point_rule:
+        pegtl::seq<
+            seps_with_comments,
+            pegtl::seq<spaces, pegtl::one< '(' >>,
+            l,
+            seps_with_comments,
+            pegtl::plus<function_def>,      // it used to be a Function, so now wait for function from now on. or it's function wait for number
+            pegtl::seq<spaces, pegtl::one< ')' >>,
+            seps_with_comments
+        > { };
+
+    struct grammar_function :
+        pegtl::must<
+            function_def
+        > {};
+
+    struct grammar_program :
         pegtl::must<
             entry_point_rule
         > {};
-
-
-    /* ------------------------------------------------------------------
-     *  Tokenizer — splits a string on whitespace and hands out tokens
-     *  one at a time. Replaces all the manual pos++ / find / substr
-     *  scaffolding the actions used to do by hand.
-     * ------------------------------------------------------------------ */
-    class Tokenizer {
-        std::vector<std::string> tokens;
-        size_t pos = 0;
-
-    public:
-        explicit Tokenizer(const std::string& s) {
-            std::string cur;
-            for (char c : s) {
-                if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
-                    if (!cur.empty()) { tokens.push_back(cur); cur.clear(); }
-                } else {
-                    cur += c;
-                }
-            }
-            if (!cur.empty()) tokens.push_back(cur);
-        }
-
-        // get next token and advance
-        std::string next() {
-            if (pos >= tokens.size())
-                throw std::runtime_error("tokenizer: no more tokens");
-            return tokens[pos++];
-        }
-
-        // look without advancing
-        const std::string& peek(size_t offset = 0) const {
-            if (pos + offset >= tokens.size())
-                throw std::runtime_error("tokenizer: peek past end");
-            return tokens[pos + offset];
-        }
-
-        bool done() const { return pos >= tokens.size(); }
-        size_t remaining() const { return tokens.size() - pos; }
-
-        // consume and verify (useful for "mem", "<-", etc.)
-        void expect(const std::string& s) {
-            std::string t = next();
-            if (t != s)
-                throw std::runtime_error("tokenizer: expected '" + s + "' got '" + t + "'");
-        }
-    };
+    
 
 
     inline Register stringToRegister(const std::string& s) {
@@ -619,6 +588,56 @@ struct functionFormat :
 
     template<typename Rule>
     struct action : pegtl::normal<Rule> {};
+
+    template<> struct action <entry_point_rule> {
+        template<typename Input>
+        static void apply(const Input& in, Program& p){
+           
+            std::string s = in.string();
+            size_t pos = s.find('(');  // outer program '('
+            pos++;
+
+            pos = s.find('@', pos);    // start of entry label
+            size_t label_end = pos;
+            while (label_end < s.size() &&
+                s[label_end] != ' ' && s[label_end] != '\t' && s[label_end] != '\n' &&
+                s[label_end] != '(' && s[label_end] != ')') {
+                label_end++;
+            }
+
+            std::string label_str = s.substr(pos, label_end - pos);
+            p.label = L2::Label(label_str);
+
+            pos = label_end;  // advance past the label so the function loop starts after it
+
+
+            while (pos < s.size()) {
+                // skip whitespace
+                while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t' || s[pos] == '\n')) pos++;
+                if (pos >= s.size() || s[pos] == ')') break;  // hit end of program
+
+                // we should now be at a function's opening '('
+                if (s[pos] != '(') break;  
+
+                size_t func_start = pos;
+                pos++;
+                while (pos < s.size() && s[pos] != ')') pos++;
+                if (pos < s.size()) pos++;   //  step past the ')'
+                size_t func_end = pos;  // one past the matching ')'
+
+                std::string content = s.substr(func_start, func_end - func_start);
+
+                auto fn = parse_l2_function(content);
+                p.functions.push_back(std::move(fn));
+            }
+            
+            return;
+
+            
+        }
+    };
+
+
 
 
     template<> struct action <wIncDec> {
@@ -1123,12 +1142,10 @@ struct functionFormat :
     };
 
 
-    L2::Function parse_l2_function(const char* fileName){
+    L2::Function parse_l2_function(const std::string& source){
         // 1. Read whole file
-        std::ifstream f(fileName);
-        std::stringstream ss;
-        ss << f.rdbuf();
-        std::string contents = ss.str();
+       
+        std::string contents = source;
 
         // 2. Find the closing ')' of the function
         size_t close = contents.rfind(')');
@@ -1141,11 +1158,33 @@ struct functionFormat :
         // std::cerr << prog_part <<'\n';
         // 3. Parse the function with PEGTL
         L2::Function result;
-        pegtl::memory_input<> in(prog_part, fileName);
-        pegtl::parse<grammar, action, my_tracer>(in, result);
+        pegtl::memory_input<> in(prog_part, "l2_function");
+        pegtl::parse<grammar_function, action, my_tracer>(in, result);
 
         return result;
 
+    }
+
+    L2::Function parse_function_file(const char* fileName){
+        // 1. Read whole file
+        std::ifstream f(fileName);
+        std::stringstream ss;
+        ss << f.rdbuf();
+        
+        return parse_l2_function(ss.str());
+    }
+
+    L2::Program parse_file(const char* fileName){
+        // 1. Read whole file
+        std::ifstream f(fileName);
+        std::stringstream ss;
+        ss << f.rdbuf();
+        std::string contents = ss.str();
+        
+        L2::Program result;
+        pegtl::memory_input<> in(contents, fileName);
+        pegtl::parse<grammar_program, action, my_tracer>(in, result);
+        return result;
     }
 
     
@@ -1168,7 +1207,7 @@ struct functionFormat :
         // 3. Parse the function with PEGTL
         L2::SpillInput result;
         pegtl::memory_input<> in(prog_part, fileName);
-        pegtl::parse<grammar, action, my_tracer>(in, result.function);
+        pegtl::parse<grammar_function, action, my_tracer>(in, result.function);
 
 
 
@@ -1182,31 +1221,3 @@ struct functionFormat :
     }
 }
 
-
-
-// Program parse_file (char *fileName){
-
-//         FILE *file = fopen(fileName, "r");
-
-//         if (!file){
-//             std::cerr << fileName << " : file not found." << std::endl;
-//             exit(1);
-//         }
-
-//         /*
-//         * Check the grammar for some possible issues.
-//         */
-//         if (pegtl::analyze< grammar >() != 0){
-//           std::cerr << "There are problems with the grammar" << std::endl;
-//           exit(1);
-//         }
-
-//         /*
-//         * Parse.
-//         */
-//         file_input< > fileInput(fileName);
-//         Program p;
-//         parse<grammar, action, my_tracer>(fileInput, p);
-
-//         return p;
-//     }

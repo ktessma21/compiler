@@ -16,7 +16,7 @@
 #include <parser.h>
 #include <spiller.h>
 #include <liveness.h>
-#include <inference.h>
+#include <interference.h>
 // #include <generator.h>
 #include <string.h>
 
@@ -29,7 +29,7 @@ void print_help(char *progName) {
 int main(int argc, char **argv) {
   auto enable_code_generator = true;
   auto spill_only = false;
-  auto interference_only = true;
+  auto interference_only = false;
   auto liveness_only = false;
   int32_t optLevel = 3;
 
@@ -88,94 +88,59 @@ int main(int argc, char **argv) {
 
 
   if (spill_only) {
+        /*
+        * Parse an L2 function and the spill arguments, then spill.
+        */
+        auto spill = L2::parse_spill_file(fileName);
+        L2::Spill(spill.function, spill.target, spill.prefix);
 
-    /*
-     * Parse an L2 function and the spill arguments.
-     */
-    // TODO
-    auto spill = L2::parse_spill_file(fileName);
+        return 0;
+    }
 
-    auto& function = spill.function;
+    if (liveness_only) {
+        /*
+        * Parse an L2 function and run liveness.
+        */
+        auto function = L2::parse_function_file(fileName);
+        L2::LivenessPrint(function);
 
-    L2::Spill(spill.function, spill.target, spill.prefix);
+        return 0;
+    }
 
+    if (interference_only) {
+        /*
+        * Parse an L2 function and build the interference graph.
+        */
+        auto function = L2::parse_function_file(fileName);
+        L2::Interference(function);
 
+        return 0;
+    }
 
-  } else if (liveness_only) {
+    if (functionNumber != -1) {
+        /*
+        * Print a single L2 function case.
+        */
+        auto program = L2::parse_file(fileName);
+        std::cout <<  program.functions[functionNumber].to_string();
 
-    /*
-     * Parse an L2 function.
-     */
-    // TODO
-    auto function = L2::parse_l2_function(fileName);
-
-    L2::LivenessPrint(function);
-
-  } else if (interference_only) {
-
-    /*
-     * Parse an L2 function.
-     */
-    // TODO
-      auto function = L2::parse_l2_function(fileName);
-
-      L2::Inference(function);
-
-  } else {
-
-    /*
-     * Parse the L2 program.
-     */
-    // TODO
-  }
+        return 0;
+    }
 
   /*
-   * Special cases.
-   */
-  if (spill_only) {
-
-    /*
-     * Spill.
-     */
-    // TODO
-
-    
-
-    return 0;
-  }
-
-  /*
-   * Liveness test.
-   */
-  if (liveness_only) {
-    // TODO
-
-    return 0;
-  }
-
-  /*
-   * Interference graph test.
-   */
-  if (interference_only) {
-    // TODO
-
-    return 0;
-  }
-
-  /*
-   * Print a single L2 function case.
-   */
-  if (functionNumber != -1) {
-    // TODO
-
-    return 0;
-  }
+  * Default: parse and compile the full L2 program.
+  */
+  auto program = L2::parse_file(fileName);
+  std::cerr << program.to_string();
 
   /*
    * Generate the target code normally.
    */
   if (enable_code_generator) {
     // TODO
+
+    
+
   }
 
   return 0;

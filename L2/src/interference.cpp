@@ -5,13 +5,13 @@
 #include <spiller.h>
 #include <stdexcept>
 #include <liveness.h>
-#include <inference.h>
+#include <interference.h>
 #include <set>
 #include <vector>
 // #include <map>
 
 namespace L2 { 
-    void Inference(Function& f) {
+    void Interference(Function& f) {
         
         std::vector<LiveSet> in;
         std::vector<LiveSet> out;
