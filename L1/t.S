@@ -1,60 +1,53 @@
-   .text
-   .globl go
+	.text
+	.globl go
 
 go:
-   # save callee-saved registers
-   pushq %rbx
-   pushq %rbp
-   pushq %r12
-   pushq %r13
-   pushq %r14
-   pushq %r15
+	# save callee-saved registers
+	pushq %rbx
+	pushq %rbp
+	pushq %r12
+	pushq %r13
+	pushq %r14
+	pushq %r15
 
-   call _go
+	call _go
 
-   # restore callee-saved registers and return
-   popq %r15
-   popq %r14
-   popq %r13
-   popq %r12
-   popq %rbp
-   popq %rbx
-   retq
+	# restore callee-saved registers and return
+	popq %r15
+	popq %r14
+	popq %r13
+	popq %r12
+	popq %rbp
+	popq %rbx
+	retq
 
-
-_go:
-   subq $16, %rsp # Allocate spills
-   movq $5, %rdi
-   movq $1, %rsi
-   movq %rdi, 0(%rsp)
-   movq %rsi, -8(%rsp)
-   salq $1, %rdi
-   addq $1, %rdi
-   call print # runtime system call
-   movq $1, %rsi
-   movq 0(%rsp), %rdi
-   movq $0, %rdx
+_fill_seq:
+	movq $1, %rsi
+	call allocate
+	movq %rax, %rdi
+	addq $8, %rdi
+	movq 0(%rax), %rcx
+	movq %rcx, %rdx
 _loop:
-   cmpq $0, %rdi
-   je _else
-   imulq %rdi, %rsi
-   subq $1, %rdi
-   cmpq $1, %rdi
-   setle %dl
-   movzbq %dl, %rdx
-   cmpq $0, %rdx
-   je _loop
-   movq %rsi, %rdi
-   salq $1, %rdi
-   addq $1, %rdi
-   call print # runtime system call
-   addq $16, %rsp # Free stack locations
-   retq
-_else:
-   movq $1, %rdi
-   salq $1, %rdi
-   addq $1, %rdi
-   call print # runtime system call
-   addq $16, %rsp # Free stack locations
-   retq
+	cmpq $0, %rcx
+	je _done
+	movq %rdx, %rsi
+	subq %rcx, %rsi
+	imulq $2, %rsi
+	addq $1, %rsi
+	movq %rsi, 0(%rdi)
+	subq $1, %rcx
+	addq $8, %rdi
+	jmp _loop #goto
+_done:
+	retq
+_go:
+	movq $13, %rdi
+	movq $_fill_ret, 8(%rsp)
+	subq $8, %rsp
+	jmp _fill_seq
+_fill_ret:
+	movq %rax, %rdi
+	call print
+	retq
 

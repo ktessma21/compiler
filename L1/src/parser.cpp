@@ -493,20 +493,85 @@ struct programORfunction :
      *  scaffolding the actions used to do by hand.
      * ------------------------------------------------------------------ */
     class Tokenizer {
-        std::vector<std::string> tokens;
+       
         size_t pos = 0;
 
     public:
+     std::vector<std::string> tokens;
         explicit Tokenizer(const std::string& s) {
             std::string cur;
-            for (char c : s) {
+            auto flush = [&]() {
+                if (!cur.empty()) { tokens.push_back(cur); cur.clear(); }
+            };
+
+            auto isOpStart = [](char c) {
+                return c == '<' || c == '>' || c == '=' ||
+                    c == '+' || c == '-' || c == '*' || c == '&';
+            };
+
+            for (size_t i = 0; i < s.size(); ++i) {
+                char c = s[i];
+
                 if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
-                    if (!cur.empty()) { tokens.push_back(cur); cur.clear(); }
-                } else {
-                    cur += c;
+                    flush();
+                    continue;
                 }
+
+                if (isOpStart(c)) {
+                    flush();
+                    char n1 = (i + 1 < s.size()) ? s[i + 1] : '\0';
+                    char n2 = (i + 2 < s.size()) ? s[i + 2] : '\0';
+
+                    
+
+                    // 3-char: <<=, >>=
+                    if (c == '<' && n1 == '<' && n2 == '=') {
+                        tokens.push_back("<<=");
+                        i += 2;
+                        continue;
+                    }
+                    if (c == '>' && n1 == '>' && n2 == '=') {
+                        tokens.push_back(">>=");
+                        i += 2;
+                        continue;
+                    }
+
+                    // 2-char: 
+                    if (c == '<' && n1 == '-'){
+                        tokens.push_back("<-");
+                        i += 1;
+                        continue;
+                    }
+                    // +=, -=, *=, &=, <=
+                    if (n1 == '=' && (c == '+' || c == '-' || c == '*' ||
+                                    c == '&' || c == '<')) {
+                        tokens.push_back(std::string{c, '='});
+                        i += 1;
+                        continue;
+                    }
+
+                    // // we might have negative 
+                    // if (c == '-'){
+                        
+                    // }
+
+
+                    // 1-char: =, 
+                    if (c == '=' || c == '<') {
+                        tokens.push_back(std::string(1, c));
+                        continue;
+                    }
+
+                    // Anything else that started as an operator char but didn't
+                    // form a valid operator from your list — e.g. a stray '+', '-',
+                    // '*', '&', or '>'. Push as single char so it's at least visible.
+                    cur += c; // probably negative number 
+                    continue;
+                }
+
+                cur += c;
             }
-            if (!cur.empty()) tokens.push_back(cur);
+            flush();
         }
 
         // get next token and advance
@@ -603,24 +668,14 @@ struct programORfunction :
             // wIncDec has no space between reg and ++/-- (e.g. "rax++").
             // Tokenizer would give us one blob, so split that blob.
             Tokenizer tk(in.string());
-            std::string blob = tk.next();
-
-            std::string reg_str;
-            bool is_inc;
-            if (blob.size() >= 2 && blob.substr(blob.size()-2) == "++") {
-                reg_str = blob.substr(0, blob.size()-2);
+            // for (auto& t : tk.tokens) std::cerr << "[" << t << "] ";
+            // std::cerr << "\n";
+            std::string reg_str = tk.next();
+            char sign = tk.next().front();
+            bool is_inc = false;
+            
+            if (sign == '+'){
                 is_inc = true;
-            } else if (blob.size() >= 2 && blob.substr(blob.size()-2) == "--") {
-                reg_str = blob.substr(0, blob.size()-2);
-                is_inc = false;
-            } else {
-                // tolerate the case where there *is* whitespace:
-                // blob was just the register, next token is ++/--
-                reg_str = blob;
-                std::string op = tk.next();
-                if (op == "++") is_inc = true;
-                else if (op == "--") is_inc = false;
-                else throw std::runtime_error("invalid increment/decrement: " + in.string());
             }
 
             auto instr = std::make_unique<IncDecInstruction>();
@@ -726,10 +781,15 @@ struct programORfunction :
             // form:  cjump t cmp t :label
             Tokenizer tk(in.string());
             tk.expect("cjump");
+            assert(!tk.done());
             std::string left_str  = tk.next();
+            
             std::string cmp_str   = tk.next();
+            // assert(!tk.done(), "next cmp_str");
             std::string right_str = tk.next();
+            // assert(!tk.done(), "next right_str");
             std::string label_tok = tk.next();   // ":name"
+            // assert(!tk.done(), "next label_tok");
 
             // strip leading ':'
             std::string label_str = (!label_tok.empty() && label_tok[0] == ':')
@@ -786,6 +846,8 @@ struct programORfunction :
 
             // form:  call <callee> <num>   OR   call <builtin> <num>
             Tokenizer tk(in.string());
+            // for (auto& t : tk.tokens) std::cerr << "[" << t << "] ";
+            // std::cerr << "\n";
             tk.expect("call");
             std::string u_str = tk.next();
 
@@ -794,8 +856,8 @@ struct programORfunction :
                 if (s.contains("print"))        return InstructionType::CallPrint;
                 if (s.contains("input"))        return InstructionType::CallInput;
                 if (s.contains("allocate"))     return InstructionType::CallAllocate;
-                if (s.contains("tuple-error"))  return InstructionType::CallTupleError;
-                if (s.contains("tensor-error")) return InstructionType::CallTensorError;
+                if (s.contains("tuple"))  return InstructionType::CallTupleError;
+                if (s.contains("tensor")) return InstructionType::CallTensorError;
                 return InstructionType::Unknown;
             };
 
@@ -803,6 +865,7 @@ struct programORfunction :
             assert(call->type != InstructionType::Unknown);
 
             if (call->type == InstructionType::CallTensorError){
+                (void)tk.next();
                 std::string n_str = tk.next();
                 call->setNum(std::stoll(n_str));
             }
@@ -830,6 +893,8 @@ struct programORfunction :
 
             // form:  mem X M <- S
             Tokenizer tk(in.string());
+            // for (auto& t : tk.tokens) std::cerr << "[" << t << "] ";
+            // std::cerr << "\n";
             tk.expect("mem");
             std::string x_str = tk.next();
             std::string m_str = tk.next();
@@ -1046,7 +1111,7 @@ struct programORfunction :
     };
 
 
-    bool TRACE = true;
+    bool TRACE = false;
 
     template<typename Rule>
     struct my_tracer : pegtl::normal<Rule> {
