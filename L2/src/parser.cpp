@@ -1118,7 +1118,7 @@ struct functionFormat :
    
 
 
-    static bool TRACE = false;
+    static bool TRACE = true;
 
     template<typename Rule>
     struct my_tracer : pegtl::normal<Rule> {
@@ -1144,13 +1144,14 @@ struct functionFormat :
 
     L2::Function parse_l2_function(const std::string& source){
         // 1. Read whole file
-       
+        // std::cerr << "[got " << source.size() << " bytes]\n";
+        // std::cerr << "---START---\n" << source << "\n---END---\n";
         std::string contents = source;
 
         // 2. Find the closing ')' of the function
         size_t close = contents.rfind(')');
         if (close == std::string::npos)
-            throw std::runtime_error("spill file: no closing ')'");
+            throw std::runtime_error("parse_l2_function: no closing ')'");
 
         std::string prog_part = contents.substr(0, close + 1);
         std::string tail_part = contents.substr(close + 1);
@@ -1168,6 +1169,9 @@ struct functionFormat :
     L2::Function parse_function_file(const char* fileName){
         // 1. Read whole file
         std::ifstream f(fileName);
+        if (!f.is_open()) {
+            throw std::runtime_error(std::string("could not open: ") + fileName);
+        }
         std::stringstream ss;
         ss << f.rdbuf();
         
