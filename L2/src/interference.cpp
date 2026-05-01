@@ -11,7 +11,7 @@
 // #include <map>
 
 namespace L2 { 
-    void Interference(Function& f) {
+    L2::Graph Interference(Function& f) {
         
         std::vector<LiveSet> in;
         std::vector<LiveSet> out;
@@ -44,6 +44,8 @@ namespace L2 {
         // after we connect all the in and out. 
         
         g.printItems();
+
+        return g;
 
     }
 

@@ -1,3 +1,6 @@
+#pragma once
+
+
 #include "l2.h"
 #include <fstream>
 #include <iostream>
@@ -65,7 +68,7 @@ namespace L2 {
             }
     };
 
-    void Interference(Function& f);
+    L2::Graph Interference(Function& f);
 
     
 };

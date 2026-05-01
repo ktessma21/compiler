@@ -112,7 +112,7 @@ int main(int argc, char **argv) {
         * Parse an L2 function and build the interference graph.
         */
         auto function = L2::parse_function_file(fileName);
-        L2::Interference(function);
+        (void)L2::Interference(function);
 
         return 0;
     }
