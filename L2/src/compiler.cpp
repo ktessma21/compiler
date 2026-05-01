@@ -113,12 +113,12 @@ int main(int argc, char **argv) {
         /*
         * Parse an L2 function and build the interference graph.
         */
-        std::cerr << "start parsing\n";
+        // std::cerr << "start parsing\n";
         auto function = L2::parse_function_file(fileName);
         auto graph = L2::Interference(function);
         
 
-        L2::GraphColoring(graph, function);
+        // L2::GraphColoring(graph, function);
 
         return 0;
     }

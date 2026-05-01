@@ -9,6 +9,7 @@
 #include <set>
 #include <unordered_map>
 #include <vector>
+#include <algorithm>
 // #include <map>
 
 namespace L2 { 
@@ -51,6 +52,34 @@ namespace L2 {
                         graph[v].insert(entry.first);
                     }
                 }
+            }
+
+            std::optional<VALUE> node_with_less_than_15_neighbors() {
+                auto it = std::find_if(graph.begin(), graph.end(), [](const auto& entry) {
+                    return entry.second.size() < 15;
+                });
+
+                if (it != graph.end()) {
+                    return it->first; // Automatically wraps in std::optional
+                }
+
+                return std::nullopt; // Explicitly return "nothing"
+            }
+
+            void removeNode(const VALUE& v) {
+                // Remove v from every neighbor's adjacency set
+                auto it = graph.find(v);
+                if (it == graph.end()) return;
+
+                for (const auto& neighbor : it->second) {
+                    auto nb_it = graph.find(neighbor);
+                    if (nb_it != graph.end()) {
+                        nb_it->second.erase(v);
+                    }
+                }
+
+                // Remove v itself
+                graph.erase(it);
             }
             // void add(VALUE& a, VALUE& b){
             //     graph[a].insert(b);
