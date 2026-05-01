@@ -93,7 +93,8 @@ int main(int argc, char **argv) {
         * Parse an L2 function and the spill arguments, then spill.
         */
         auto spill = L2::parse_spill_file(fileName);
-        L2::Spill(spill.function, spill.target, spill.prefix);
+        auto str = L2::Spill(spill.function, spill.target, spill.prefix);
+        std::cout << str << '\n';
 
         return 0;
     }
@@ -116,9 +117,8 @@ int main(int argc, char **argv) {
         // std::cerr << "start parsing\n";
         auto function = L2::parse_function_file(fileName);
         auto graph = L2::Interference(function);
-        
-
-        L2::GraphColoring(graph, function);
+        graph.printItems();
+  
 
         return 0;
     }
@@ -137,14 +137,19 @@ int main(int argc, char **argv) {
   * Default: parse and compile the full L2 program.
   */
   auto program = L2::parse_file(fileName);
-  std::cerr << program.to_string();
+ 
+  // update each function of the program properly
+  for (auto& f : program.functions){
+      auto graph = L2::Interference(f);
+      L2::GraphColoring(graph, f);
+  }
 
   /*
    * Generate the target code normally.
    */
   if (enable_code_generator) {
     // TODO
-
+    std::cerr << program.to_string();  
     
 
   }
