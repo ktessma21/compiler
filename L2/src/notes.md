@@ -1,0 +1,4 @@
+- declaring inline. 
+- making it accessible from anywhere through static 
+- making it unique_ptr 
+- making it macros. 

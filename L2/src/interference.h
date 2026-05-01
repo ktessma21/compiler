@@ -15,13 +15,14 @@ namespace L2 {
    
   
     class Graph {
-        inline static const std::vector<Register> allRegs = {
-            Register::rax, Register::rbx, Register::rcx, Register::rdx,
-            Register::rdi, Register::rsi, Register::rbp,
-            Register::r8,  Register::r9,  Register::r10, Register::r11,
-            Register::r12, Register::r13, Register::r14, Register::r15
-        };
+        
         public:
+            inline static const std::vector<Register> allRegs = {
+                Register::rax, Register::rbx, Register::rcx, Register::rdx,
+                Register::rdi, Register::rsi, Register::rbp,
+                Register::r8,  Register::r9,  Register::r10, Register::r11,
+                Register::r12, Register::r13, Register::r14, Register::r15
+            };
             std::map<VALUE, L2::LiveSet, VALUEComparator> graph;
             Graph() {
                 for (auto r1 : allRegs) {

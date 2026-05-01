@@ -1118,7 +1118,7 @@ struct functionFormat :
    
 
 
-    static bool TRACE = true;
+    static bool TRACE = false;
 
     template<typename Rule>
     struct my_tracer : pegtl::normal<Rule> {
