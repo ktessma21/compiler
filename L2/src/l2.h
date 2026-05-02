@@ -15,7 +15,7 @@ namespace L2 {
     class ASTNode {
     public:
         virtual ~ASTNode() = default;
-        virtual std::string to_string() const = 0;
+        virtual std::string to_string(int num_locals = 0) const = 0;
         virtual bool verify() const { return true; }
     };
 
@@ -43,7 +43,7 @@ namespace L2 {
     public:
         Number() : value(0) {}
         Number(int64_t v) : value(v) {}
-        std::string to_string() const override { return std::to_string(value); }
+        std::string to_string(int num_locals = 0) const override  { return std::to_string(value); }
         int64_t getValue() const { return value; }
         bool operator==(const Number& other) const { return value == other.value; }
         bool operator<(const Number& other) const { return value < other.value; }
@@ -248,6 +248,8 @@ namespace L2 {
 
         virtual std::set<VALUE> readsLive()  const { return {}; }
         virtual std::set<VALUE> writesLive() const { return {}; }
+        virtual std::string to_string(int num_locals = 0) const = 0;
+
     };
 
     class CjumpInstruction : public Instruction {
@@ -260,7 +262,7 @@ namespace L2 {
         void setCmpVal(compareStruct& cv) { cmp_val = std::move(cv); }
         void setLabel(const Label& lbl)   { label = lbl; }
 
-        std::string to_string() const override {
+        std::string to_string(int num_locals = 0) const override  {
             std::string result = "\tcjump ";
             result += valueToString(cmp_val->left);
             result += " " + cmp_val->cmp + " ";
@@ -330,7 +332,7 @@ namespace L2 {
 
         bool verify() const override { return isComplete(); }
 
-        std::string to_string() const override {
+        std::string to_string(int num_locals = 0) const override  {
             assert(isComplete());
             std::string result = "\t";
             // std::cout << static_cast<int>(type) << '\n';
@@ -343,7 +345,13 @@ namespace L2 {
                     result += " <- ";
                     result += valueToString(from.value());
                     break;
-                case InstructionType::AssignFromStack: 
+                case InstructionType::AssignFromStack: {
+                    int M = std::get<memoryAccess>(from.value()).size;
+                    int adjusted = M + 8 * num_locals;
+                    result += valueToString(to.value());
+                    result += " <- mem rsp " + std::to_string(adjusted);
+                    break;
+                }
                 // {
                 //             int M = std::get<memoryAccess>(from.value()).size;
                 //             // int adjusted = M + 8 * num_locals;
@@ -474,7 +482,7 @@ namespace L2 {
             }
         }
 
-        std::string to_string() const override {
+        std::string to_string(int num_locals = 0) const override  {
             // if (type == InstructionType::CallTensorError){
             //     std::cerr << "\tcall tensor-error " + arg.value() + '\n';
             //     assert(false);
@@ -541,7 +549,7 @@ namespace L2 {
     class ReturnInstruction : public Instruction {
     public:
         ReturnInstruction() : Instruction(InstructionType::Return) {}
-        std::string to_string() const override { return "\treturn\n"; }
+        std::string to_string(int num_locals = 0) const override  { return "\treturn\n"; }
 
         // GEN for return: rax (return value) + all callee-save registers.
         std::set<VALUE> readsLive() const override {
@@ -561,7 +569,7 @@ namespace L2 {
         LabelInstruction(Label _label)
             : Instruction(InstructionType::Label), label(std::move(_label)) {}
 
-        std::string to_string() const override {
+        std::string to_string(int num_locals = 0) const override  {
             return "\t" + label.name + "\n";
         }
     };
@@ -573,7 +581,7 @@ namespace L2 {
         GotoInstruction(Label _label)
             : Instruction(InstructionType::Goto), label(std::move(_label)) {}
 
-        std::string to_string() const override {
+        std::string to_string(int num_locals = 0) const override  {
             return "\tgoto " + label.name + "\n";
         }
     };
@@ -594,7 +602,7 @@ namespace L2 {
         const std::optional<VALUE>& getSrc() const { return src; }
         AopType getAop() const                     { return aop; }
 
-        std::string to_string() const override {
+        std::string to_string(int num_locals = 0) const override  {
             return "\t" + valueToString(dst.value()) + " "
                  + aopToString(aop) + " "
                  + valueToString(src.value()) + "\n";
@@ -659,7 +667,7 @@ namespace L2 {
         void setSrc(VALUE v)   { src = std::move(v); }
         void setSop(SopType s) { sop = s; }
 
-        std::string to_string() const override {
+        std::string to_string(int num_locals = 0) const override  {
             return "\t" + valueToString(dst.value()) + " "
                  + sopToString(sop) + " "
                  + valueToString(src.value()) + "\n";
@@ -712,7 +720,7 @@ namespace L2 {
         void setDst(VALUE v)    { dst = std::move(v); }
         void setIsInc(bool inc) { isIncrement = inc; }
 
-        std::string to_string() const override {
+        std::string to_string(int num_locals = 0) const override  {
             return "\t" + valueToString(dst.value())
                  + (isIncrement ? "++" : "--") + "\n";
         }
@@ -759,7 +767,7 @@ namespace L2 {
         void setIdx(VALUE v)     { idx  = std::move(v); }
         void setScale(int64_t s) { scale = s; }
 
-        std::string to_string() const override {
+        std::string to_string(int num_locals = 0) const override  {
             return "\t" + valueToString(dst.value())  + " @ "
                  + valueToString(base.value()) + " "
                  + valueToString(idx.value())  + " "
@@ -815,7 +823,7 @@ namespace L2 {
         void setAop(AopType a)      { aop = a; }
         void setSrc(VALUE v)        { src = std::move(v); }
 
-        std::string to_string() const override {
+        std::string to_string(int num_locals = 0) const override  {
             return "\tmem " + memBaseToString(mem) + " "
                  + std::to_string(mem.size) + " "
                  + aopToString(aop) + " "
@@ -877,12 +885,12 @@ namespace L2 {
 
         Function() = default;
 
-        std::string to_string() const override {
+        std::string to_string(int /*unused*/ = 0) const override  {
             std::string result;
             result += "(" + label.name + "\n\t";
-            result += std::to_string(num_args) + ' ' + std::to_string(num_locals) + '\n';
+            result += std::to_string(num_args) + ' ' + std::to_string(this->num_locals) + '\n';
             for (auto& instruction : instructions) {
-                result += instruction->to_string();
+                result += instruction->to_string(this->num_locals);  // pass the member to instructions
             }
             result += ")\n";
             return result;
@@ -908,7 +916,7 @@ namespace L2 {
 
         Program() = default;
 
-        std::string to_string() const override {
+        std::string to_string(int num_locals = 0) const override  {
             std::string result;
             result += "(" + label.name + "\n";
             for (auto& function : functions) {

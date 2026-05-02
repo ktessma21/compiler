@@ -75,13 +75,12 @@ namespace L2 {
         }
 
         if (spilled){
+            // std::cerr << "[spill] bumping locals for " << f.getLabel() 
+            //         << " from " << f.getNumLocals() << " to " << (f.getNumLocals() + 1) << "\n";
             f.setNumLocal(f.getNumLocals() + 1);
         }
 
-        if (!spilled)
-            ss << '\t' << std::to_string(f.getNumArgs()) << ' ' << f.getNumLocals() << '\n';
-        else
-            ss << '\t' << std::to_string(f.getNumArgs()) << ' ' << f.getNumLocals() << '\n';
+        ss << '\t' << f.getNumArgs() << ' ' << f.getNumLocals() << '\n';
 
         f.instructions = std::move(new_instructions);
         
