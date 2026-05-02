@@ -1,161 +1,70 @@
 (@main
 (@main
-	0 2
-	rdi <- 5
-	rsi <- 5
-	call allocate 2
-	rdi <- rax
-	mem rsp 0 <- rdi
-	rdi <- mem rsp 0
-	rdi <- rdi
-	mem rsp 8 <- rdi
-	rdi <- mem rsp 8
-	rdi += 8
-	mem rsp 8 <- rdi
-	rdi <- mem rsp 8
-	mem rdi 0 <- 85
-	rdi <- mem rsp 0
-	rdi <- rdi
-	call print 1
-	mem rsp -8 <- :call_label0
-	rdi <- mem rsp 0
-	rdi <- rdi
-	call @printArray 1
+	0 0
 	:call_label0
-	rdi <- 5
+	rdi <- 3
 	rsi <- 5
-	call allocate 2
-	rdi <- rax
-	rsi <- mem rsp 8
-	mem rsi 0 <- rdi
-	rdi <- mem rsp 0
-	rdi <- rdi
-	call print 1
+	rdx <- 7
+	rcx <- 9
+	r8 <- 11
+	r9 <- 13
+	r10 <- 15
+	r11 <- 17
+	rax <- 19
+	mem rsp -32 <- r10
+	mem rsp -24 <- r11
+	mem rsp -16 <- rax
 	mem rsp -8 <- :call_label1
-	rdi <- mem rsp 0
-	rdi <- rdi
-	call @printArray 1
+	call @printValues 9
 	:call_label1
 	return
 )
-(@printArray
-	1 3
-	rdi <- rdi
-	mem rsp 0 <- rdi
-	rdi <- 0
-	mem rsp 16 <- rdi
-	rdi <- mem rsp 0
-	rdi <- mem rdi 0
-	mem rsp 8 <- rdi
-	rdi <- mem rsp 0
-	rdi <- rdi
-	rdi &= 1
-	cjump rdi = 1 :call_label2
-	goto :call_label3
+
+(@printValues
+	9 8
+	mem rsp 40 <- rbx
+	mem rsp 32 <- rbp
+	mem rsp 24 <- r15
+	mem rsp 16 <- r14
+	mem rsp 8 <- r13
+	mem rsp 0 <- r12
+	rax <- rdi
+	rdi <- rsi
+	mem rsp 56 <- rdi
+	rbp <- rdx
+	r15 <- rcx
+	r14 <- r8
+	r13 <- r9
+	r12 <- mem rsp 64
+	rbx <- mem rsp 72
+	rdi <- mem rsp 80
+	mem rsp 48 <- rdi
 	:call_label2
-	rax <- 0
-	return
-	:call_label3
-	:call_label4
-	rsi <- mem rsp 8
-	rdi <- mem rsp 16
-	rdi <- rdi < rsi
-	cjump rdi = 1 :call_label5
-	goto :call_label6
-	:call_label5
-	rdi <- mem rsp 16
-	rsi <- rdi
-	rsi <<= 1
-	rsi <- rsi
-	rsi += 1
-	mem rsp -8 <- :call_label7
-	rdi <- mem rsp 0
-	rdi <- rdi
-	rsi <- rsi
-	call @printData 2
-	:call_label7
-	rdi <- mem rsp 16
-	rdi <- rdi
-	mem rsp 16 <- rdi
-	rdi <- mem rsp 16
-	rdi += 1
-	mem rsp 16 <- rdi
-	goto :call_label4
-	:call_label6
-	rax <- 1
+	rdi <- rax
+	call print 1
+	rdi <- mem rsp 56
+	call print 1
+	rdi <- rbp
+	call print 1
+	rdi <- r15
+	call print 1
+	rdi <- r14
+	call print 1
+	rdi <- r13
+	call print 1
+	rdi <- r12
+	call print 1
+	rdi <- rbx
+	call print 1
+	rdi <- mem rsp 48
+	call print 1
+	r12 <- mem rsp 0
+	r13 <- mem rsp 8
+	r14 <- mem rsp 16
+	r15 <- mem rsp 24
+	rbp <- mem rsp 32
+	rbx <- mem rsp 40
 	return
 )
-(@printData
-	2 3
-	rdi <- rdi
-	mem rsp 0 <- rdi
-	rdi <- rsi
-	mem rsp 8 <- rdi
-	rdi <- mem rsp 8
-	rdi <- rdi
-	call print 1
-	rdi <- mem rsp 0
-	rdi <- mem rdi 0
-	rdi <- rdi
-	rdi <<= 1
-	rdi <- rdi
-	rdi += 1
-	rsi <- mem rsp 8
-	rdi <- rsi < rdi
-	cjump rdi = 1 :call_label9
-	goto :call_label8
-	:call_label8
-	rdi <- mem rsp 0
-	rdi <- rdi
-	rdi <- mem rsp 8
-	rsi <- rdi
-	rdi <- 0
-	call tensor-error
-	:call_label9
-	rdi <- mem rsp 8
-	rdi <- rdi
-	mem rsp 16 <- rdi
-	rdi <- mem rsp 16
-	rdi >>= 1
-	mem rsp 16 <- rdi
-	rdi <- mem rsp 16
-	rdi <- rdi
-	mem rsp 16 <- rdi
-	rdi <- mem rsp 16
-	rdi *= 8
-	mem rsp 16 <- rdi
-	rdi <- mem rsp 16
-	rdi <- rdi
-	mem rsp 16 <- rdi
-	rdi <- mem rsp 16
-	rdi += 8
-	mem rsp 16 <- rdi
-	rdi <- mem rsp 16
-	rdi <- rdi
-	rdi <<= 1
-	rdi <- rdi
-	rdi += 1
-	rdi <- rdi
-	call print 1
-	rdi <- mem rsp 16
-	rdi <- rdi
-	rsi <- mem rsp 0
-	rdi += rsi
-	rsi <- mem rdi 0
-	rdi <- rsi
-	rdi &= 1
-	cjump rdi = 1 :call_label10
-	goto :call_label11
-	:call_label10
-	rdi <- rsi
-	call print 1
-	goto :call_label12
-	:call_label11
-	mem rsp -8 <- :call_label13
-	rdi <- rsi
-	call @printArray 1
-	:call_label13
-	:call_label12
-	return
-)
+
 )

@@ -339,11 +339,19 @@ namespace L2 {
                 case InstructionType::AssignFromS:
                 case InstructionType::AssignFromMemory:
                 case InstructionType::AssignMemoryFromS:
-                case InstructionType::AssignFromStack:
                     result += valueToString(to.value());
                     result += " <- ";
                     result += valueToString(from.value());
                     break;
+                case InstructionType::AssignFromStack: 
+                // {
+                //             int M = std::get<memoryAccess>(from.value()).size;
+                //             // int adjusted = M + 8 * num_locals;
+                //             result += valueToString(to.value());
+                //             // result += " <- mem rsp " + std::to_string(adjusted);
+                //             break;
+                //         }
+                // }
 
                 case InstructionType::compareAssign:
                     result += valueToString(to.value());
