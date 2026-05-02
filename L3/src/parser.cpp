@@ -14,7 +14,7 @@
 
 namespace pegtl = TAO_PEGTL_NAMESPACE;
 
-static bool TRACE = false;
+static bool TRACE = true;
 
 
 #define pstring TAO_PEGTL_STRING
@@ -167,29 +167,24 @@ namespace L3 {
         > {};
 
     /* ----- vars list (function parameters): empty | var | var (, var)* ----- */
-    /* -- might have issue -- */
+  
     struct vars_tail :
         pegtl::star<
             pegtl::seq<spaces, pegtl::one<','>, spaces, var>
         > {};
 
     struct vars :
-        pegtl::opt<pegtl::sor<var,
-                pegtl::seq< var, vars_tail>
-                >
-            > {};
+        pegtl::opt<pegtl::seq<var, vars_tail>> {};
 
-    /* ----- args list (call arguments): empty | t | t (, t)* ----- */
+
+    /* ----- args list (call arguments): empty | t (, t)* ----- */
     struct args_tail :
         pegtl::star<
             pegtl::seq<spaces, pegtl::one<','>, spaces, t>
         > {};
 
     struct args :
-        pegtl::opt<pegtl::sor<t, 
-                pegtl::seq< t, args_tail>
-                >
-            > {};
+        pegtl::opt<pegtl::seq<t, args_tail>> {};
 
     /* ===== instructions =====
      * i ::= var <- s
@@ -286,14 +281,19 @@ namespace L3 {
             Instruction_block,
             seps_with_comments>
         {};
-
-    // f ::= define l ( vars ) { i+ }
-    struct function_def :
+    
+    struct function_header :
         pegtl::seq<
-            seps_with_comments,
             spaces, pstring("define"),
             spaces, l,
-            spaces, pegtl::one<'('>, spaces, vars, spaces, pegtl::one<')'>,
+            spaces, pegtl::one<'('>, spaces, vars, spaces, pegtl::one<')'>
+        > {};
+
+    // f ::= define l ( vars ) { i+ }
+   struct function_def :
+        pegtl::seq<
+            seps_with_comments,
+            function_header,
             seps_with_comments,
             spaces, pegtl::one<'{'>,
             seps_with_comments,
@@ -425,10 +425,34 @@ namespace L3 {
     template<typename Rule>
     struct action : pegtl::normal<Rule> {};
 
+    template<> struct action<function_header> {
+        template<typename Input>
+        static void apply(const Input& in, Program& p) {
+            Tokenizer tk(in.string());
+            tk.expect("define");
+            std::string name_str = tk.next();   // @name
+            tk.expect("(");
+
+            Function f;
+            f.setName(makeFunctionName(name_str));
+
+            if (tk.peek() != ")") {
+                f.addParam(makeVar(tk.next()));
+                while (tk.peek() == ",") {
+                    tk.expect(",");
+                    f.addParam(makeVar(tk.next()));
+                }
+            }
+            tk.expect(")");
+
+            p.functions.push_back(std::move(f));
+        }
+    };
+
     // var <- s          (generic assignment fallback)
     template<> struct action<insVarAssign> {
         template<typename Input>
-        static void apply(const Input& in, Function& f) {
+        static void apply(const Input& in, Program& p) {
             Tokenizer tk(in.string());
             std::string dst_str = tk.next();   // var
             tk.expect("<-");
@@ -437,7 +461,7 @@ namespace L3 {
             auto instr = std::make_unique<AssignInstruction>();
             instr->setDst(makeVar(dst_str));
             instr->setSrc(makeS(src_str));
-            f.instructions.push_back(std::move(instr));
+            p.functions.back().instructions.push_back(std::move(instr));
         }
     };
 
@@ -445,7 +469,7 @@ namespace L3 {
     // var <- t op t
     template<> struct action<insVarOp> {
         template<typename Input>
-        static void apply(const Input& in, Function& f) {
+        static void apply(const Input& in, Program& p) {
             Tokenizer tk(in.string());
             std::string dst_str = tk.next();   // var
             tk.expect("<-");
@@ -458,7 +482,7 @@ namespace L3 {
             instr->setLhs(makeT(lhs_str));
             instr->setOp(stringToOp(op_str));
             instr->setRhs(makeT(rhs_str));
-            f.instructions.push_back(std::move(instr));
+            p.functions.back().instructions.push_back(std::move(instr));
         }
     };
 
@@ -466,7 +490,7 @@ namespace L3 {
     // var <- t cmp t
     template<> struct action<insVarCmp> {
         template<typename Input>
-        static void apply(const Input& in, Function& f) {
+        static void apply(const Input& in, Program& p) {
             Tokenizer tk(in.string());
             std::string dst_str = tk.next();   // var
             tk.expect("<-");
@@ -479,7 +503,7 @@ namespace L3 {
             instr->setLhs(makeT(lhs_str));
             instr->setCmp(stringToCmp(cmp_str));
             instr->setRhs(makeT(rhs_str));
-            f.instructions.push_back(std::move(instr));
+            p.functions.back().instructions.push_back(std::move(instr));
         }
     };
 
@@ -487,7 +511,7 @@ namespace L3 {
     // var <- load var
     template<> struct action<insLoad> {
         template<typename Input>
-        static void apply(const Input& in, Function& f) {
+        static void apply(const Input& in, Program& p) {
             Tokenizer tk(in.string());
             std::string dst_str = tk.next();   // var
             tk.expect("<-");
@@ -497,7 +521,7 @@ namespace L3 {
             auto instr = std::make_unique<LoadInstruction>();
             instr->setDst(makeVar(dst_str));
             instr->setSrc(makeVar(src_str));
-            f.instructions.push_back(std::move(instr));
+            p.functions.back().instructions.push_back(std::move(instr));
         }
     };
 
@@ -505,7 +529,7 @@ namespace L3 {
     // store var <- s
     template<> struct action<insStore> {
         template<typename Input>
-        static void apply(const Input& in, Function& f) {
+        static void apply(const Input& in, Program& p) {
             Tokenizer tk(in.string());
             tk.expect("store");
             std::string dst_str = tk.next();   // var
@@ -515,7 +539,7 @@ namespace L3 {
             auto instr = std::make_unique<StoreInstruction>();
             instr->setDst(makeVar(dst_str));
             instr->setSrc(makeS(src_str));
-            f.instructions.push_back(std::move(instr));
+            p.functions.back().instructions.push_back(std::move(instr));
         }
     };
 
@@ -523,7 +547,7 @@ namespace L3 {
     // var <- call callee ( args )
     template<> struct action<insVarCall> {
         template<typename Input>
-        static void apply(const Input& in, Function& f) {
+        static void apply(const Input& in, Program& p) {
             Tokenizer tk(in.string());
             std::string dst_str = tk.next();   // var
             tk.expect("<-");
@@ -545,7 +569,7 @@ namespace L3 {
             instr->setDst(makeVar(dst_str));
             instr->setCallee(makeCallee(callee_str));
             for (auto& a : arg_strs) instr->addArg(makeT(a));
-            f.instructions.push_back(std::move(instr));
+            p.functions.back().instructions.push_back(std::move(instr));
         }
     };
 
@@ -553,7 +577,7 @@ namespace L3 {
     // call callee ( args )
     template<> struct action<insCall> {
         template<typename Input>
-        static void apply(const Input& in, Function& f) {
+        static void apply(const Input& in, Program& p) {
             Tokenizer tk(in.string());
             tk.expect("call");
             std::string callee_str = tk.next();
@@ -572,7 +596,7 @@ namespace L3 {
             auto instr = std::make_unique<CallInstruction>();
             instr->setCallee(makeCallee(callee_str));
             for (auto& a : arg_strs) instr->addArg(makeT(a));
-            f.instructions.push_back(std::move(instr));
+            p.functions.back().instructions.push_back(std::move(instr));
         }
     };
 
@@ -580,14 +604,14 @@ namespace L3 {
     // return t
     template<> struct action<insReturnT> {
         template<typename Input>
-        static void apply(const Input& in, Function& f) {
+        static void apply(const Input& in, Program& p) {
             Tokenizer tk(in.string());
             tk.expect("return");
             std::string val_str = tk.next();   // t
 
             auto instr = std::make_unique<ReturnTInstruction>();
             instr->setValue(makeT(val_str));
-            f.instructions.push_back(std::move(instr));
+            p.functions.back().instructions.push_back(std::move(instr));
         }
     };
 
@@ -595,10 +619,10 @@ namespace L3 {
     // return
     template<> struct action<insReturn> {
         template<typename Input>
-        static void apply(const Input& in, Function& f) {
+        static void apply(const Input& in, Program& p) {
             // no operands
             auto instr = std::make_unique<ReturnInstruction>();
-            f.instructions.push_back(std::move(instr));
+            p.functions.back().instructions.push_back(std::move(instr));
         }
     };
 
@@ -606,7 +630,7 @@ namespace L3 {
     // br t label
     template<> struct action<insBrT> {
         template<typename Input>
-        static void apply(const Input& in, Function& f) {
+        static void apply(const Input& in, Program& p) {
             Tokenizer tk(in.string());
             tk.expect("br");
             std::string cond_str  = tk.next();   // t
@@ -615,7 +639,7 @@ namespace L3 {
             auto instr = std::make_unique<BrTInstruction>();
             instr->setCond(makeT(cond_str));
             instr->setTarget(makeLabel(label_str));
-            f.instructions.push_back(std::move(instr));
+            p.functions.back().instructions.push_back(std::move(instr));
         }
     };
 
@@ -623,14 +647,14 @@ namespace L3 {
     // br label
     template<> struct action<insBr> {
         template<typename Input>
-        static void apply(const Input& in, Function& f) {
+        static void apply(const Input& in, Program& p) {
             Tokenizer tk(in.string());
             tk.expect("br");
             std::string label_str = tk.next();   // :name
 
             auto instr = std::make_unique<BrInstruction>();
             instr->setTarget(makeLabel(label_str));
-            f.instructions.push_back(std::move(instr));
+            p.functions.back().instructions.push_back(std::move(instr));
         }
     };
 
@@ -638,15 +662,68 @@ namespace L3 {
     // label   (standalone :name as instruction)
     template<> struct action<insLabel> {
         template<typename Input>
-        static void apply(const Input& in, Function& f) {
+        static void apply(const Input& in, Program& p) {
             Tokenizer tk(in.string());
             std::string label_str = tk.next();   // :name
 
             auto instr = std::make_unique<LabelInstruction>();
             instr->setLabel(makeLabel(label_str));
-            f.instructions.push_back(std::move(instr));
+            p.functions.back().instructions.push_back(std::move(instr));
         }
     };
+
+
+      template<typename Rule>
+        struct my_tracer : pegtl::normal<Rule> {
+            template<typename Input, typename... States>
+            static void start(const Input& in, States&&...) {
+                if (!TRACE) return;
+                std::cerr << "try   " << pegtl::demangle<Rule>()
+                        << " at line " << in.position().line
+                        << " col " << in.position().column << "\n";
+            }
+            template<typename Input, typename... States>
+            static void success(const Input& in, States&&...) {
+                if (!TRACE) return;
+                std::cerr << "ok    " << pegtl::demangle<Rule>() << "\n";
+            }
+            template<typename Input, typename... States>
+            static void failure(const Input& in, States&&...) {
+                if (!TRACE) return;
+                std::cerr << "FAIL  " << pegtl::demangle<Rule>() << "\n";
+            }
+        };
+
+
+
+
+    static L3::Function parsefunction(const std::string& source) {
+        std::string contents = source;
+        size_t close = contents.rfind(')');
+        if (close == std::string::npos)
+            throw std::runtime_error("parsefunction: no closing ')'");
+        std::string prog_part = contents.substr(0, close + 1);
+
+        L3::Program tmp;                                  // was: L3::Function result
+        pegtl::memory_input<> in(prog_part, "l3_function");
+        pegtl::parse<grammar_function, action, my_tracer>(in, tmp);
+
+        if (tmp.functions.size() != 1)
+            throw std::runtime_error("parsefunction: expected exactly one function");
+        return std::move(tmp.functions.front());
+    }
+
+    L3::Program parse_file(const char* fileName) {
+        std::ifstream f(fileName);
+        std::stringstream ss;
+        ss << f.rdbuf();
+        std::string contents = ss.str();
+
+        L3::Program result;
+        pegtl::memory_input<> in(contents, fileName);
+        pegtl::parse<grammar_program, action, my_tracer>(in, result);
+        return result;
+    }
 
 
 }

@@ -105,4 +105,9 @@ namespace L3 {
             }
         };
 
+
+
+
+
+        L3::Program parse_file(const char* fileName);
 }

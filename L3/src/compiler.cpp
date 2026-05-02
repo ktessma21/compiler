@@ -58,6 +58,12 @@ int main(int argc, char **argv) {
    * Parse the input file.
    */
   // TODO
+  char *fileName = argv[optind]; 
+
+  auto program = L3::parse_file(fileName);
+
+  std::cerr << program.to_string() ;
+
 
   /*
    * Print the program.

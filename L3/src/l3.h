@@ -156,7 +156,7 @@ namespace L3 {
             virtual ~Instruction() = default;
 
             bool verify() const override { return true; }
-            virtual std::string to_string(int num_locals = 0) const = 0;
+            virtual std::string to_string() const = 0;
 
     };
 
@@ -178,7 +178,7 @@ public:
 
     bool verify() const override { return dst.has_value() && src.has_value(); }
 
-    std::string to_string(int = 0) const override {
+    std::string to_string() const override {
         assert(verify());
         std::string rhs = std::visit([](const auto& x) -> std::string {
             using V = std::decay_t<decltype(x)>;
@@ -227,7 +227,7 @@ public:
         throw std::runtime_error("OpInstruction: unknown Op");
     }
 
-    std::string to_string(int = 0) const override {
+    std::string to_string() const override {
         assert(verify());
         auto tStr = [](const T& v) {
             return std::visit([](const auto& x) { return x.to_string(); }, v);
@@ -274,7 +274,7 @@ public:
         throw std::runtime_error("CmpInstruction: unknown Cmp");
     }
 
-    std::string to_string(int = 0) const override {
+    std::string to_string() const override {
         assert(verify());
         auto tStr = [](const T& v) {
             return std::visit([](const auto& x) { return x.to_string(); }, v);
@@ -302,7 +302,7 @@ public:
 
     bool verify() const override { return dst.has_value() && src.has_value(); }
 
-    std::string to_string(int = 0) const override {
+    std::string to_string() const override {
         assert(verify());
         return "\t" + dst->to_string() + " <- load " + src->to_string() + "\n";
     }
@@ -326,7 +326,7 @@ public:
 
     bool verify() const override { return dst.has_value() && src.has_value(); }
 
-    std::string to_string(int = 0) const override {
+    std::string to_string() const override {
         assert(verify());
         std::string rhs = std::visit([](const auto& x) -> std::string {
             using V = std::decay_t<decltype(x)>;
@@ -380,7 +380,7 @@ public:
 
     bool verify() const override { return dst.has_value() && callee.has_value(); }
 
-    std::string to_string(int = 0) const override {
+    std::string to_string() const override {
         assert(verify());
         return "\t" + dst->to_string() + " <- call " +
                calleeToString(*callee) + "(" + argsToString(args) + ")\n";
@@ -405,7 +405,7 @@ public:
 
     bool verify() const override { return callee.has_value(); }
 
-    std::string to_string(int = 0) const override {
+    std::string to_string() const override {
         assert(verify());
         return "\tcall " + calleeToString(*callee) +
                "(" + argsToString(args) + ")\n";
@@ -422,7 +422,7 @@ public:
 
     bool verify() const override { return true; }
 
-    std::string to_string(int = 0) const override {
+    std::string to_string() const override {
         return "\treturn\n";
     }
 };
@@ -441,7 +441,7 @@ public:
 
     bool verify() const override { return value.has_value(); }
 
-    std::string to_string(int = 0) const override {
+    std::string to_string() const override {
         assert(verify());
         std::string v = std::visit([](const auto& x) { return x.to_string(); }, *value);
         return "\treturn " + v + "\n";
@@ -462,7 +462,7 @@ public:
 
     bool verify() const override { return target.has_value(); }
 
-    std::string to_string(int = 0) const override {
+    std::string to_string() const override {
         assert(verify());
         return "\tbr " + target->to_string() + "\n";
     }
@@ -486,7 +486,7 @@ public:
 
     bool verify() const override { return cond.has_value() && target.has_value(); }
 
-    std::string to_string(int = 0) const override {
+    std::string to_string() const override {
         assert(verify());
         std::string c = std::visit([](const auto& x) { return x.to_string(); }, *cond);
         return "\tbr " + c + " " + target->to_string() + "\n";
@@ -507,9 +507,9 @@ public:
 
     bool verify() const override { return label.has_value(); }
 
-    std::string to_string(int = 0) const override {
+    std::string to_string() const override {
         assert(verify());
-        return label->to_string() + "\n";   // no leading tab — labels are flush-left
+        return "\t" +  label->to_string() + "\n";   // no leading tab — labels are flush-left
     }
 };
 
@@ -541,7 +541,7 @@ public:
                 }
                 result += ") {\n";
                 for (auto& instruction : instructions) {
-                    result += "\t" + instruction->to_string() + "\n";
+                    result += instruction->to_string();
                 }
                 result += "}\n";
                 return result;
@@ -551,7 +551,7 @@ public:
             const std::vector<Variable>& getParams() const { return params; }
             int getNumParams() const { return static_cast<int>(params.size()); }
 
-            void setName(std::string n) { this -> name.name = std::move(n); }
+            void setName(FunctionName n) { this -> name = std::move(n); }
             void addParam(Variable v) { params.push_back(std::move(v)); }
             void setParams(std::vector<Variable> ps) { params = std::move(ps); }
 
