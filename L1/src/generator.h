@@ -129,9 +129,17 @@ namespace L1{
         }
 
         static std::string generate(const ShiftInstruction& instr) {
+
+            
             if (instr.sop == SopType::LShift){
+                if (std::holds_alternative<Register>(instr.src.value())){
+                    return "\tsalq %cl, " + Converter::toString(instr.dst.value()) + '\n';
+                }
                 return "\tsalq " + Converter::toString(instr.src.value()) + ", " + Converter::toString(instr.dst.value()) + '\n';
             }else if (instr.sop == SopType::RShift){
+                if (std::holds_alternative<Register>(instr.src.value())){
+                    return "\tsarq %cl, " + Converter::toString(instr.dst.value()) + '\n';
+                }
                 return "\tsarq " + Converter::toString(instr.src.value()) + ", " + Converter::toString(instr.dst.value()) + '\n';
             }
             std::cerr << "invalid shift operation\n";

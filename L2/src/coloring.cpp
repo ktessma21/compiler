@@ -84,7 +84,9 @@ namespace L2 {
                 for (int c = 0; c < K; ++c) {
                     if (!used.count(c)) {
                         value_to_color[node] = c;
+                        
 
+                        // color them
                         for (const auto& instr : f.instructions) {
                             assert(std::holds_alternative<Variable>(node));
                             instr->replaceVar(std::get<Variable>(node), VALUE(static_cast<L2::Register>(c)));

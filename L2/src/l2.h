@@ -332,11 +332,13 @@ namespace L2 {
         std::string to_string() const override {
             assert(isComplete());
             std::string result = "\t";
+            // std::cout << static_cast<int>(type) << '\n';
 
             switch (type) {
                 case InstructionType::AssignFromS:
                 case InstructionType::AssignFromMemory:
                 case InstructionType::AssignMemoryFromS:
+                case InstructionType::AssignFromStack:
                     result += valueToString(to.value());
                     result += " <- ";
                     result += valueToString(from.value());
@@ -862,7 +864,7 @@ namespace L2 {
         std::string to_string() const override {
             std::string result;
             result += "\t(" + label.name + "\n\t";
-            result += std::to_string(num_args) + "\n";
+            result += std::to_string(num_args) + ' ' + std::to_string(num_locals) + '\n';
             for (auto& instruction : instructions) {
                 result += instruction->to_string();
             }

@@ -18,7 +18,6 @@
 #include <liveness.h>
 #include <interference.h>
 #include <coloring.h>
-// #include <generator.h>
 #include <string.h>
 
 void print_help(char *progName) {
@@ -144,12 +143,19 @@ int main(int argc, char **argv) {
       L2::GraphColoring(graph, f);
   }
 
+  
   /*
    * Generate the target code normally.
    */
   if (enable_code_generator) {
     // TODO
-    std::cerr << program.to_string();  
+  
+    // L2::generate_code(program);
+
+    std::ofstream outputFile;
+    outputFile.open("prog.L1");
+    outputFile << program.to_string();
+    outputFile.close();
     
 
   }

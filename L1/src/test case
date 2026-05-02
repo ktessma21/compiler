@@ -3,22 +3,15 @@ make run FILE=tests/test51.L1
 make clean
 
 
-valgrind --leak-check=full --track-origins=yes bin/L1 tests/test5030.L1
+valgrind --leak-check=full --track-origins=yes bin/L2 -i tests/kidus/test0.L2
 
 
 make copy_instructor_bin
 
 
 
-failed:
-
-FAILED:  test4990.L1 passed
-FAILED:  test5030.L1 passed 
-FAILED:  test5077.L1 passed
-FAILED:  test5093.L1 passed 
-FAILED:  test5155.L1 passed 
-FAILED:  test5199.L1 passed 
-FAILED:  test5201.L1 passed 
-FAILED:  test5243.L1 passed 
+make compile FILE=tests/test1.L2
 
 source /opt/rh/gcc-toolset-14/enable
+
+

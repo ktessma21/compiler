@@ -902,12 +902,12 @@ struct functionFormat :
 
             int64_t stackIdx = std::stoll(m_str);
 
-            // Model stack-arg as: w <- mem rsp <offset>
-            // Offset = stackIdx * 8 + (num_locals * 8) + 8
-            // (the +8 skips the return address; num_locals*8 skips locals)
+            // stack arg 0 : is always the last stack argument
+            // stack-arg 8: is always the second to last argument -- not handled yet 
+
             memoryAccess m;
             m.base = Register::rsp;
-            m.size = stackIdx * 8 + f.num_locals * 8 + 8;   // changes made to STACK-arg. specifically how it calculates the f.num_locals
+            m.size = stackIdx;   // no changes made 
             
 
             auto assign = std::make_unique<AssignInstruction>(InstructionType::AssignFromStack);
