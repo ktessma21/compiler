@@ -43,7 +43,7 @@ namespace L2 {
 
         // after we connect all the in and out. 
         
-        g.printItems();
+        // g.printItems();
 
         return g;
 

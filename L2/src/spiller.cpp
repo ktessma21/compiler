@@ -4,22 +4,23 @@
 #include <utils.h>
 #include "spiller.h"
 #include <stdexcept>
+#include <sstream>
 // #include <map>
 
 namespace L2 {
 
 
-    void Spill(Function& f, std::string target, std::string replacer){
+    std::string Spill(Function& f, std::string target, std::string replacer){
 
         if (!f.verify()) throw std::runtime_error("File verification failed!");
         int counter = 0;
-        bool splilled = false;
+        bool spilled = false;
 
-        // helperSpill(f, to_be_allocated, replacer, splilled);
+        // helperSpill(f, to_be_allocated, replacer, spilled);
         std::vector<std::unique_ptr<Instruction>> new_instructions;
 
-
-        std::cout << '(' << f.getLabel() << '\n';
+        std::stringstream ss; 
+        ss << '(' << f.getLabel() << '\n';
 
         std::string result;
 
@@ -39,7 +40,7 @@ namespace L2 {
                 continue;
             }
 
-            splilled = true;
+            spilled = true;
             Variable fresh = Variable(replacer + std::to_string(counter++));
 
             if (isRead){ // we are loading. 
@@ -56,7 +57,7 @@ namespace L2 {
             }
 
 
-            instr->replaceVar(Variable(target), fresh);
+            instr->replaceVar(Variable(target), VALUE(fresh));
             result += instr -> to_string();
             new_instructions.push_back(std::move(instr));
 
@@ -73,17 +74,21 @@ namespace L2 {
             }
         }
 
-        if (!splilled)
-            std::cout << '\t' << std::to_string(f.getNumArgs()) << ' ' << '0' << '\n';
+        if (spilled){
+            f.setNumLocal(f.getNumLocals() + 1);
+        }
+
+        if (!spilled)
+            ss << '\t' << std::to_string(f.getNumArgs()) << ' ' << f.getNumLocals() << '\n';
         else
-            std::cout << '\t' << std::to_string(f.getNumArgs()) << ' ' << '1' << '\n';
+            ss << '\t' << std::to_string(f.getNumArgs()) << ' ' << f.getNumLocals() << '\n';
 
         f.instructions = std::move(new_instructions);
         
-        std::cout << result;
-        std::cout << ')' << '\n';
+        ss << result;
+        ss << ')' << '\n';
         
-        return;
+        return ss.str();
     }
     
     

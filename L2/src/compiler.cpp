@@ -17,7 +17,7 @@
 #include <spiller.h>
 #include <liveness.h>
 #include <interference.h>
-// #include <generator.h>
+#include <coloring.h>
 #include <string.h>
 
 void print_help(char *progName) {
@@ -92,7 +92,8 @@ int main(int argc, char **argv) {
         * Parse an L2 function and the spill arguments, then spill.
         */
         auto spill = L2::parse_spill_file(fileName);
-        L2::Spill(spill.function, spill.target, spill.prefix);
+        auto str = L2::Spill(spill.function, spill.target, spill.prefix);
+        std::cout << str << '\n';
 
         return 0;
     }
@@ -101,6 +102,7 @@ int main(int argc, char **argv) {
         /*
         * Parse an L2 function and run liveness.
         */
+       
         auto function = L2::parse_function_file(fileName);
         L2::LivenessPrint(function);
 
@@ -111,8 +113,11 @@ int main(int argc, char **argv) {
         /*
         * Parse an L2 function and build the interference graph.
         */
+        // std::cerr << "start parsing\n";
         auto function = L2::parse_function_file(fileName);
-        (void)L2::Interference(function);
+        auto graph = L2::Interference(function);
+        graph.printItems();
+  
 
         return 0;
     }
@@ -131,14 +136,26 @@ int main(int argc, char **argv) {
   * Default: parse and compile the full L2 program.
   */
   auto program = L2::parse_file(fileName);
-  std::cerr << program.to_string();
+ 
+  // update each function of the program properly
+  for (auto& f : program.functions){
+      auto graph = L2::Interference(f);
+      L2::GraphColoring(graph, f);
+  }
 
+  
   /*
    * Generate the target code normally.
    */
   if (enable_code_generator) {
     // TODO
+  
+    // L2::generate_code(program);
 
+    std::ofstream outputFile;
+    outputFile.open("prog.L1");
+    outputFile << program.to_string();
+    outputFile.close();
     
 
   }

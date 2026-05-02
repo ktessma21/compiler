@@ -243,7 +243,7 @@ namespace L2 {
 
         virtual std::set<Variable> reads()  const { return {}; }
         virtual std::set<Variable> writes() const { return {}; }
-        virtual void replaceVar(const Variable&, const Variable&) {}
+        virtual void replaceVar(const Variable&, const VALUE&) {}
 
         virtual std::set<VALUE> readsLive()  const { return {}; }
         virtual std::set<VALUE> writesLive() const { return {}; }
@@ -286,7 +286,7 @@ namespace L2 {
             return r;
         }
 
-        void replaceVar(const Variable& from, const Variable& to) override {
+        void replaceVar(const Variable& from, const VALUE& to) override {
             if (!cmp_val) return;
             if (std::holds_alternative<Variable>(cmp_val->left) &&
                 std::get<Variable>(cmp_val->left) == from) {
@@ -332,11 +332,13 @@ namespace L2 {
         std::string to_string() const override {
             assert(isComplete());
             std::string result = "\t";
+            // std::cout << static_cast<int>(type) << '\n';
 
             switch (type) {
                 case InstructionType::AssignFromS:
                 case InstructionType::AssignFromMemory:
                 case InstructionType::AssignMemoryFromS:
+                case InstructionType::AssignFromStack:
                     result += valueToString(to.value());
                     result += " <- ";
                     result += valueToString(from.value());
@@ -403,7 +405,7 @@ namespace L2 {
             return {};
         }
 
-        void replaceVar(const Variable& fromV, const Variable& toV) override {
+        void replaceVar(const Variable& fromV, const VALUE& toV) override {
             auto replace_in = [&](VALUE& v) {
                 if (std::holds_alternative<Variable>(v)) {
                     if (std::get<Variable>(v) == fromV) v = toV;
@@ -411,7 +413,13 @@ namespace L2 {
                     memoryAccess& m = std::get<memoryAccess>(v);
                     if (std::holds_alternative<Variable>(m.base) &&
                         std::get<Variable>(m.base) == fromV) {
-                        m.base = toV;
+                        if (std::holds_alternative<Register>(toV)) {
+                                m.base = std::get<Register>(toV);
+                            } else if (std::holds_alternative<Variable>(toV)) {
+                                m.base = std::get<Variable>(toV);
+                            } else {
+                                throw std::runtime_error("memory base must be a Register or Variable");
+                            }
                     }
                 }
             };
@@ -505,7 +513,7 @@ namespace L2 {
             return w;
         }
 
-        void replaceVar(const Variable& from, const Variable& to) override {
+        void replaceVar(const Variable& from, const VALUE& to) override {
             if (callee &&
                 std::holds_alternative<Variable>(*callee) &&
                 std::get<Variable>(*callee) == from) {
@@ -600,7 +608,7 @@ namespace L2 {
             return {};
         }
 
-        void replaceVar(const Variable& from, const Variable& to) override {
+        void replaceVar(const Variable& from, const VALUE& to) override {
             auto replace_in = [&](VALUE& v) {
                 if (std::holds_alternative<Variable>(v)) {
                     if (std::get<Variable>(v) == from) v = to;
@@ -608,7 +616,13 @@ namespace L2 {
                     memoryAccess& m = std::get<memoryAccess>(v);
                     if (std::holds_alternative<Variable>(m.base) &&
                         std::get<Variable>(m.base) == from) {
-                        m.base = to;
+                        if (std::holds_alternative<Register>(to)) {
+                            m.base = std::get<Register>(to);
+                        } else if (std::holds_alternative<Variable>(to)) {
+                            m.base = std::get<Variable>(to);
+                        } else {
+                            throw std::runtime_error("memory base must be a Register or Variable");
+                        }
                     }
                 }
             };
@@ -659,7 +673,7 @@ namespace L2 {
             return {};
         }
 
-        void replaceVar(const Variable& from, const Variable& to) override {
+        void replaceVar(const Variable& from, const VALUE& to) override {
             if (dst &&
                 std::holds_alternative<Variable>(*dst) &&
                 std::get<Variable>(*dst) == from) {
@@ -707,7 +721,7 @@ namespace L2 {
             return {};
         }
 
-        void replaceVar(const Variable& from, const Variable& to) override {
+        void replaceVar(const Variable& from, const VALUE& to) override {
             if (dst &&
                 std::holds_alternative<Variable>(*dst) &&
                 std::get<Variable>(*dst) == from) {
@@ -760,7 +774,7 @@ namespace L2 {
             return {};
         }
 
-        void replaceVar(const Variable& from, const Variable& to) override {
+        void replaceVar(const Variable& from, const VALUE& to) override {
             auto replace = [&](std::optional<VALUE>& o) {
                 if (!o) return;
                 if (std::holds_alternative<Variable>(*o) &&
@@ -815,15 +829,22 @@ namespace L2 {
 
         // writes() and writesLive() are empty — this writes memory, not a var/register.
 
-        void replaceVar(const Variable& from, const Variable& to) override {
+        void replaceVar(const Variable& from, const VALUE& toV) override {
             if (std::holds_alternative<Variable>(mem.base) &&
                 std::get<Variable>(mem.base) == from) {
-                mem.base = to;
+
+                if (std::holds_alternative<Register>(toV)) {
+                        mem.base = std::get<Register>(toV);
+                    } else if (std::holds_alternative<Variable>(toV)) {
+                        mem.base = std::get<Variable>(toV);
+                    } else {
+                        throw std::runtime_error("memory base must be a Register or Variable");
+                    }
             }
             if (src &&
                 std::holds_alternative<Variable>(*src) &&
                 std::get<Variable>(*src) == from) {
-                *src = to;
+                *src = toV;
             }
         }
     };
@@ -842,8 +863,8 @@ namespace L2 {
 
         std::string to_string() const override {
             std::string result;
-            result += "\t" + label.name + "\n\t";
-            result += std::to_string(num_args) + "\n";
+            result += "\t(" + label.name + "\n\t";
+            result += std::to_string(num_args) + ' ' + std::to_string(num_locals) + '\n';
             for (auto& instruction : instructions) {
                 result += instruction->to_string();
             }
@@ -853,9 +874,11 @@ namespace L2 {
 
         std::string getLabel() const { return label.name; }
         int getNumArgs()       const { return num_args; }
+        int getNumLocals()     const { return num_locals; }
 
         void setLabel(std::string l) { label = Label(std::move(l)); }
         void setNumArgs(int n)       { args_set = true; num_args = n; }
+        void setNumLocal(int n)      { num_locals = n;}  // we can only have incLocal since there is never been we incrementing it . 
 
         bool verify() const override {
             return args_set && !instructions.empty();

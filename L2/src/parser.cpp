@@ -902,12 +902,12 @@ struct functionFormat :
 
             int64_t stackIdx = std::stoll(m_str);
 
-            // Model stack-arg as: w <- mem rsp <offset>
-            // Offset = stackIdx * 8 + (num_locals * 8) + 8
-            // (the +8 skips the return address; num_locals*8 skips locals)
+            // stack arg 0 : is always the last stack argument
+            // stack-arg 8: is always the second to last argument -- not handled yet 
+
             memoryAccess m;
             m.base = Register::rsp;
-            m.size = stackIdx * 8 + f.num_locals * 8 + 8;   // changes made to STACK-arg. specifically how it calculates the f.num_locals
+            m.size = stackIdx;   // no changes made 
             
 
             auto assign = std::make_unique<AssignInstruction>(InstructionType::AssignFromStack);
@@ -1144,13 +1144,14 @@ struct functionFormat :
 
     L2::Function parse_l2_function(const std::string& source){
         // 1. Read whole file
-       
+        // std::cerr << "[got " << source.size() << " bytes]\n";
+        // std::cerr << "---START---\n" << source << "\n---END---\n";
         std::string contents = source;
 
         // 2. Find the closing ')' of the function
         size_t close = contents.rfind(')');
         if (close == std::string::npos)
-            throw std::runtime_error("spill file: no closing ')'");
+            throw std::runtime_error("parse_l2_function: no closing ')'");
 
         std::string prog_part = contents.substr(0, close + 1);
         std::string tail_part = contents.substr(close + 1);
@@ -1168,6 +1169,9 @@ struct functionFormat :
     L2::Function parse_function_file(const char* fileName){
         // 1. Read whole file
         std::ifstream f(fileName);
+        if (!f.is_open()) {
+            throw std::runtime_error(std::string("could not open: ") + fileName);
+        }
         std::stringstream ss;
         ss << f.rdbuf();
         
