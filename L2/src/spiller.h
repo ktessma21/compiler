@@ -4,5 +4,5 @@
 
 namespace L2 {
 	
-	std::string Spill(Function& f, std::string target, std::string replacer);
+	std::string Spill(Function& f, std::string target, std::string replacer, int num = 0);
 }

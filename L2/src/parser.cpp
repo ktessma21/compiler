@@ -14,6 +14,8 @@
 
 namespace pegtl = TAO_PEGTL_NAMESPACE;
 
+static bool TRACE = false;
+
 
 #define pstring TAO_PEGTL_STRING
 
@@ -1118,7 +1120,7 @@ struct functionFormat :
    
 
 
-    static bool TRACE = false;
+    
 
     template<typename Rule>
     struct my_tracer : pegtl::normal<Rule> {

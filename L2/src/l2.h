@@ -51,9 +51,10 @@ namespace L2 {
     };
 
     enum class Register {
-        rcx,
-        rdi, rsi, rdx, r8, r9,
-        rax, rbx, rbp, r10, r11, r12, r13, r14, r15,
+        // Caller-saved first (colors 0–8)
+        rdi, rsi, rdx, rcx, r8, r9, rax, r10, r11,
+        // Callee-saved last (colors 9–14)
+        rbx, rbp, r12, r13, r14, r15,
         rsp
     };
 
@@ -441,10 +442,10 @@ namespace L2 {
     class CallInstruction : public Instruction {
     public:
         std::optional<VALUE> callee;
-        std::optional<int64_t> arg;
+        std::optional<int> arg;
 
         void setCallee(VALUE v) { callee = std::move(v); }
-        void setNum(int64_t n)  { arg = n; }
+        void setNum(int n)  { arg = n; }
 
         CallInstruction(InstructionType t, int64_t argument = 0) : Instruction(t) {
             assert(t == InstructionType::CallPrint       ||
@@ -466,12 +467,19 @@ namespace L2 {
         }
 
         std::string to_string() const override {
+            // if (type == InstructionType::CallTensorError){
+            //     std::cerr << "\tcall tensor-error " + arg.value() + '\n';
+            //     assert(false);
+            // }
+            
             switch (type) {
                 case InstructionType::CallPrint:       return "\tcall print 1\n";
                 case InstructionType::CallInput:       return "\tcall input 0\n";
                 case InstructionType::CallAllocate:    return "\tcall allocate 2\n";
                 case InstructionType::CallTupleError:  return "\tcall tuple-error 3\n";
-                case InstructionType::CallTensorError: return "\tcall tensor-error\n";
+                case InstructionType::CallTensorError: 
+                    assert(arg.has_value());
+                    return "\tcall tensor-error " + std::to_string(arg.value()) + '\n';
                 case InstructionType::CallUN:
                     return "\tcall " + (callee ? valueToString(*callee) : std::string{})
                          + " " + std::to_string(arg.value()) + "\n";
@@ -863,12 +871,12 @@ namespace L2 {
 
         std::string to_string() const override {
             std::string result;
-            result += "\t(" + label.name + "\n\t";
+            result += "(" + label.name + "\n\t";
             result += std::to_string(num_args) + ' ' + std::to_string(num_locals) + '\n';
             for (auto& instruction : instructions) {
                 result += instruction->to_string();
             }
-            result += "\t)\n";
+            result += ")\n";
             return result;
         }
 

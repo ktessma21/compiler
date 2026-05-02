@@ -25,6 +25,15 @@ namespace L2 {
                     // handle special case of sx
             const auto& instr = f.instructions[i];
 
+            // std::cerr << "[interference] processing: " << instr->to_string();
+            // auto reads = instr->reads();
+            // auto writeinh = instr->writes();
+            // std::cerr << "  reads={";
+            // for (const auto& r : reads) std::cerr << r.name << ",";
+            // std::cerr << "} writes={";
+            // for (const auto& w : writeinh) std::cerr << w.name << ",";
+            // std::cerr << "}\n";
+
             if (instr->type == InstructionType::WsopSx) {
                 auto* shift = dynamic_cast<ShiftInstruction*>(instr.get());
                 if (shift && shift->src.has_value() &&

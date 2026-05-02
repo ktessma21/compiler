@@ -10,7 +10,7 @@
 namespace L2 {
 
 
-    std::string Spill(Function& f, std::string target, std::string replacer){
+    std::string Spill(Function& f, std::string target, std::string replacer, int num){
 
         if (!f.verify()) throw std::runtime_error("File verification failed!");
         int counter = 0;
@@ -48,7 +48,7 @@ namespace L2 {
                 auto new_instr = std::make_unique<AssignInstruction>(InstructionType::AssignFromMemory);
                 memoryAccess m;
                 m.base = Register::rsp;
-                m.size = 0;
+                m.size = num*8; // this has to be updated 
                 new_instr -> setFrom(VALUE(m));
                 new_instr -> setTo(fresh);
                 result += new_instr -> to_string();
@@ -65,7 +65,7 @@ namespace L2 {
                 auto new_instr = std::make_unique<AssignInstruction>(InstructionType::AssignMemoryFromS);
                 memoryAccess m;
                 m.base = Register::rsp;
-                m.size = 0;
+                m.size = num*8; // this has to be updated 
                 new_instr->setTo(VALUE(m));  
                 new_instr->setFrom(fresh);
                 result += new_instr->to_string();

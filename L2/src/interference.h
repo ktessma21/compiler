@@ -34,13 +34,14 @@ namespace L2 {
                 }
             }
             void add(L2::LiveSet& s){
-                    for (auto it1 = s.begin(); it1 != s.end(); it1++){
-                        auto it2 = std::next(it1);   // always add the one next to the it1 so no duplicate
-                        for (; it2 != s.end(); ++it2) {  
-                            graph[*it1].insert(*it2);
-                            graph[*it2].insert(*it1);
-                        }
+                for (auto it1 = s.begin(); it1 != s.end(); ++it1){
+                    graph[*it1];  // ensure node exists even with no neighbors
+                    auto it2 = std::next(it1);
+                    for (; it2 != s.end(); ++it2) {  
+                        graph[*it1].insert(*it2);
+                        graph[*it2].insert(*it1);
                     }
+                }
             }
 
             void connect_with_everything_except_sx(VALUE& v) {
