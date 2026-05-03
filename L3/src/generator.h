@@ -2,7 +2,7 @@
 
 #include <l3.h>
 
-namespace L3{
+namespace L3 {
 
 
     class CodeGenerator {
@@ -79,7 +79,7 @@ namespace L3{
                 assert(value.has_value());
                 std::string v = std::visit([](const auto& x) { return x.to_string(); }, *value);
                 result += "\trax <- " + v + "\n";
-                result += "\treturn";
+                result += "\treturn\n";
                 return result;
 
             }
@@ -105,31 +105,31 @@ namespace L3{
                 
 
                 for (size_t i = 0; i < args.size(); ++i) {
-                    std::string arg_str = std::visit(
-                        [](const auto& x) { return x.to_string(); }, args[i]);
+                        std::string arg_str = std::visit(
+                            [](const auto& x) { return x.to_string(); }, args[i]);
 
-                    if (i < ARG_REGS.size()) {
-                        // register arg
-                        result += '\t' + registerToString(ARG_REGS[i])
-                                + " <- " + arg_str + '\n';
-                    } else {
-                        // stack arg: arg 7 → rsp -16, arg 8 → rsp -24, ...
-                        int64_t offset = -8 * static_cast<int64_t>(i - ARG_REGS.size() + 2);
-                        result += "\tmem rsp " + std::to_string(offset)
-                                + " <- " + arg_str + '\n';
+                        if (i < ARG_REGS.size()) {
+                            // register arg
+                            result += '\t' + registerToString(ARG_REGS[i])
+                                    + " <- " + arg_str + '\n';
+                        } else {
+                            // stack arg: arg 7 → rsp -16, arg 8 → rsp -24, ...
+                            int64_t offset = -8 * static_cast<int64_t>(i - ARG_REGS.size() + 2);
+                            result += "\tmem rsp " + std::to_string(offset)
+                                    + " <- " + arg_str + '\n';
+                        }
                     }
+
+                    // 4. call instruction with arity
+                    result += "\tcall @" + fname->name
+                            + ' ' + std::to_string(args.size()) + '\n';
+
+                    // 5. return label
+                    result += "\t:" + fname->name + "_ret\n";
+
+                    return result;
                 }
-
-                // 4. call instruction with arity
-                result += "\tcall @" + fname->name
-                        + ' ' + std::to_string(args.size()) + '\n';
-
-                // 5. return label
-                result += "\t:" + fname->name + "_ret\n";
-
-                return result;
-            }
-  };
+    };
 
 
   void generate_code(const Program& p);  

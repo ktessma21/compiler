@@ -588,7 +588,7 @@ public:
 
         bool verify() const override {
             for (auto& function : functions) {
-                if (function.getName() == "@main") return true;
+                if (function.getName() == "main") return true;
             }
             throw std::runtime_error("@main function doesn't exist");
             return false;

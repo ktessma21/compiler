@@ -12,6 +12,7 @@
 #include <utility>
 #include <vector>
 #include <parser.h>
+#include <generator.h>
 
 #include <utils.h>
 
@@ -77,6 +78,7 @@ int main(int argc, char **argv) {
    */
   if (enable_code_generator) {
     // TODO
+    L3::generate_code(program);
   }
 
   return 0;

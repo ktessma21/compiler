@@ -7,7 +7,7 @@
 namespace L3 {
 
 
-    void generate_code(const Program& p){
+    void  generate_code(const Program& p){
 
         if (!p.verify()) {
             exit(1);
@@ -24,7 +24,7 @@ namespace L3 {
 
 
         for (const auto& f : p.functions){
-            outputFile << "\t(" << f.getName() << '\n' ;
+            outputFile << "\t(@" << f.getName() << '\n' ;
             outputFile << "\t " << std::to_string(f.getNumParams()) << '\n' ;
             
 
