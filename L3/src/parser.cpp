@@ -14,7 +14,7 @@
 
 namespace pegtl = TAO_PEGTL_NAMESPACE;
 
-static bool TRACE = false;
+static bool TRACE = true;
 
 
 #define pstring TAO_PEGTL_STRING
