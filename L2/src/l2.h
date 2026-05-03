@@ -234,21 +234,21 @@ namespace L2 {
     // ---------- Instruction hierarchy ----------
 
     class Instruction : public ASTNode {
-    public:
-        InstructionType type;
-        Instruction() = delete;
-        Instruction(InstructionType t) : type(t) {}
-        virtual ~Instruction() = default;
+        public:
+            InstructionType type;
+            Instruction() = delete;
+            Instruction(InstructionType t) : type(t) {}
+            virtual ~Instruction() = default;
 
-        bool verify() const override { return true; }
+            bool verify() const override { return true; }
 
-        virtual std::set<Variable> reads()  const { return {}; }
-        virtual std::set<Variable> writes() const { return {}; }
-        virtual void replaceVar(const Variable&, const VALUE&) {}
+            virtual std::set<Variable> reads()  const { return {}; }
+            virtual std::set<Variable> writes() const { return {}; }
+            virtual void replaceVar(const Variable&, const VALUE&) {}
 
-        virtual std::set<VALUE> readsLive()  const { return {}; }
-        virtual std::set<VALUE> writesLive() const { return {}; }
-        virtual std::string to_string(int num_locals = 0) const = 0;
+            virtual std::set<VALUE> readsLive()  const { return {}; }
+            virtual std::set<VALUE> writesLive() const { return {}; }
+            virtual std::string to_string(int num_locals = 0) const = 0;
 
     };
 
@@ -877,36 +877,36 @@ namespace L2 {
 
     class Function : public ASTNode {
         Label label;
-    public:
-        std::vector<std::unique_ptr<Instruction>> instructions;
-        int num_args = 0;
-        int num_locals = 0;
-        bool args_set = false;
+        public:
+            std::vector<std::unique_ptr<Instruction>> instructions;
+            int num_args = 0;
+            int num_locals = 0;
+            bool args_set = false;
 
-        Function() = default;
+            Function() = default;
 
-        std::string to_string(int /*unused*/ = 0) const override  {
-            std::string result;
-            result += "(" + label.name + "\n\t";
-            result += std::to_string(num_args) + ' ' + std::to_string(this->num_locals) + '\n';
-            for (auto& instruction : instructions) {
-                result += instruction->to_string(this->num_locals);  // pass the member to instructions
+            std::string to_string(int /*unused*/ = 0) const override  {
+                std::string result;
+                result += "(" + label.name + "\n\t";
+                result += std::to_string(num_args) + ' ' + std::to_string(this->num_locals) + '\n';
+                for (auto& instruction : instructions) {
+                    result += instruction->to_string(this->num_locals);  // pass the member to instructions
+                }
+                result += ")\n";
+                return result;
             }
-            result += ")\n";
-            return result;
-        }
 
-        std::string getLabel() const { return label.name; }
-        int getNumArgs()       const { return num_args; }
-        int getNumLocals()     const { return num_locals; }
+            std::string getLabel() const { return label.name; }
+            int getNumArgs()       const { return num_args; }
+            int getNumLocals()     const { return num_locals; }
 
-        void setLabel(std::string l) { label = Label(std::move(l)); }
-        void setNumArgs(int n)       { args_set = true; num_args = n; }
-        void setNumLocal(int n)      { num_locals = n;}  // we can only have incLocal since there is never been we incrementing it . 
+            void setLabel(std::string l) { label = Label(std::move(l)); }
+            void setNumArgs(int n)       { args_set = true; num_args = n; }
+            void setNumLocal(int n)      { num_locals = n;}  // we can only have incLocal since there is never been we incrementing it . 
 
-        bool verify() const override {
-            return args_set && !instructions.empty();
-        }
+            bool verify() const override {
+                return args_set && !instructions.empty();
+            }
     };
 
     class Program : public ASTNode {

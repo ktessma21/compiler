@@ -1,3 +1,37 @@
-failed test166 : timeout
-failed test285 : timeout
-failed test345 : timeout
+TESTS PASSED: 835/869
+TESTS FAILED:  34/869
+FAILED:  test465.L2
+FAILED:  test481.L2
+FAILED:  test574.L2
+FAILED:  test700.L2
+FAILED:  test731.L2
+FAILED:  test764.L2
+FAILED:  test765.L2
+FAILED:  test766.L2
+FAILED:  test767.L2
+FAILED:  test777.L2
+FAILED:  test778.L2
+FAILED:  test784.L2
+FAILED:  test791.L2
+FAILED:  test792.L2
+FAILED:  test794.L2
+FAILED:  test796.L2
+FAILED:  test798.L2
+FAILED:  test804.L2
+FAILED:  test806.L2
+FAILED:  test809.L2
+FAILED:  test810.L2
+FAILED:  test811.L2
+FAILED:  test817.L2
+FAILED:  test821.L2
+FAILED:  test826.L2
+FAILED:  test828.L2
+FAILED:  test829.L2
+FAILED:  test833.L2
+FAILED:  test835.L2
+FAILED:  test836.L2
+FAILED:  test837.L2
+FAILED:  test842.L2 no more tokens
+FAILED:  test861.L2
+FAILED:  test866.L2
+[wnv0414@moore L2]$ 
