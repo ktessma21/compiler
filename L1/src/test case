@@ -3,12 +3,12 @@ make run FILE=tests/test51.L1
 make clean
 
 
-valgrind --leak-check=full --track-origins=yes bin/L2 -i tests/kidus/test0.L2
+valgrind --leak-check=full --track-origins=yes bin/L1  tests/kidus/test51.L1
 
 
 make copy_instructor_bin
 
-
+.bin/L2 tests/test7.L2
 
 make compile FILE=tests/test1.L2
 
