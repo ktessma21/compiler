@@ -64,7 +64,17 @@ namespace L3 {
         Call,               // call callee ( args )
     };
 
+    enum class Register {
+        // Caller-saved first (colors 0–8)
+        rdi, rsi, rdx, rcx, r8, r9, rax, r10, r11,
+        // Callee-saved last (colors 9–14)
+        rbx, rbp, r12, r13, r14, r15,
+        rsp
+    };
 
+    // ---------- Shared string-conversion helpers ----------
+
+    
 
 
 
@@ -126,7 +136,7 @@ namespace L3 {
         std::string name;
         FunctionName() = default;
         explicit FunctionName(std::string s) : name(std::move(s)) {}
-        std::string to_string() const { return name; }
+        std::string to_string() const { return "@" + name; }
         bool operator==(const FunctionName&) const = default;
         bool operator<(const FunctionName& o) const { return name < o.name; }
 
@@ -577,7 +587,11 @@ public:
         }
 
         bool verify() const override {
-            return true;
+            for (auto& function : functions) {
+                if (function.getName() == "@main") return true;
+            }
+            throw std::runtime_error("@main function doesn't exist");
+            return false;
         }
     };
 }

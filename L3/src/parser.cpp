@@ -14,7 +14,7 @@
 
 namespace pegtl = TAO_PEGTL_NAMESPACE;
 
-static bool TRACE = true;
+static bool TRACE = false;
 
 
 #define pstring TAO_PEGTL_STRING
@@ -346,7 +346,7 @@ namespace L3 {
         inline FunctionName makeFunctionName(const std::string& tok) {
             if (tok.empty() || tok[0] != '@')
                 throw std::runtime_error("makeFunctionName: expected @name, got '" + tok + "'");
-            return FunctionName(tok);
+            return FunctionName(tok.substr(1));
         }
 
         // t ::= var | N

@@ -62,7 +62,7 @@ int main(int argc, char **argv) {
 
   auto program = L3::parse_file(fileName);
 
-  std::cerr << program.to_string() ;
+  // std::cerr << program.to_string() ;
 
 
   /*
