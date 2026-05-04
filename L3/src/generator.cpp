@@ -26,7 +26,7 @@ namespace L3 {
         for (const auto& f : p.functions){
             outputFile << "\t(@" << f.getName() << '\n' ;
             outputFile << "\t " << std::to_string(f.getNumParams()) << '\n' ;
-            
+            CodeGenerator::currentFnPrefix = f.getName(); // add _ func name for all of them
 
             const auto& params = f.getParams();
             for (size_t i = 0; i < params.size(); ++i) {
@@ -39,7 +39,7 @@ namespace L3 {
                     // 7th param onwards lives on the stack
                     int64_t offset = 8 * static_cast<int64_t>(i - CodeGenerator::ARG_REGS.size());
                     outputFile << "\t" << params[i].to_string()
-                            << " <- mem rsp " << offset << '\n';
+                            << " <- stack-arg " << offset << '\n';
                 }
             }
 

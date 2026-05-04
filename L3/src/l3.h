@@ -91,13 +91,14 @@ namespace L3 {
         }
         throw std::runtime_error("builtinCalleeToString: unknown BuiltinCallee");
     }
-
+    /* big class groups */
     class ASTNode {
         public:
             virtual ~ASTNode() = default;
             virtual std::string to_string() const = 0;
             virtual bool verify() const { return true; }
         };
+
 
     struct Label : public ASTNode {
         std::string name;
@@ -529,16 +530,43 @@ public:
 
 
 
+    class Context {
+        std::vector<std::unique_ptr<Instruction>> instructions;
+        public:
+            Context() = default;
+            // Add instructions one at a time.
+            void add(std::unique_ptr<Instruction> instr) {
+                instructions.push_back(std::move(instr));
+            }
 
+            // Read-only access.
+            const std::vector<std::unique_ptr<Instruction>>& get() const {
+                return instructions;
+            }
+
+            bool empty() const { return instructions.empty(); }
+            size_t size() const { return instructions.size(); }
+
+            bool is_terminated() const {
+                if (instructions.empty()) return false;
+                InstructionType t = instructions.back()->type;
+                return t == InstructionType::Br
+                    || t == InstructionType::BrT
+                    || t == InstructionType::Return
+                    || t == InstructionType::ReturnT
+                    || t == InstructionType::Call;
+            }
+    };
 
 
 
 
     class Function : public ASTNode {
             FunctionName name;
-            std::vector<Variable> params;
+            std::vector<L3::Variable> params;
         public:
             std::vector<std::unique_ptr<Instruction>> instructions;
+            std::vector<L3::Context> contexts;
 
             Function() = default;
 
@@ -568,6 +596,33 @@ public:
             bool verify() const override {
                 return !this -> name.name.empty() && !instructions.empty();
             }
+
+             void build_blocks() {
+                Context current;
+                for (auto& instr : instructions) {
+                    // A label starts a new block (close the current one if non-empty).
+                    // a context always start with Label or Call
+                    if ((instr->type == InstructionType::Label || instr->type == InstructionType::Call) && !current.empty()) {
+                        contexts.push_back(std::move(current));
+                        current = Context{};
+                    }
+                    
+                    current.add(std::move(instr));
+                    
+                    // A terminator ends the current block.
+                    if (current.is_terminated()) {
+                        contexts.push_back(std::move(current));
+                        current = Context{};
+                    }
+                }
+                if (!current.empty()) {
+                    contexts.push_back(std::move(current));
+                }
+                instructions.clear();
+            }
+
+
+
         };
 
 

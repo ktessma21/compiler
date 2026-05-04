@@ -64,17 +64,33 @@ namespace L3 {
                         continue;
                     }
 
-                    // '-' handling:
-                    //   - if cur is non-empty (e.g. "tuple"), keep it attached → "tuple-error"
-                    //   - if cur is empty and next char is a digit, it's a negative number → attach
-                    //   - otherwise, it's the standalone '-' op
+                    // '-' handling: problem caused due to improper spacing. 
+                   
                     if (c == '-') {
-                        if (!cur.empty()) { cur += c; continue; }            // tuple-error / tensor-error
-                        if (n1 >= '0' && n1 <= '9') { cur += c; continue; }  // -42
-                        tokens.push_back("-");
+                        // tuple-error / tensor-error: cur holds the prefix
+                        if (cur == "tuple" || cur == "tensor") { cur += c; continue; }
+
+                        // Decide: is this a binary subtract or a unary minus?
+                        // It's a binary subtract if the previous emitted token is a value-like thing.
+                        bool prev_is_value = false;
+                        if (!cur.empty()) {
+                            prev_is_value = true;  // mid-identifier, e.g. "%val" being built
+                        } else if (!tokens.empty()) {
+                            char pc = tokens.back()[0];
+                            prev_is_value = (pc == '%' || pc == '@' || pc == ':' || pc == ')'
+                                            || (pc >= '0' && pc <= '9'));
+                        }
+
+                        flush();
+                        if (prev_is_value) {
+                            tokens.push_back("-");                                // binary subtract
+                        } else if (n1 >= '0' && n1 <= '9') {
+                            cur += c;                                             // negative literal
+                        } else {
+                            tokens.push_back("-");                                // standalone op (rare)
+                        }
                         continue;
                     }
-
                     cur += c;
                 }
                 flush();
