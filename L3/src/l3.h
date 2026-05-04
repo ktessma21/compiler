@@ -91,13 +91,29 @@ namespace L3 {
         }
         throw std::runtime_error("builtinCalleeToString: unknown BuiltinCallee");
     }
-    /* big class groups */
+
+    
+    /*           important defintions           */
     class ASTNode {
         public:
             virtual ~ASTNode() = default;
             virtual std::string to_string() const = 0;
             virtual bool verify() const { return true; }
         };
+
+
+    // struct tree {
+
+    // }   
+
+
+
+
+
+
+
+
+
 
 
     struct Label : public ASTNode {
@@ -553,8 +569,7 @@ public:
                 return t == InstructionType::Br
                     || t == InstructionType::BrT
                     || t == InstructionType::Return
-                    || t == InstructionType::ReturnT
-                    || t == InstructionType::Call;
+                    || t == InstructionType::ReturnT;
             }
     };
 
@@ -564,9 +579,17 @@ public:
     class Function : public ASTNode {
             FunctionName name;
             std::vector<L3::Variable> params;
+            
+            
+
+            
+
+            
         public:
+            
             std::vector<std::unique_ptr<Instruction>> instructions;
             std::vector<L3::Context> contexts;
+            bool _is_context = false;
 
             Function() = default;
 
@@ -578,8 +601,19 @@ public:
                     result += "%" + params[i].name;
                 }
                 result += ") {\n";
-                for (auto& instruction : instructions) {
-                    result += instruction->to_string();
+                // std::cerr << "joined" ;
+                if (_is_context) {
+
+                    
+                    for (const auto& ctx : contexts) {
+                        for (const auto& instr : ctx.get()) {
+                            result += instr->to_string();
+                        }
+                    }
+                } else {
+                    for (const auto& instr : instructions) {
+                        result += instr->to_string();
+                    }
                 }
                 result += "}\n";
                 return result;
@@ -594,10 +628,11 @@ public:
             void setParams(std::vector<Variable> ps) { params = std::move(ps); }
 
             bool verify() const override {
-                return !this -> name.name.empty() && !instructions.empty();
+                if (this->name.name.empty()) return false;
+                return _is_context ? !contexts.empty() : !instructions.empty();
             }
 
-             void build_blocks() {
+            void build_blocks() {
                 Context current;
                 for (auto& instr : instructions) {
                     // A label starts a new block (close the current one if non-empty).
@@ -619,6 +654,8 @@ public:
                     contexts.push_back(std::move(current));
                 }
                 instructions.clear();
+                this -> _is_context = true;
+                // std::cerr << "we have" << instructions.size();
             }
 
 

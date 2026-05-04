@@ -62,6 +62,10 @@ int main(int argc, char **argv) {
   char *fileName = argv[optind]; 
 
   auto program = L3::parse_file(fileName);
+  
+  for (auto& f : program.functions){
+      f.build_blocks();
+  }
 
   // std::cerr << program.to_string() ;
 

@@ -43,12 +43,20 @@ namespace L3 {
                 }
             }
 
+            if (f._is_context) {
+                    for (const auto& ctx : f.contexts) {
+                        for (const auto& instr : ctx.get()) {
+                             outputFile << CodeGenerator::generate(*instr);
+                        }
+                    }
+                } else {
+                    for (const auto& instr : f.instructions) {
+                         outputFile << CodeGenerator::generate(*instr);
+                    }
+                }
 
 
-
-            for (const auto& instr : f.instructions){
-                outputFile << CodeGenerator::generate(*instr);
-            }
+            
             outputFile << "\t)" << '\n' ;
         }
    
