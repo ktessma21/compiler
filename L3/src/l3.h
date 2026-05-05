@@ -601,7 +601,7 @@ public:
         std::string c = std::visit([](const auto& x) { return x.to_string(); }, *cond);
         return "\tbr " + c + " " + target->to_string() + "\n";
     }
-    
+
     std::set<Variable> reads() const override {
         std::set<Variable> r;
         if (cond.has_value()) {
