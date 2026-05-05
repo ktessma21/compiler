@@ -9,155 +9,16 @@
 #include <vector>
 #include <cassert>
 #include <optional>
+#include <type_traits>
+#include <tree.h>
+#include <ast_leaves.h>
+#include <set>
+
 
 namespace L3 {
 
 
-    // enum definitions 
-
-    enum class Op {
-        Add,    // +
-        Sub,    // -
-        Mul,    // *
-        And,    // &
-        Shl,    // 
-        Shr,    // >>
-    };
-
-    enum class Cmp {
-        Lt,     // 
-        Le,     // <=
-        Eq,     // =
-        Ge,     // >=
-        Gt,     // >
-    };
-
-    enum class BuiltinCallee {
-        Print,          // print
-        Allocate,       // allocate
-        Input,          // input
-        TupleError,     // tuple-error
-        TensorError,    // tensor-error
-    };
-
-    enum class InstructionType {
-        Unknown,
-
-        // assignments
-        AssignFromS,        // var <- s
-        AssignFromOp,       // var <- t op t
-        AssignFromCmp,      // var <- t cmp t
-        AssignFromLoad,     // var <- load var
-        AssignFromCall,     // var <- call callee ( args )
-
-        // memory
-        Store,              // store var <- s
-
-        // control flow
-        Br,                 // br label
-        BrT,                // br t label
-        Return,             // return
-        ReturnT,            // return t
-        Label,              // :name (standalone)
-
-        // calls
-        Call,               // call callee ( args )
-    };
-
-    enum class Register {
-        // Caller-saved first (colors 0–8)
-        rdi, rsi, rdx, rcx, r8, r9, rax, r10, r11,
-        // Callee-saved last (colors 9–14)
-        rbx, rbp, r12, r13, r14, r15,
-        rsp
-    };
-
-    // ---------- Shared string-conversion helpers ----------
-
-    
-
-
-
-
-
-
-    inline std::string builtinCalleeToString(BuiltinCallee b) {
-        switch (b) {
-            case BuiltinCallee::Print:       return "print";
-            case BuiltinCallee::Allocate:    return "allocate";
-            case BuiltinCallee::Input:       return "input";
-            case BuiltinCallee::TupleError:  return "tuple-error";
-            case BuiltinCallee::TensorError: return "tensor-error";
-        }
-        throw std::runtime_error("builtinCalleeToString: unknown BuiltinCallee");
-    }
-
-    
-    /*           important defintions           */
-    class ASTNode {
-        public:
-            virtual ~ASTNode() = default;
-            virtual std::string to_string() const = 0;
-            virtual bool verify() const { return true; }
-        };
-
-
-    // struct tree {
-
-    // }   
-
-
-
-
-
-
-
-
-
-
-
-    struct Label : public ASTNode {
-        std::string name;
-        Label() = default;
-        explicit Label(std::string s) : name(std::move(s)) {}
-        std::string to_string() const { return ":" + name; }
-        bool operator==(const Label&) const = default;
-        bool operator<(const Label& o) const { return name < o.name; }
-        bool empty() const { return name.empty(); }
-    };
-
-    struct Variable : public ASTNode {
-        std::string name;
-        Variable() = default;
-        explicit Variable(std::string s) : name(std::move(s)) {}
-        std::string to_string() const { return "%" + name; }
-        bool operator==(const Variable&) const = default;
-        bool operator<(const Variable& o) const { return name < o.name; }
-        bool operator==(const std::string& o) const { return name == o; }
-        bool operator<(const std::string& o) const { return name < o; }
-    };
-
-    class Number : public ASTNode {
-        int64_t value;
-    public:
-        Number() : value(0) {}
-        Number(int64_t v) : value(v) {}
-        std::string to_string() const { return std::to_string(value); }
-        int64_t getValue() const { return value; }
-        bool operator==(const Number& o) const { return value == o.value; }
-        bool operator<(const Number& o) const { return value < o.value; }
-    };
-
-
-    struct FunctionName : public ASTNode {
-        std::string name;
-        FunctionName() = default;
-        explicit FunctionName(std::string s) : name(std::move(s)) {}
-        std::string to_string() const { return "@" + name; }
-        bool operator==(const FunctionName&) const = default;
-        bool operator<(const FunctionName& o) const { return name < o.name; }
-
-    };
+   
     /* Variants  */
     // t ::= var | N
     using T = std::variant<Variable, Number>;
@@ -174,6 +35,9 @@ namespace L3 {
     using Callee = std::variant<Variable, FunctionName, BuiltinCallee>;
 
 
+
+    
+
     // Instruction Herarchy 
     class Instruction : public ASTNode {
         public:
@@ -184,6 +48,10 @@ namespace L3 {
 
             bool verify() const override { return true; }
             virtual std::string to_string() const = 0;
+            virtual std::unique_ptr<TreeNode> to_tree() const { return nullptr; }
+            virtual std::set<Variable> reads() const {return {};}
+            virtual std::set<Variable> writes() const {return {};}
+
 
     };
 
@@ -205,6 +73,15 @@ public:
 
     bool verify() const override { return dst.has_value() && src.has_value(); }
 
+    std::unique_ptr<TreeNode> to_tree() const override {
+        if (!dst.has_value() || !src.has_value()) return nullptr;
+        return std::make_unique<TreeNode>(
+            AssignNode{
+                std::make_unique<TreeNode>(*dst),  
+                std::make_unique<TreeNode>(*src)
+            });
+    }
+
     std::string to_string() const override {
         assert(verify());
         std::string rhs = std::visit([](const auto& x) -> std::string {
@@ -214,6 +91,25 @@ public:
         }, *src);
         return "\t" + dst->to_string() + " <- " + rhs + "\n";
     }
+
+
+    std::set<Variable> reads() const override {
+            std::set<Variable> r;
+            if (!src.has_value()) return r;
+            if (auto* var = std::get_if<Variable>(&*src)){
+                r.insert(*var);
+            }
+            return r;
+    }
+
+    std::set<Variable> writes() const override {
+            std::set<Variable> r;
+            if (!dst.has_value()) return r;
+            r.insert(dst.value());
+            return r;
+    }
+
+
 };
 
 
@@ -242,6 +138,21 @@ public:
         return dst.has_value() && lhs.has_value() && op.has_value() && rhs.has_value();
     }
 
+    std::unique_ptr<TreeNode> to_tree() const override {
+        if (!dst.has_value() || !op.has_value() || !lhs.has_value() || !rhs.has_value()) return nullptr;
+        return std::make_unique<TreeNode>(
+            AssignNode{
+                std::make_unique<TreeNode>(*dst), 
+                std::make_unique<TreeNode>(BinOpNode{
+                        op.value(),
+                        std::make_unique<TreeNode>(*lhs),  
+                        std::make_unique<TreeNode>(*rhs)
+                    })
+            });
+        }
+            
+    
+
     static std::string opToString(Op o) {
         switch (o) {
             case Op::Add: return "+";
@@ -261,6 +172,29 @@ public:
         };
         return "\t" + dst->to_string() + " <- " +
                tStr(*lhs) + " " + opToString(*op) + " " + tStr(*rhs) + "\n";
+    }
+
+    std::set<Variable> reads() const override {
+        std::set<Variable> r;
+        if (lhs.has_value()) {
+            if (auto* var = std::get_if<Variable>(&*lhs)) {
+                r.insert(*var);
+            }
+        }
+        if (rhs.has_value()) {
+            if (auto* var = std::get_if<Variable>(&*rhs)) {
+                r.insert(*var);
+            }
+        }
+        return r;
+    }
+
+    std::set<Variable> writes() const override {
+        std::set<Variable> w;
+        if (dst.has_value()) {
+            w.insert(*dst);
+        }
+        return w;
     }
 };
 
@@ -309,6 +243,43 @@ public:
         return "\t" + dst->to_string() + " <- " +
                tStr(*lhs) + " " + cmpToString(*cmp) + " " + tStr(*rhs) + "\n";
     }
+
+    std::unique_ptr<TreeNode> to_tree() const override {
+        if (!dst.has_value() || !cmp.has_value() || !lhs.has_value() || !rhs.has_value()) return nullptr;
+        return std::make_unique<TreeNode>(
+            AssignNode{
+                std::make_unique<TreeNode>(*dst), 
+                std::make_unique<TreeNode>(CompareNode{
+                        cmp.value(),
+                        std::make_unique<TreeNode>(*lhs),  
+                        std::make_unique<TreeNode>(*rhs)
+                    })
+            });
+        }
+    
+    std::set<Variable> reads() const override {
+        std::set<Variable> r;
+        if (lhs.has_value()) {
+            if (auto* var = std::get_if<Variable>(&*lhs)) {
+                r.insert(*var);
+            }
+        }
+        if (rhs.has_value()) {
+            if (auto* var = std::get_if<Variable>(&*rhs)) {
+                r.insert(*var);
+            }
+        }
+        return r;
+    }
+
+    std::set<Variable> writes() const override {
+        std::set<Variable> w;
+        if (dst.has_value()) {
+            w.insert(*dst);
+        }
+        return w;
+    }
+                
 };
 
 
@@ -333,6 +304,40 @@ public:
         assert(verify());
         return "\t" + dst->to_string() + " <- load " + src->to_string() + "\n";
     }
+
+    std::unique_ptr<TreeNode> to_tree() const override {
+        if (!dst.has_value() || !src.has_value()) return nullptr;
+
+        return std::make_unique<TreeNode>(
+            AssignNode{
+                std::make_unique<TreeNode>(*dst),
+                std::make_unique<TreeNode>(
+                    LoadNode{
+                        std::make_unique<TreeNode>(*src)
+                    }
+                )
+            }
+            );
+        }
+
+    std::set<Variable> reads() const override {
+        std::set<Variable> r;
+        if (src.has_value()) {
+            r.insert(*src);
+        }
+        return r;
+    }
+
+    std::set<Variable> writes() const override {
+        std::set<Variable> w;
+        if (dst.has_value()) {
+            w.insert(*dst);
+        }
+        return w;
+    }
+
+
+
 };
 
 
@@ -362,6 +367,33 @@ public:
         }, *src);
         return "\tstore " + dst->to_string() + " <- " + rhs + "\n";
     }
+
+
+    std::unique_ptr<TreeNode> to_tree() const override {
+        if (!dst.has_value() || !src.has_value()) return nullptr;
+
+        return std::make_unique<TreeNode>(
+            AssignNode{
+                std::make_unique<TreeNode>(StoreNode{std::make_unique<TreeNode>(*dst)}),
+                std::make_unique<TreeNode>(*src)
+            }
+            );
+        }
+
+    std::set<Variable> reads() const override {
+        std::set<Variable> r;
+        if (dst.has_value()) {
+            r.insert(*dst);  // address being stored into — that's a READ of the address variable
+        }
+        if (src.has_value()) {
+            if (auto* var = std::get_if<Variable>(&*src)) {
+                r.insert(*var);  // value being stored, if it's a variable
+            }
+        }
+        return r;
+    }
+// store writes to memory, not to a variable
+
 };
 
 
@@ -412,6 +444,31 @@ public:
         return "\t" + dst->to_string() + " <- call " +
                calleeToString(*callee) + "(" + argsToString(args) + ")\n";
     }
+
+
+    std::set<Variable> reads() const override {
+        std::set<Variable> r;
+        if (callee.has_value()) {
+            if (auto* var = std::get_if<Variable>(&*callee)) {
+                r.insert(*var);  // callee is a function pointer in a variable
+            }
+        }
+        for (const auto& arg : args) {
+            if (auto* var = std::get_if<Variable>(&arg)) {
+                r.insert(*var);  // each Variable arg is a read
+            }
+        }
+        return r;
+    }
+
+    std::set<Variable> writes() const override {
+        std::set<Variable> w;
+        if (dst.has_value()) {
+            w.insert(*dst);
+        }
+        return w;
+    }
+
 };
 
 
@@ -437,6 +494,22 @@ public:
         return "\tcall " + calleeToString(*callee) +
                "(" + argsToString(args) + ")\n";
     }
+
+    std::set<Variable> reads() const override {
+        std::set<Variable> r;
+        if (callee.has_value()) {
+            if (auto* var = std::get_if<Variable>(&*callee)) {
+                r.insert(*var);  // callee is a function pointer in a variable
+            }
+        }
+        for (const auto& arg : args) {
+            if (auto* var = std::get_if<Variable>(&arg)) {
+                r.insert(*var);  // each Variable arg is a read
+            }
+        }
+        return r;
+    }
+
 };
 
 
@@ -472,6 +545,16 @@ public:
         assert(verify());
         std::string v = std::visit([](const auto& x) { return x.to_string(); }, *value);
         return "\treturn " + v + "\n";
+    }
+
+    std::set<Variable> reads() const override {
+        std::set<Variable> r;
+        if (value.has_value()) {
+            if (auto* var = std::get_if<Variable>(&*value)) {
+                r.insert(*var);
+            }
+        }
+        return r;
     }
 };
 
@@ -518,6 +601,16 @@ public:
         std::string c = std::visit([](const auto& x) { return x.to_string(); }, *cond);
         return "\tbr " + c + " " + target->to_string() + "\n";
     }
+    
+    std::set<Variable> reads() const override {
+        std::set<Variable> r;
+        if (cond.has_value()) {
+            if (auto* var = std::get_if<Variable>(&*cond)) {
+                r.insert(*var);
+            }
+        }
+        return r;
+    }
 };
 
 
@@ -548,12 +641,15 @@ public:
 
     class Context {
         std::vector<std::unique_ptr<Instruction>> instructions;
+        std::vector<std::unique_ptr<TreeNode>> trees;
         public:
             Context() = default;
             // Add instructions one at a time.
             void add(std::unique_ptr<Instruction> instr) {
                 instructions.push_back(std::move(instr));
             }
+
+
 
             // Read-only access.
             const std::vector<std::unique_ptr<Instruction>>& get() const {
@@ -571,6 +667,23 @@ public:
                     || t == InstructionType::Return
                     || t == InstructionType::ReturnT;
             }
+
+
+            void build_tree(){
+                for (auto& instr : instructions) {
+                    auto tree = instr->to_tree(); 
+                    if (tree) {                    
+                        trees.push_back(std::move(tree));   
+                    }
+                }
+            }
+
+            // void merge_tree(){
+            //     // find the context when to merge them and just call the merging function. 
+            //     bool mergeable = false;
+            //     while ()
+            // }
+
     };
 
 
@@ -579,11 +692,6 @@ public:
     class Function : public ASTNode {
             FunctionName name;
             std::vector<L3::Variable> params;
-            
-            
-
-            
-
             
         public:
             
