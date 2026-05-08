@@ -108,7 +108,7 @@ namespace L3 {
                 }
             }
         }
-       printLiveness(result, f, true); // print for debugging
+    //    printLiveness(result, f, true); // print for debugging
 
         return result;
 

@@ -686,7 +686,38 @@ public:
                     || t == InstructionType::Return
                     || t == InstructionType::ReturnT;
             }
+            void print_trees(bool debug = false) const {
+                if (!debug) return;
 
+                std::cerr << "=== Context Trees ===\n";
+                std::cerr << "instructions: " << instructions.size() 
+                        << " trees: " << trees.size() 
+                        << " liveness: " << liveAnalysisReport.size() << "\n\n";
+
+                for (int i = 0; i < (int)instructions.size(); i++) {
+                    std::cerr << "[" << i << "] " << instructions[i]->to_string();
+                    
+                    if (i < (int)trees.size()) {
+                        if (trees[i]) {
+                            std::cerr << "     tree: " << tree_to_string(*trees[i]) << "\n";
+                        } else {
+                            std::cerr << "     tree: nullptr\n";
+                        }
+                    } else {
+                        std::cerr << "     tree: (no tree entry)\n";
+                    }
+
+                    if (i < (int)liveAnalysisReport.size()) {
+                        std::cerr << "     in : { ";
+                        for (const auto& v : liveAnalysisReport[i].in)  std::cerr << v.to_string() << " ";
+                        std::cerr << "}\n";
+                        std::cerr << "     out: { ";
+                        for (const auto& v : liveAnalysisReport[i].out) std::cerr << v.to_string() << " ";
+                        std::cerr << "}\n";
+                    }
+                    std::cerr << "\n";
+                }
+            }
 
             void build_tree(){
                 for (auto& instr : instructions) {
@@ -711,7 +742,8 @@ public:
                     assert(false);
                 }
 
-                for (int i = (int)instructions.size() - 1; i >= 0; i--) {
+                for (int i = 0; i < (int)instructions.size(); i++) {
+                    print_trees(true);
                     if (!trees[i]) continue;
 
 

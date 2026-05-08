@@ -69,6 +69,10 @@ namespace L3 {
     {
         if (!node) return false;
 
+        if (auto* assign = std::get_if<AssignNode>(&node->data)) {
+                return replace_leaf(assign->src, target, replacement);
+            }
+
         if (auto* var = std::get_if<Variable>(&node->data)) {
                 if (var->name == target.name) {
                     node = std::move(replacement);   // splice in the replacement subtree
@@ -169,5 +173,36 @@ namespace L3 {
         }, node.data);
     }
 
+
+
+    inline std::string tree_to_string(const TreeNode& node) {
+        return std::visit([](const auto& data) -> std::string {
+            using T = std::decay_t<decltype(data)>;
+
+            if constexpr (std::is_same_v<T, Variable>) {
+                return data.to_string();
+            } else if constexpr (std::is_same_v<T, Number>) {
+                return data.to_string();
+            } else if constexpr (std::is_same_v<T, BinOpNode>) {
+                return "(" + tree_to_string(*data.left) 
+                    + " op " 
+                    + tree_to_string(*data.right) + ")";
+            } else if constexpr (std::is_same_v<T, CompareNode>) {
+                return "(" + tree_to_string(*data.left) 
+                    + " cmp " 
+                    + tree_to_string(*data.right) + ")";
+            } else if constexpr (std::is_same_v<T, LoadNode>) {
+                return "load(" + tree_to_string(*data.addr) + ")";
+            } else if constexpr (std::is_same_v<T, StoreNode>) {
+                return "store(" + tree_to_string(*data.addr) 
+                    + " <- " + tree_to_string(*data.value) + ")";
+            } else if constexpr (std::is_same_v<T, AssignNode>) {
+                return tree_to_string(*data.dest) 
+                    + " <- " 
+                    + tree_to_string(*data.src);
+            }
+            return "unknown";
+        }, node.data);
+    }
 
 }  // namespace L3
