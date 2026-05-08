@@ -9,6 +9,25 @@
 
 namespace L3 {
 
+
+    void printLiveness(const std::vector<LivenessInfo>& result, 
+                   const Function& f, 
+                   bool debug = false) {
+            if (!debug) return;
+
+            for (int i = 0; i < (int)result.size(); i++) {
+                std::cerr << "[" << i << "] " << f.instructions[i]->to_string() << "\n";
+
+                std::cerr << "     in : { ";
+                for (const auto& v : result[i].in)  std::cerr << v.to_string() << " ";
+                std::cerr << "}\n";
+
+                std::cerr << "     out: { ";
+                for (const auto& v : result[i].out) std::cerr << v.to_string() << " ";
+                std::cerr << "}\n\n";
+            }
+        }
+
    
     // Run this code before building the context trees. 
     // Compute liveness for a single basic block (Function-block).
@@ -18,7 +37,7 @@ namespace L3 {
             throw std::runtime_error("can't use compute_liveness func once context trees are built.");
         }
 
-        std::vector<std::vector<size_t>> successors;
+        std::vector<std::vector<size_t>> successors(f.instructions.size()); 
         std::unordered_map<std::string, size_t> labelIndex;
         for (size_t j = 0; j < f.instructions.size(); j++) {
             if (auto* lbl = dynamic_cast<LabelInstruction*>(f.instructions[j].get())) {
@@ -59,18 +78,38 @@ namespace L3 {
 
                 case InstructionType::BrT:{
                     auto* c = dynamic_cast<BrTInstruction*>(f.instructions[i].get());
-                    successors[i] = { i+ 1, labelIndex.at(c->getTarget().value().name) };
+                    successors[i] = { i+1, labelIndex.at(c->getTarget().value().name) };
                     break;
                 }
 
-
-
-                
             }
         }
 
 
-        std::vector<LivenessInfo> result;
+        std::vector<LivenessInfo> result(f.instructions.size()); // initialized 
+
+        bool keep_going = true;
+        while (keep_going) {
+            keep_going = false;
+
+            for (int i = (int)f.instructions.size() - 1; i >= 0; i--) {
+                std::set<Variable> liveOut;
+                for (size_t s : successors[i]) {
+                    liveOut.insert(result[s].in.begin(), result[s].in.end());
+                }
+
+                std::set<Variable> liveIn = liveOut;
+                for (const auto& w : f.instructions[i]->writes()) liveIn.erase(w);
+                for (const auto& r : f.instructions[i]->reads())  liveIn.insert(r);
+
+                if (liveIn != result[i].in || liveOut != result[i].out) {
+                    result[i].in  = std::move(liveIn);
+                    result[i].out = std::move(liveOut);
+                    keep_going = true;
+                }
+            }
+        }
+       // printLiveness(result, f, true); // print for debugging
 
         return result;
 
@@ -78,6 +117,9 @@ namespace L3 {
 
         
     }
+
+
+       
 
     // // Use-count analysis (simpler — for tree merging).
     // std::unordered_map<std::string, int> compute_use_counts(const Context& ctx);

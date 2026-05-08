@@ -11,8 +11,6 @@ namespace L3 {
     struct LivenessInfo {
         std::set<Variable> in;       // variables live coming INTO the instruction
         std::set<Variable> out;      // variables live coming OUT of the instruction
-        std::set<Variable> reads;    // GEN
-        std::set<Variable> writes;   // KILL
     };
 
     // Compute liveness for a single basic block (Context).

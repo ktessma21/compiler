@@ -1,7 +1,7 @@
 (@main
 	(@main
 	 0
-	:__entry
+	:_main_entry
 	%newVar1 <- 7
 	%newVar1 >>= 1
 	%newVar0 <- %newVar1
@@ -33,10 +33,10 @@
 	rdi <- %a
 	rsi <- 1
 	rdx <- 2
-	r10 <- 3
-	mem rsp -8 <- :_ret_0
+	rcx <- 3
+	mem rsp -8 <- :_main_ret_0
 	call @storeV 4
-	:_ret_0
+	:_main_ret_0
 	return
 	)
 	(@storeV
@@ -44,8 +44,8 @@
 	%A <- rdi
 	%k <- rsi
 	%i <- rdx
-	%j <- r10
-	:__entry
+	%j <- rcx
+	:_storeV_entry
 	%newVar1 <- 0
 	%newVar2 <- %A
 	%newVar2 += 24

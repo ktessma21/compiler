@@ -36,10 +36,8 @@ namespace L3 {
         Variable() = default;
         explicit Variable(std::string s) : name(std::move(s)) {}
         std::string to_string() const { return "%" + name; }
-        bool operator==(const Variable&) const = default;
+        bool operator==(const Variable& o) const { return name == o.name; }
         bool operator<(const Variable& o) const { return name < o.name; }
-        bool operator==(const std::string& o) const { return name == o; }
-        bool operator<(const std::string& o) const { return name < o; }
     };
 
     class Number : public ASTNode {
