@@ -13,7 +13,7 @@
 #include <vector>
 #include <parser.h>
 #include <generator.h>
-#include "liveness.h"
+
 
 #include <utils.h>
 
@@ -65,8 +65,8 @@ int main(int argc, char **argv) {
   auto program = L3::parse_file(fileName);
   
   for (auto& f : program.functions){
-      // f.build_blocks();
-      auto l = L3::compute_liveness(f);
+      f.build_blocks();
+      // auto l = L3::compute_liveness(f);
     
   }
 

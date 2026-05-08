@@ -126,4 +126,48 @@ namespace L3 {
 
     }
 
+
+    inline std::unique_ptr<TreeNode> clone_tree(const TreeNode& node) {
+        return std::visit([](const auto& data) -> std::unique_ptr<TreeNode> {
+            using T = std::decay_t<decltype(data)>;
+
+            if constexpr (std::is_same_v<T, Variable> || std::is_same_v<T, Number>) {
+                // leaf nodes — just copy the value
+                return std::make_unique<TreeNode>(data);
+
+            } else if constexpr (std::is_same_v<T, BinOpNode>) {
+                return std::make_unique<TreeNode>(BinOpNode{
+                    data.op,
+                    clone_tree(*data.left),
+                    clone_tree(*data.right)
+                });
+
+            } else if constexpr (std::is_same_v<T, CompareNode>) {
+                return std::make_unique<TreeNode>(CompareNode{
+                    data.op,
+                    clone_tree(*data.left),
+                    clone_tree(*data.right)
+                });
+
+            } else if constexpr (std::is_same_v<T, LoadNode>) {
+                return std::make_unique<TreeNode>(LoadNode{
+                    clone_tree(*data.addr)
+                });
+
+            } else if constexpr (std::is_same_v<T, StoreNode>) {
+                return std::make_unique<TreeNode>(StoreNode{
+                    clone_tree(*data.addr),
+                    clone_tree(*data.value)
+                });
+
+            } else if constexpr (std::is_same_v<T, AssignNode>) {
+                return std::make_unique<TreeNode>(AssignNode{
+                    clone_tree(*data.dest),
+                    clone_tree(*data.src)
+                });
+            }
+        }, node.data);
+    }
+
+
 }  // namespace L3

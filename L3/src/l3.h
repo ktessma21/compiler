@@ -17,6 +17,11 @@
 
 namespace L3 {
 
+    // forward declaration. 
+    class Function;
+    struct LivenessInfo;
+    std::vector<LivenessInfo> compute_liveness(const Function& f);
+
 
    
     /* Variants  */
@@ -33,6 +38,12 @@ namespace L3 {
 
     // callee ::= u | builtin
     using Callee = std::variant<Variable, FunctionName, BuiltinCallee>;
+
+    // for liveness analysis 
+    struct LivenessInfo {
+        std::set<Variable> in;
+        std::set<Variable> out;
+    };
 
 
 
@@ -642,13 +653,21 @@ public:
     class Context {
         std::vector<std::unique_ptr<Instruction>> instructions;
         std::vector<std::unique_ptr<TreeNode>> trees;
+        std::vector<LivenessInfo> liveAnalysisReport;
         public:
             Context() = default;
             // Add instructions one at a time.
             void add(std::unique_ptr<Instruction> instr) {
                 instructions.push_back(std::move(instr));
+                // liveAnalysisReport.insert(lar.begin(), lar.end());
+
             }
 
+            // overload — assign liveness slice to this context
+            void add(std::vector<LivenessInfo>::iterator begin, 
+                    std::vector<LivenessInfo>::iterator end) {
+                liveAnalysisReport.assign(begin, end);
+            }
 
 
             // Read-only access.
@@ -678,11 +697,58 @@ public:
                 }
             }
 
-            // void merge_tree(){
-            //     // find the context when to merge them and just call the merging function. 
-            //     bool mergeable = false;
-            //     while ()
-            // }
+            void merge_tree(){
+                // find the context when to merge them and just call the merging function. 
+                assert(instructions.size() == trees.size());
+                assert(instructions.size() == liveAnalysisReport.size());
+
+                for (int i = (int)instructions.size() - 1; i >= 0; i--) {
+                    const auto& live = liveAnalysisReport[i];
+                    const auto  type = instructions[i]->type;
+
+                    bool is_pure = (type == InstructionType::AssignFromS  ||
+                                    type == InstructionType::AssignFromOp ||
+                                    type == InstructionType::AssignFromCmp ||
+                                    type == InstructionType::AssignFromLoad);
+                        // in = {}, out = {} --- it's a definition never used again. 
+                    if (is_pure && live.in.empty() && live.out.empty()) {
+                        instructions.erase(instructions.begin() + i);
+                        trees.erase(trees.begin() + i);
+                        liveAnalysisReport.erase(liveAnalysisReport.begin() + i);
+                        continue;
+                    }
+
+
+                    // one sided difference checker :  // v is in out[i] but not in in[i]
+                    // meaning %v is DEFINED at instruction i
+                    std::set<Variable> diff;
+                    std::set_difference(liveAnalysisReport[i].out.begin(), liveAnalysisReport[i].out.end(),
+                                        liveAnalysisReport[i].in.begin(),  liveAnalysisReport[i].in.end(),
+                                        std::inserter(diff, diff.begin()));
+
+                    if (diff.empty()) continue;  // no variable defined here
+                    assert(diff.size() == 1); // each instruction defines at most one variable 
+                    const Variable& defined = *diff.begin();
+             
+                        
+                    for (int j = i + 1; j < (int)instructions.size(); j++) {
+                        if (instructions[j]->reads().count(defined)) {
+                            auto source_copy = clone_tree(*trees[i]);  // ← clone for each use
+                            auto merged = L3::merge_tree(std::move(source_copy),
+                                                        std::move(trees[j]));
+                            if (merged) {
+                                trees[j] = std::move(merged);
+                            }
+                        }
+                    }
+                    // after all uses are merged, remove instruction i
+                    instructions.erase(instructions.begin() + i);
+                    trees.erase(trees.begin() + i);
+                    liveAnalysisReport.erase(liveAnalysisReport.begin() + i);
+
+                
+            }
+        }
 
     };
 
@@ -741,29 +807,38 @@ public:
             }
 
             void build_blocks() {
+                std::vector<LivenessInfo> result = compute_liveness(*this); 
+                auto begin = result.begin();
+                auto upto  = result.begin();
+
                 Context current;
                 for (auto& instr : instructions) {
-                    // A label starts a new block (close the current one if non-empty).
-                    // a context always start with Label or Call
-                    if ((instr->type == InstructionType::Label || instr->type == InstructionType::Call) && !current.empty()) {
+                    if ((instr->type == InstructionType::Label || 
+                        instr->type == InstructionType::Call) && !current.empty()) {
+                        current.add(begin, upto);  // assign liveness before push
                         contexts.push_back(std::move(current));
                         current = Context{};
+                        begin = upto;             // ← advance begin to start of new context
                     }
-                    
+
                     current.add(std::move(instr));
-                    
-                    // A terminator ends the current block.
+                    upto++;
+
                     if (current.is_terminated()) {
+                        current.add(begin, upto); // assign liveness before push
                         contexts.push_back(std::move(current));
                         current = Context{};
+                        begin = upto;             // ← advance begin
                     }
                 }
+
                 if (!current.empty()) {
+                    current.add(begin, upto);     // don't forget the last context
                     contexts.push_back(std::move(current));
                 }
+
                 instructions.clear();
-                this -> _is_context = true;
-                // std::cerr << "we have" << instructions.size();
+                this->_is_context = true;
             }
 
 
@@ -794,4 +869,7 @@ public:
             return false;
         }
     };
+
+  
 }
+

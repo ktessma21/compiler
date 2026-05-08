@@ -4,7 +4,6 @@
 #include <vector>
 #include <set>
 #include "ast_leaves.h"
-#include "liveness.h"
 #include "l3.h"
 
 namespace L3 {
@@ -109,7 +108,7 @@ namespace L3 {
                 }
             }
         }
-       // printLiveness(result, f, true); // print for debugging
+       printLiveness(result, f, true); // print for debugging
 
         return result;
 
