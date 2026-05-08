@@ -1,10 +1,7 @@
 (@main
 	(@main
 	 0
-	%v <- 5
-	%v <- 10
-	%x <- %v
-	%x += 1
+	rax <- 0
 	return
 	)
 )

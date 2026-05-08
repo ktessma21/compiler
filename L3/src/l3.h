@@ -690,19 +690,31 @@ public:
 
             void build_tree(){
                 for (auto& instr : instructions) {
-                    auto tree = instr->to_tree(); 
-                    if (tree) {                    
-                        trees.push_back(std::move(tree));   
-                    }
+                     trees.push_back(instr->to_tree()); 
                 }
             }
 
             void merge_tree(){
                 // find the context when to merge them and just call the merging function. 
-                assert(instructions.size() == trees.size());
-                assert(instructions.size() == liveAnalysisReport.size());
+                if (instructions.size() != trees.size()) {
+                    std::cerr << "ASSERT FAIL: instructions.size()=" << instructions.size()
+                            << " trees.size()=" << trees.size() << "\n";
+                    for (int i = 0; i < (int)instructions.size(); i++) {
+                        std::cerr << "  instr[" << i << "] = " << instructions[i]->to_string();
+                    }
+                    assert(false);
+                }
+
+                if (instructions.size() != liveAnalysisReport.size()) {
+                    std::cerr << "ASSERT FAIL: instructions.size()=" << instructions.size()
+                            << " liveAnalysisReport.size()=" << liveAnalysisReport.size() << "\n";
+                    assert(false);
+                }
 
                 for (int i = (int)instructions.size() - 1; i >= 0; i--) {
+                    if (!trees[i]) continue;
+
+
                     const auto& live = liveAnalysisReport[i];
                     const auto  type = instructions[i]->type;
 

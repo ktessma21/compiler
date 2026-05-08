@@ -64,10 +64,13 @@ int main(int argc, char **argv) {
 
   auto program = L3::parse_file(fileName);
   
-  for (auto& f : program.functions){
-      f.build_blocks();
-      // auto l = L3::compute_liveness(f);
-    
+  for (auto& f : program.functions) {
+      f.build_blocks();          // 1. build contexts + assign liveness
+      
+      for (auto& ctx : f.contexts) {
+          ctx.build_tree();      // 2. build trees from instructions
+          ctx.merge_tree();      // 3. merge trees using liveness
+      }
   }
 
   // std::cerr << program.to_string() ;
