@@ -3,6 +3,7 @@
 #include <memory>
 #include <variant>
 #include <vector>
+#include <set>
 #include <type_traits>
 #include <stdexcept>
 #include <cassert>
@@ -202,6 +203,60 @@ namespace L3 {
                     + tree_to_string(*data.src);
             }
             return "unknown";
+        }, node.data);
+    }
+
+
+    inline std::set<Variable> tree_reads(const TreeNode& node) {
+        return std::visit([](const auto& data) -> std::set<Variable> {
+            using T = std::decay_t<decltype(data)>;
+
+            if constexpr (std::is_same_v<T, Variable>) {
+                return {data};
+
+            } else if constexpr (std::is_same_v<T, Number>) {
+                return {};
+
+            } else if constexpr (std::is_same_v<T, BinOpNode>) {
+                auto r = tree_reads(*data.left);
+                auto rr = tree_reads(*data.right);
+                r.insert(rr.begin(), rr.end());
+                return r;
+
+            } else if constexpr (std::is_same_v<T, CompareNode>) {
+                auto r = tree_reads(*data.left);
+                auto rr = tree_reads(*data.right);
+                r.insert(rr.begin(), rr.end());
+                return r;
+
+            } else if constexpr (std::is_same_v<T, LoadNode>) {
+                return tree_reads(*data.addr);
+
+            } else if constexpr (std::is_same_v<T, StoreNode>) {
+                auto r = tree_reads(*data.addr);
+                auto rr = tree_reads(*data.value);
+                r.insert(rr.begin(), rr.end());
+                return r;
+
+            } else if constexpr (std::is_same_v<T, AssignNode>) {
+                // dest is a write not a read, only traverse src
+                return tree_reads(*data.src);
+            }
+            return {};
+        }, node.data);
+    }
+
+    inline std::set<Variable> tree_writes(const TreeNode& node) {
+        return std::visit([](const auto& data) -> std::set<Variable> {
+            using T = std::decay_t<decltype(data)>;
+
+            if constexpr (std::is_same_v<T, AssignNode>) {
+                // only the top level dest is a write
+                if (auto* var = std::get_if<Variable>(&data.dest->data)) {
+                    return {*var};
+                }
+            }
+            return {};
         }, node.data);
     }
 

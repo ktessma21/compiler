@@ -27,10 +27,39 @@ namespace L3 {
             }
         }
 
-    std::vector<LivenessInfo> compute_liveness(const Context& ctx){
-        if (ctx.trees.empty()){
-            throw std::runtime_error("empty tree to compute_liveness analysis of a context.");
+   std::vector<LivenessInfo> compute_liveness_ctx(const Context& ctx) {
+        std::vector<LivenessInfo> result(trees.size());
+
+        // seed the last instruction from existing report — already correct
+        int last = (int)trees.size() - 1;
+        result[last].in  = liveAnalysisReport[last].in;
+        result[last].out = liveAnalysisReport[last].out;
+
+        bool keep_going = true;
+        while (keep_going) {
+            keep_going = false;
+
+            for (int i = last - 1; i >= 0; i--) {  // skip last, already seeded
+                std::set<Variable> liveOut;
+                liveOut = result[i+1].in;
+
+                std::set<Variable> liveIn = liveOut;
+                if (trees[i]) {
+                    for (const auto& w : tree_writes(*trees[i])) liveIn.erase(w);
+                    for (const auto& r : tree_reads(*trees[i]))  liveIn.insert(r);
+                } else {
+                    for (const auto& w : instructions[i]->writes()) liveIn.erase(w);
+                    for (const auto& r : instructions[i]->reads())  liveIn.insert(r);
+                }
+
+                if (liveIn != result[i].in || liveOut != result[i].out) {
+                    result[i].in  = std::move(liveIn);
+                    result[i].out = std::move(liveOut);
+                    keep_going = true;
+                }
+            }
         }
+        return result;
     }
    
     // Run this code before building the context trees. 
