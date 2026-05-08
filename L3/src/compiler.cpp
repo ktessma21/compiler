@@ -94,3 +94,10 @@ int main(int argc, char **argv) {
 
   return 0;
 }
+
+
+// bad loop : first of all the loop should only go until 
+// finding a case where the variable is in the "In" set 
+// but not in "Out" set of the instruction. 
+
+ //: the loop should only go 

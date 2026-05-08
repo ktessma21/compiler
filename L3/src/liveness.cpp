@@ -27,6 +27,11 @@ namespace L3 {
             }
         }
 
+    std::vector<LivenessInfo> compute_liveness(const Context& ctx){
+        if (ctx.trees.empty()){
+            throw std::runtime_error("empty tree to compute_liveness analysis of a context.");
+        }
+    }
    
     // Run this code before building the context trees. 
     // Compute liveness for a single basic block (Function-block).
@@ -111,11 +116,11 @@ namespace L3 {
     //    printLiveness(result, f, true); // print for debugging
 
         return result;
-
-
-
         
     }
+
+
+
 
 
        

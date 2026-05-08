@@ -19,8 +19,10 @@ namespace L3 {
 
     // forward declaration. 
     class Function;
+    class Context;
     struct LivenessInfo;
     std::vector<LivenessInfo> compute_liveness(const Function& f);
+    std::vector<LivenessInfo> compute_liveness(const Context& ctx);
 
 
    
@@ -651,10 +653,11 @@ public:
 
 
     class Context {
-        std::vector<std::unique_ptr<Instruction>> instructions;
-        std::vector<std::unique_ptr<TreeNode>> trees;
-        std::vector<LivenessInfo> liveAnalysisReport;
         public:
+            std::vector<std::unique_ptr<Instruction>> instructions;
+            std::vector<std::unique_ptr<TreeNode>> trees;
+            std::vector<LivenessInfo> liveAnalysisReport;
+            
             Context() = default;
             // Add instructions one at a time.
             void add(std::unique_ptr<Instruction> instr) {
@@ -742,6 +745,9 @@ public:
                     assert(false);
                 }
 
+                bool changed = true;
+                while (changed)
+
                 for (int i = 0; i < (int)instructions.size(); i++) {
                     print_trees(true);
                     if (!trees[i]) continue;
@@ -773,22 +779,53 @@ public:
                     if (diff.empty()) continue;  // no variable defined here
                     assert(diff.size() == 1); // each instruction defines at most one variable 
                     const Variable& defined = *diff.begin();
-             
-                        
-                    for (int j = i + 1; j < (int)instructions.size(); j++) {
-                        if (instructions[j]->reads().count(defined)) {
-                            auto source_copy = clone_tree(*trees[i]);  // ← clone for each use
-                            auto merged = L3::merge_tree(std::move(source_copy),
-                                                        std::move(trees[j]));
-                            if (merged) {
-                                trees[j] = std::move(merged);
+
+
+
+                    auto find_death = [&](const Variable& var, int start) -> int {
+
+                        for (int k = start; k < (int)liveAnalysisReport.size(); k++){
+                            // in "in" but not in "out" -> dies here
+                            if (liveAnalysisReport[k].in.count(var) && !liveAnalysisReport[k].out.count(var)){
+                                return k;
                             }
                         }
+                        return (int)liveAnalysisReport.size(); // escapes context 
+                    };
+                    
+                    // important to safe guard from var being over context 
+                    int death = find_death(defined, i + 1); // might not work due to the shrinking of liveAnalysisReport size 
+
+                    if (death >= (int)instructions.size()) continue; // escapes don't merge 
+
+                    int use_count = 0;
+                    bool all_merged = true;
+
+                    for (int j = i + 1; j <= death; j++) {
+                        bool is_redef = instructions[j]->writes().count(defined);
+
+                        if (instructions[j]->reads().count(defined)) {
+                            use_count++;
+                            auto source_copy = clone_tree(*trees[i]);
+                            auto merged = L3::merge_tree(std::move(source_copy), std::move(trees[j]));
+                            if (merged) {
+                                trees[j] = std::move(merged);
+                            } else {
+                                all_merged = false;
+                            }
+                        }
+
+                        if (is_redef) break;  // it's redefintion 
                     }
-                    // after all uses are merged, remove instruction i
-                    instructions.erase(instructions.begin() + i);
-                    trees.erase(trees.begin() + i);
-                    liveAnalysisReport.erase(liveAnalysisReport.begin() + i);
+                                                            
+
+                    // only erase instruction i if every use was successfully merged
+                    if (use_count > 0 && all_merged) {
+                        instructions.erase(instructions.begin() + i);
+                        trees.erase(trees.begin() + i);
+                        liveAnalysisReport.erase(liveAnalysisReport.begin() + i);
+                        i--;
+                    }
 
                 
             }
