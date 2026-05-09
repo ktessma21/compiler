@@ -682,7 +682,8 @@ public:
                 return t == InstructionType::Br
                     || t == InstructionType::BrT
                     || t == InstructionType::Return
-                    || t == InstructionType::ReturnT;
+                    || t == InstructionType::ReturnT
+                    || t == InstructionType::AssignFromCall;
             }
             void print_trees(bool debug = false) const {
                 if (!debug) return;
@@ -724,102 +725,111 @@ public:
             }
 
             void merge_tree(){
-    if (instructions.size() != trees.size()) {
-        std::cerr << "ASSERT FAIL: instructions.size()=" << instructions.size()
-                << " trees.size()=" << trees.size() << "\n";
-        for (int i = 0; i < (int)instructions.size(); i++) {
-            std::cerr << "  instr[" << i << "] = " << instructions[i]->to_string();
-        }
-        assert(false);
-    }
-
-    if (instructions.size() != liveAnalysisReport.size()) {
-        std::cerr << "ASSERT FAIL: instructions.size()=" << instructions.size()
-                << " liveAnalysisReport.size()=" << liveAnalysisReport.size() << "\n";
-        assert(false);
-    }
-
-    bool changed = true;
-    while (changed) {
-        changed = false;
-
-        for (int i = 0; i < (int)instructions.size(); i++) {
-            print_trees(true);
-            if (!trees[i]) continue;
-
-            const auto& live = liveAnalysisReport[i];
-            const auto  type = instructions[i]->type;
-
-            bool is_pure = (type == InstructionType::AssignFromS  ||
-                            type == InstructionType::AssignFromOp ||
-                            type == InstructionType::AssignFromCmp ||
-                            type == InstructionType::AssignFromLoad);
-
-            if (is_pure && live.in.empty() && live.out.empty()) {
-                instructions.erase(instructions.begin() + i);
-                trees.erase(trees.begin() + i);
-                liveAnalysisReport.erase(liveAnalysisReport.begin() + i);
-                i--;
-                changed = true;
-                continue;
-            }
-
-            std::set<Variable> diff;
-            std::set_difference(liveAnalysisReport[i].out.begin(), liveAnalysisReport[i].out.end(),
-                                liveAnalysisReport[i].in.begin(),  liveAnalysisReport[i].in.end(),
-                                std::inserter(diff, diff.begin()));
-
-            if (diff.empty()) continue;
-            assert(diff.size() == 1);
-            const Variable& defined = *diff.begin();
-
-            auto find_death = [&](const Variable& var, int start) -> int {
-                for (int k = start; k < (int)liveAnalysisReport.size(); k++){
-                    if (liveAnalysisReport[k].in.count(var) && !liveAnalysisReport[k].out.count(var)){
-                        return k;
+                if (instructions.size() != trees.size()) {
+                    std::cerr << "ASSERT FAIL: instructions.size()=" << instructions.size()
+                            << " trees.size()=" << trees.size() << "\n";
+                    for (int i = 0; i < (int)instructions.size(); i++) {
+                        std::cerr << "  instr[" << i << "] = " << instructions[i]->to_string();
                     }
-                }
-                return (int)liveAnalysisReport.size();
-            };
-
-            int death = find_death(defined, i + 1);
-            if (death >= (int)instructions.size()) continue;
-
-            int use_count = 0;
-            bool all_merged = true;
-
-            for (int j = i + 1; j <= death; j++) {
-                bool is_redef = instructions[j]->writes().count(defined);
-
-                if (instructions[j]->reads().count(defined)) {
-                    use_count++;
-                    auto source_copy = clone_tree(*trees[i]);
-                    auto merged = L3::merge_tree(std::move(source_copy), std::move(trees[j]));
-                    if (merged) {
-                        trees[j] = std::move(merged);
-                    } else {
-                        all_merged = false;
-                    }
+                    assert(false);
                 }
 
-                if (is_redef) break;
-            }
+                if (instructions.size() != liveAnalysisReport.size()) {
+                    std::cerr << "ASSERT FAIL: instructions.size()=" << instructions.size()
+                            << " liveAnalysisReport.size()=" << liveAnalysisReport.size() << "\n";
+                    assert(false);
+                }
 
-            if (use_count > 0 && all_merged) {
-                instructions.erase(instructions.begin() + i);
-                trees.erase(trees.begin() + i);
-                liveAnalysisReport.erase(liveAnalysisReport.begin() + i);
-                i--;
-                changed = true;
-            }
-        }
+                bool changed = true;
+                while (changed) {
+                    changed = false;
 
-        // recompute liveness from trees after each pass if something changed
-        if (changed) {
-            liveAnalysisReport = compute_liveness(*this);
-        }
-    }
-}
+                    for (int i = 0; i < (int)instructions.size(); i++) {
+                        print_trees(true);
+                        if (!trees[i]) continue;
+
+                        const auto& live = liveAnalysisReport[i];
+                        const auto  type = instructions[i]->type;
+
+
+                        bool is_pure = (type == InstructionType::AssignFromS  ||
+                                    type == InstructionType::AssignFromOp ||
+                                    type == InstructionType::AssignFromCmp ||
+                                    type == InstructionType::AssignFromLoad);
+
+                       auto writes = instructions[i]->writes();
+                        bool result_unused = true;
+                        for (const auto& w : writes) {
+                            if (live.out.count(w)) { result_unused = false; break; }
+                        }
+
+                        if (is_pure && result_unused) {
+                            instructions.erase(instructions.begin() + i);
+                            trees.erase(trees.begin() + i);
+                            liveAnalysisReport.erase(liveAnalysisReport.begin() + i);
+                            i--;
+                            changed = true;
+                            continue;
+                        }
+
+                        std::set<Variable> diff;
+                        std::set_difference(liveAnalysisReport[i].out.begin(), liveAnalysisReport[i].out.end(),
+                                            liveAnalysisReport[i].in.begin(),  liveAnalysisReport[i].in.end(),
+                                            std::inserter(diff, diff.begin()));
+
+                        if (diff.empty()) continue;
+                        assert(diff.size() == 1);
+                        const Variable& defined = *diff.begin();
+
+                        
+
+                        auto find_death = [&](const Variable& var, int start) -> int {
+                            for (int k = start; k < (int)liveAnalysisReport.size(); k++){
+                                if (liveAnalysisReport[k].in.count(var) && !liveAnalysisReport[k].out.count(var)){
+                                    return k;
+                                }
+                            }
+                            return (int)liveAnalysisReport.size();
+                        };
+
+                        int death = find_death(defined, i + 1);
+                        if (death >= (int)instructions.size()) continue;
+
+                        int use_count = 0;
+                        bool all_merged = true;
+
+                        for (int j = i + 1; j <= death; j++) {
+                            bool is_redef = instructions[j]->writes().count(defined);
+
+                            if (instructions[j]->reads().count(defined)) {
+                                use_count++;
+                                auto source_copy = clone_tree(*trees[i]);
+                                auto merged = L3::merge_tree(std::move(source_copy), std::move(trees[j]));
+                                if (merged) {
+                                    trees[j] = std::move(merged);
+                                } else {
+                                    all_merged = false;
+                                }
+                            }
+
+                            if (is_redef) break;
+                        }
+
+                        if (use_count > 0 && all_merged) {
+                            instructions.erase(instructions.begin() + i);
+                            trees.erase(trees.begin() + i);
+                            liveAnalysisReport.erase(liveAnalysisReport.begin() + i);
+                            i--;
+                            changed = true;
+                        }
+                    }
+
+                    // recompute liveness from trees after each pass if something changed
+                    if (changed) {
+                        liveAnalysisReport = compute_liveness(*this);
+                    }
+                }
+            }
 
         //     void merge_tree(){
         //         // find the context when to merge them and just call the merging function. 
