@@ -27,13 +27,13 @@ namespace L3 {
             }
         }
 
-   std::vector<LivenessInfo> compute_liveness_ctx(const Context& ctx) {
-        std::vector<LivenessInfo> result(trees.size());
+   std::vector<LivenessInfo> compute_liveness(const Context& ctx) {
+        std::vector<LivenessInfo> result(ctx.trees.size());
 
         // seed the last instruction from existing report — already correct
-        int last = (int)trees.size() - 1;
-        result[last].in  = liveAnalysisReport[last].in;
-        result[last].out = liveAnalysisReport[last].out;
+        int last = (int)ctx.trees.size() - 1;
+        result[last].in  = ctx.liveAnalysisReport[last].in;
+        result[last].out = ctx.liveAnalysisReport[last].out;
 
         bool keep_going = true;
         while (keep_going) {
@@ -44,12 +44,12 @@ namespace L3 {
                 liveOut = result[i+1].in;
 
                 std::set<Variable> liveIn = liveOut;
-                if (trees[i]) {
-                    for (const auto& w : tree_writes(*trees[i])) liveIn.erase(w);
-                    for (const auto& r : tree_reads(*trees[i]))  liveIn.insert(r);
+                if (ctx.trees[i]) {
+                    for (const auto& w : tree_writes(*ctx.trees[i])) liveIn.erase(w);
+                    for (const auto& r : tree_reads(*ctx.trees[i]))  liveIn.insert(r);
                 } else {
-                    for (const auto& w : instructions[i]->writes()) liveIn.erase(w);
-                    for (const auto& r : instructions[i]->reads())  liveIn.insert(r);
+                    for (const auto& w : ctx.instructions[i]->writes()) liveIn.erase(w);
+                    for (const auto& r : ctx.instructions[i]->reads())  liveIn.insert(r);
                 }
 
                 if (liveIn != result[i].in || liveOut != result[i].out) {

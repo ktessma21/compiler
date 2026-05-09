@@ -2,7 +2,6 @@
 	(@main
 	 0
 	%v3 += %v2
-	%v3 += %v2
 	rax <- %v3
 	return
 	)
