@@ -15,6 +15,7 @@
 #include <set>
 
 
+
 namespace L3 {
 
     // forward declaration. 
@@ -681,218 +682,7 @@ public:
 
 
 
-    class Context {
-        public:
-            std::vector<std::unique_ptr<Instruction>> instructions;
-            std::vector<std::unique_ptr<TreeNode>> trees;
-            std::vector<LivenessInfo> liveAnalysisReport;
-            
-            Context() = default;
-            // Add instructions one at a time.
-            void add(std::unique_ptr<Instruction> instr) {
-                instructions.push_back(std::move(instr));
-                // liveAnalysisReport.insert(lar.begin(), lar.end());
-
-            }
-
-            // overload — assign liveness slice to this context
-            void add(std::vector<LivenessInfo>::iterator begin, 
-                    std::vector<LivenessInfo>::iterator end) {
-                liveAnalysisReport.assign(begin, end);
-            }
-
-
-            // Read-only access.
-            const std::vector<std::unique_ptr<Instruction>>& get() const {
-                return instructions;
-            }
-
-            bool empty() const { return instructions.empty(); }
-            size_t size() const { return instructions.size(); }
-
-            bool is_terminated() const {
-                if (instructions.empty()) return false;
-                InstructionType t = instructions.back()->type;
-                return t == InstructionType::Br
-                    || t == InstructionType::BrT
-                    || t == InstructionType::Return
-                    || t == InstructionType::ReturnT
-                    || t == InstructionType::AssignFromCall;
-            }
-            void print_trees(bool debug = false) const {
-                if (!debug) return;
-
-                std::cerr << "=== Context Trees ===\n";
-                std::cerr << "instructions: " << instructions.size() 
-                        << " trees: " << trees.size() 
-                        << " liveness: " << liveAnalysisReport.size() << "\n\n";
-
-                for (int i = 0; i < (int)instructions.size(); i++) {
-                    std::cerr << "[" << i << "] " << instructions[i]->to_string();
-                    
-                    if (i < (int)trees.size()) {
-                        if (trees[i]) {
-                            std::cerr << "     tree: " << tree_to_string(*trees[i]) << "\n";
-                        } else {
-                            std::cerr << "     tree: nullptr\n";
-                        }
-                    } else {
-                        std::cerr << "     tree: (no tree entry)\n";
-                    }
-
-                    if (i < (int)liveAnalysisReport.size()) {
-                        std::cerr << "     in : { ";
-                        for (const auto& v : liveAnalysisReport[i].in)  std::cerr << v.to_string() << " ";
-                        std::cerr << "}\n";
-                        std::cerr << "     out: { ";
-                        for (const auto& v : liveAnalysisReport[i].out) std::cerr << v.to_string() << " ";
-                        std::cerr << "}\n";
-                    }
-                    std::cerr << "\n";
-                }
-            }
-
-            void build_tree(){
-                for (auto& instr : instructions) {
-                     trees.push_back(instr->to_tree()); 
-                }
-            }
-
-            void merge_tree(){
-                if (instructions.size() != trees.size()) {
-                    std::cerr << "ASSERT FAIL: instructions.size()=" << instructions.size()
-                            << " trees.size()=" << trees.size() << "\n";
-                    for (int i = 0; i < (int)instructions.size(); i++) {
-                        std::cerr << "  instr[" << i << "] = " << instructions[i]->to_string();
-                    }
-                    assert(false);
-                }
-
-                if (instructions.size() != liveAnalysisReport.size()) {
-                    std::cerr << "ASSERT FAIL: instructions.size()=" << instructions.size()
-                            << " liveAnalysisReport.size()=" << liveAnalysisReport.size() << "\n";
-                    assert(false);
-                }
-
-                bool changed = true;
-                while (changed) {
-                    changed = false;
-                    
-                    // recompute liveness at start of every pass for each context. 
-                    liveAnalysisReport = compute_liveness(*this);
-
-                    for (int i = 0; i < (int)instructions.size(); i++) {
-                        print_trees(false);
-                        if (!trees[i]) continue;
-
-                        const auto& live = liveAnalysisReport[i];
-                        const auto  type = instructions[i]->type;
-
-                        // erase a dead code. how do we know if the var is in writes set but not in out set
-                        bool is_pure = (type == InstructionType::AssignFromS  ||
-                                        type == InstructionType::AssignFromOp ||
-                                        type == InstructionType::AssignFromCmp ||
-                                        type == InstructionType::AssignFromLoad);
-
-                        auto writes = instructions[i]->writes();
-                        bool result_unused = true;
-                        for (const auto& w : writes) {
-                            if (live.out.count(w)) { result_unused = false; break; }
-                        }
-
-                        if (is_pure && result_unused) {
-                            instructions.erase(instructions.begin() + i);
-                            trees.erase(trees.begin() + i);
-                            liveAnalysisReport.erase(liveAnalysisReport.begin() + i);
-                            i--;
-                            changed = true;
-                            continue;
-                        }
-
-
-
-                        // find if there is anything to merge 
-
-                        std::set<Variable> diff;
-                        std::set_difference(liveAnalysisReport[i].out.begin(), liveAnalysisReport[i].out.end(),
-                                            liveAnalysisReport[i].in.begin(),  liveAnalysisReport[i].in.end(),
-                                            std::inserter(diff, diff.begin()));
-
-                        if (diff.empty()) continue;
-                        assert(diff.size() == 1);
-                        const Variable& defined = *diff.begin();
-
-                        auto find_death = [&](const Variable& var, int start) -> int {
-                            for (int k = start; k < (int)liveAnalysisReport.size(); k++){
-                                if (liveAnalysisReport[k].in.count(var) && !liveAnalysisReport[k].out.count(var)){
-                                    return k;
-                                }
-                            }
-                            return (int)liveAnalysisReport.size();
-                        };
-
-                        int death = find_death(defined, i + 1);
-                        if (death >= (int)instructions.size()) continue;
-
-                      
-
-                        bool safe_to_erase = false;
-                        bool all_ok = true;
-
-                        for (int j = i + 1; j <= death; j++) {
-                            bool is_redef = trees[j]
-                                ? tree_writes(*trees[j]).count(defined)
-                                : instructions[j]->writes().count(defined);
-
-                            bool j_reads = trees[j]
-                                ? tree_reads(*trees[j]).count(defined)
-                                : instructions[j]->reads().count(defined);
-
-                            if (j_reads) {
-                                auto source_copy = clone_tree(*trees[i]);
-                                auto merged = L3::merge_tree(std::move(source_copy), std::move(trees[j]));
-                                if (merged) {
-                                    trees[j] = std::move(merged);
-                                    safe_to_erase = true;
-                                } else {
-                                    all_ok = false;
-                                    break;
-                                }
-                            }
-
-                            if (is_redef) break;
-                        }
-
-                        if (safe_to_erase && all_ok) {
-                            instructions.erase(instructions.begin() + i);
-                            trees.erase(trees.begin() + i);
-                            liveAnalysisReport.erase(liveAnalysisReport.begin() + i);
-                            i--;
-                            changed = true;
-                        }
-
-                    }
-                   
-                }
-
-                // after the maximum merged tree possible, go shrink the trees 
-
-                for (auto& t : trees){
-                    if (t)
-                        t = std::move(shrink_tree(*t));
-                }
-
-                // combine or merge the last two if they are mergeable 
-
-                print_trees(true);
-            }
-
-
-
-       
-    };
-
-
+    
 
 
     class Function : public ASTNode {
@@ -907,32 +697,6 @@ public:
 
             Function() = default;
 
-            std::string to_string() const override {
-                std::string result;
-                result += "define " + this->name.name + "(";
-                for (size_t i = 0; i < params.size(); ++i) {
-                    if (i > 0) result += ", ";
-                    result += "%" + params[i].name;
-                }
-                result += ") {\n";
-                // std::cerr << "joined" ;
-                if (_is_context) {
-
-                    
-                    for (const auto& ctx : contexts) {
-                        for (const auto& instr : ctx.get()) {
-                            result += instr->to_string();
-                        }
-                    }
-                } else {
-                    for (const auto& instr : instructions) {
-                        result += instr->to_string();
-                    }
-                }
-                result += "}\n";
-                return result;
-            }
-
             const std::string& getName() const { return this -> name.name; }
             const std::vector<Variable>& getParams() const { return params; }
             int getNumParams() const { return static_cast<int>(params.size()); }
@@ -946,41 +710,8 @@ public:
                 return _is_context ? !contexts.empty() : !instructions.empty();
             }
 
-            void build_blocks() {
-                std::vector<LivenessInfo> result = compute_liveness(*this); 
-                auto begin = result.begin();
-                auto upto  = result.begin();
-
-                Context current;
-                for (auto& instr : instructions) {
-                    if ((instr->type == InstructionType::Label || 
-                        instr->type == InstructionType::Call) && !current.empty()) {
-                        current.add(begin, upto);  // assign liveness before push
-                        contexts.push_back(std::move(current));
-                        current = Context{};
-                        begin = upto;             // ← advance begin to start of new context
-                    }
-
-                    current.add(std::move(instr));
-                    upto++;
-
-                    if (current.is_terminated()) {
-                        current.add(begin, upto); // assign liveness before push
-                        contexts.push_back(std::move(current));
-                        current = Context{};
-                        begin = upto;             // ← advance begin
-                    }
-                }
-
-                if (!current.empty()) {
-                    current.add(begin, upto);     // don't forget the last context
-                    contexts.push_back(std::move(current));
-                }
-
-                instructions.clear();
-                this->_is_context = true;
-            }
-
+            std::string to_string() const override;  // ← declaration only
+            void build_blocks();
 
 
         };
@@ -1013,3 +744,6 @@ public:
   
 }
 
+// include context AFTER all L3 classes are defined
+#include "context.h"
+#include "tiles.h"

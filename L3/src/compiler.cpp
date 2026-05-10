@@ -70,6 +70,7 @@ int main(int argc, char **argv) {
       for (auto& ctx : f.contexts) {
           ctx.build_tree();      // 2. build trees from instructions
           ctx.merge_tree();      // 3. merge trees using liveness
+          ctx.aggregate_tree();
           // ctx.print_trees(true);
       }
   }
