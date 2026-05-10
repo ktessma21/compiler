@@ -4,6 +4,7 @@
 #include <memory>
 #include <variant>
 #include <vector>
+#include <set>
 #include <type_traits>
 #include <stdexcept>
 
@@ -114,6 +115,9 @@ namespace L3 {
 
         // calls
         Call,               // call callee ( args )
+
+        // Raw : only used in code generation to represent L2 leaq instruction
+        Raw
     };
 
     enum class Register {
@@ -123,6 +127,29 @@ namespace L3 {
         rbx, rbp, r12, r13, r14, r15,
         rsp
     };
+
+
+      /* Variants  */
+        // t ::= var | N
+        using T = std::variant<Variable, Number>;
+
+        // u ::= var | l
+        //   l is a function name like "@foo" — stored as std::string per your convention
+        using U = std::variant<Variable, FunctionName>;
+
+        // s ::= t | label | l
+        //   = var | N | :label | @function
+        using S = std::variant<Variable, Number, Label, FunctionName>;
+
+        // callee ::= u | builtin
+        using Callee = std::variant<Variable, FunctionName, BuiltinCallee>;
+
+        // for liveness analysis 
+        struct LivenessInfo {
+            std::set<Variable> in;
+            std::set<Variable> out;
+        };
+
 
     // ---------- Shared helpers ----------
 
