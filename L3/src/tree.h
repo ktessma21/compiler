@@ -82,8 +82,12 @@ namespace L3 {
         if (!node) return false;
 
         if (auto* assign = std::get_if<AssignNode>(&node->data)) {
-                return replace_leaf(assign->src, target, replacement);
+
+            if (std::holds_alternative<StoreNode>(assign->dest->data)) {
+                if (replace_leaf(assign->dest, target, replacement)) return true;
             }
+            return replace_leaf(assign->src, target, replacement);
+        }
 
         if (auto* ret = std::get_if<ReturnNode>(&node->data)) {
             if (ret->value) return replace_leaf(ret->value, target, replacement);
@@ -399,8 +403,12 @@ namespace L3 {
                 return tree_reads(*data.addr);
 
             } else if constexpr (std::is_same_v<T, AssignNode>) {
-                // dest is a write not a read, only traverse src
-                return tree_reads(*data.src);
+                std::set<Variable> r = tree_reads(*data.src);
+                if (std::holds_alternative<StoreNode>(data.dest->data)) {
+                    auto dest_reads = tree_reads(*data.dest);
+                    r.insert(dest_reads.begin(), dest_reads.end());
+                }
+                return r;
             }
             return {};
         }, node.data);

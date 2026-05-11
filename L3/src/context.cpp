@@ -63,22 +63,20 @@ namespace L3 {
         return dest.to_string() + " @ " + base + " " + index + " " + std::to_string(scale);
     }
 
-   static std::vector<std::unique_ptr<Instruction>> emit_instructions(
+   
+
+
+    static std::vector<std::unique_ptr<Instruction>> emit_instructions(
         const TreeNode& node,
         size_t& fresh_idx)
     {
         std::vector<std::unique_ptr<Instruction>> result;
 
-        auto* assign = std::get_if<AssignNode>(&node.data);
-        if (!assign) {
-            throw std::runtime_error("emit_instructions: expected AssignNode at top");
-        }
-
         // Helper: lift any non-Variable subtree into a fresh temp.
         auto lift_to_var = [&](const TreeNode& child) -> Variable {
             if (auto* v = std::get_if<Variable>(&child.data)) return *v;
 
-            Variable tmp{"%emit_tmp_" + std::to_string(fresh_idx++)};
+            Variable tmp{"emit_tmp_" + std::to_string(fresh_idx++)};
             auto tmp_dest  = std::make_unique<TreeNode>(tmp);
             auto child_cln = clone_tree(child);
             TreeNode sub_assign{AssignNode{std::move(tmp_dest), std::move(child_cln)}};
@@ -89,6 +87,65 @@ namespace L3 {
                         std::make_move_iterator(sub_instrs.end()));
             return tmp;
         };
+
+        // ---- Top-level ReturnNode: `return` or `return t` ----
+        if (auto* ret = std::get_if<ReturnNode>(&node.data)) {
+            if (!ret->value) {
+                result.push_back(std::make_unique<ReturnInstruction>());
+                return result;
+            }
+
+            // return t — t must be Variable or Number; lift if not.
+            const TreeNode& v = *ret->value;
+            T val_t = std::visit([&](const auto& x) -> T {
+                using X = std::decay_t<decltype(x)>;
+                if constexpr (std::is_same_v<X, Variable> || std::is_same_v<X, Number>) {
+                    return T{x};
+                } else {
+                    return T{lift_to_var(v)};
+                }
+            }, v.data);
+
+            auto instr = std::make_unique<ReturnTInstruction>();
+            instr->setValue(val_t);
+            result.push_back(std::move(instr));
+            return result;
+        }
+
+        // ---- Top-level bare CallNode (void call): `call callee(args)` ----
+        if (auto* call = std::get_if<CallNode>(&node.data)) {
+            std::vector<T> arg_ts;
+            arg_ts.reserve(call->args.size());
+            for (const auto& arg : call->args) {
+                const TreeNode& a = *arg;
+                if (auto* v = std::get_if<Variable>(&a.data))      arg_ts.push_back(T{*v});
+                else if (auto* n = std::get_if<Number>(&a.data))   arg_ts.push_back(T{*n});
+                else                                               arg_ts.push_back(T{lift_to_var(a)});
+            }
+
+            auto instr = std::make_unique<CallInstruction>();
+            instr->setCallee(call->callee);
+            for (auto& t : arg_ts) instr->addArg(std::move(t));
+            result.push_back(std::move(instr));
+            return result;
+        }
+
+        // ---- Top-level branch condition: bare Variable or Number ----
+        // Nothing to emit; the BrT itself was passed through unchanged.
+        if (std::holds_alternative<Variable>(node.data) ||
+            std::holds_alternative<Number>(node.data)) {
+            return result;
+        }
+
+        // ---- Everything below requires an AssignNode at the top ----
+        auto* assign = std::get_if<AssignNode>(&node.data);
+        if (!assign) {
+            throw std::runtime_error("emit_instructions: expected AssignNode at top");
+        }
+
+        // std::cerr << "[emit_instructions] AssignNode dest variant: "
+        //         << assign->dest->data.index()
+        //         << "  src variant: " << assign->src->data.index() << "\n";
 
         // ---- Case A: dest is a StoreNode  →  emit `store addr <- value` ----
         if (auto* store_dest = std::get_if<StoreNode>(&assign->dest->data)) {
@@ -176,7 +233,6 @@ namespace L3 {
 
         // B5: dest <- Compare(...)
         if (auto* cmp = std::get_if<CompareNode>(&src.data)) {
-            // Plain `dest <- t cmp t`. Lift non-leaf children, just like BinOp.
             auto lift_to_t = [&](const TreeNode& child) -> T {
                 if (auto* v = std::get_if<Variable>(&child.data)) return T{*v};
                 if (auto* n = std::get_if<Number>(&child.data))   return T{*n};
@@ -216,6 +272,25 @@ namespace L3 {
 
         return result;
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    /// Context function definitions. 
 
     void Context::add(std::unique_ptr<Instruction> instr) {
         instructions.push_back(std::move(instr));
@@ -415,11 +490,13 @@ namespace L3 {
         size_t fresh_idx = 0;
 
         for (size_t i = 0; i < instructions.size(); i++) {
-            // No tree for this instruction — pass it through unchanged.
+            
             if (trees[i] == nullptr) {
+              
                 new_instructions.push_back(std::move(instructions[i]));
                 continue;
             }
+
 
             // Tree exists — emit instructions from it and append.
             auto emitted = emit_instructions(*trees[i], fresh_idx);
