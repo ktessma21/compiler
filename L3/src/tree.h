@@ -32,6 +32,10 @@ namespace L3 {
         std::unique_ptr<TreeNode> addr;
     };
 
+    struct ReturnNode {
+        std::unique_ptr<TreeNode> value;  // nullptr for void return
+    };
+
     struct StoreNode {
         std::unique_ptr<TreeNode> addr;
         std::unique_ptr<TreeNode> value;   // you'll want this for full stores
@@ -50,7 +54,7 @@ namespace L3 {
     struct TreeNode {
         std::variant<Variable, Number,
                      BinOpNode, CompareNode,
-                     LoadNode, StoreNode, AssignNode, CallNode> data;
+                     LoadNode, StoreNode, AssignNode, CallNode, ReturnNode> data;
 
         template <typename T, typename = std::enable_if_t<!std::is_same_v<std::decay_t<T>, TreeNode>>>
         TreeNode(T&& v) : data(std::forward<T>(v)) {}
@@ -81,6 +85,11 @@ namespace L3 {
         if (auto* assign = std::get_if<AssignNode>(&node->data)) {
                 return replace_leaf(assign->src, target, replacement);
             }
+
+        if (auto* ret = std::get_if<ReturnNode>(&node->data)) {
+            if (ret->value) return replace_leaf(ret->value, target, replacement);
+            return false;
+        }
 
         if (auto* var = std::get_if<Variable>(&node->data)) {
                 if (var->name == target.name) {
@@ -162,6 +171,10 @@ namespace L3 {
                     clone_tree(*data.right)
                 });
 
+            } else if constexpr (std::is_same_v<T, ReturnNode>) {
+                return std::make_unique<TreeNode>(ReturnNode{
+                    data.value ? clone_tree(*data.value) : nullptr
+                });
             } else if constexpr (std::is_same_v<T, CallNode>) {
                     std::vector<std::unique_ptr<TreeNode>> cloned_args;
                     for (const auto& arg : data.args) {
@@ -208,6 +221,10 @@ namespace L3 {
                 // leaf nodes — just copy the value
                 return std::make_unique<TreeNode>(data);
 
+            } else if constexpr (std::is_same_v<T, ReturnNode>) {
+                return std::make_unique<TreeNode>(ReturnNode{
+                    data.value ? shrink_tree(*data.value) : nullptr
+                });
             } else if constexpr (std::is_same_v<T, BinOpNode>) {
                 // first recursively shrink children
                 auto left  = shrink_tree(*data.left);
@@ -302,7 +319,10 @@ namespace L3 {
                 return data.to_string();
             } else if constexpr (std::is_same_v<T, Number>) {
                 return data.to_string();
-            }  else if constexpr (std::is_same_v<T, CallNode>) {
+
+            } else if constexpr (std::is_same_v<T, ReturnNode>) {
+                return data.value ? "return " + tree_to_string(*data.value) : "return";
+            } else if constexpr (std::is_same_v<T, CallNode>) {
                 std::string s = "call ";
                 s += std::visit([](const auto& c) -> std::string {
                     using V = std::decay_t<decltype(c)>;
@@ -351,6 +371,8 @@ namespace L3 {
             } else if constexpr (std::is_same_v<T, Number>) {
                 return {};
 
+            } else if constexpr (std::is_same_v<T, ReturnNode>) {
+                return data.value ? tree_reads(*data.value) : std::set<Variable>{};
             } else if constexpr (std::is_same_v<T, CallNode>) {
                 std::set<Variable> r;
                 
@@ -405,5 +427,6 @@ namespace L3 {
             return {};
         }, node.data);
     }
+   
 
 }  // namespace L3

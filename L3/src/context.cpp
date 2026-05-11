@@ -97,7 +97,7 @@ namespace L3 {
             liveAnalysisReport = compute_liveness(*this);
 
             for (int i = 0; i < (int)instructions.size(); i++) {
-                print_trees(false);
+                // print_trees(false);
                 if (!trees[i]) continue;
 
                 const auto& live = liveAnalysisReport[i];
@@ -201,6 +201,12 @@ namespace L3 {
                 if (storeTile.match(*trees[i])) {
                     instructions[i] = storeTile.emit(*trees[i]);
                 }
+                continue;
+            }
+
+            auto new_instr = emit_from_tree(*trees[i]);
+            if (new_instr) {
+                instructions[i] = std::move(new_instr);
             }
         }
     }
