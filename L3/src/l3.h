@@ -66,10 +66,17 @@ public:
 
     std::unique_ptr<TreeNode> to_tree() const override {
         if (!dst.has_value() || !src.has_value()) return nullptr;
+        
+        
+        if (std::holds_alternative<FunctionName>(*src) ||
+            std::holds_alternative<Label>(*src)) {
+            return nullptr;  
+        }
+        
         return std::make_unique<TreeNode>(
             AssignNode{
                 std::make_unique<TreeNode>(*dst),  
-                std::make_unique<TreeNode>(*src)
+                std::make_unique<TreeNode>(*src)  
             });
     }
 
@@ -869,4 +876,3 @@ public:
 
 // include context AFTER all L3 classes are defined
 #include "context.h"
-#include "tiles.h"

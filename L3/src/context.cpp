@@ -3,9 +3,86 @@
 #include "l3.h"  
 
 #include "context.h" 
-#include "tiles.h"
+#include "tree.h"
+
 
 namespace L3 {
+
+
+    static std::string leaqMatch(const Variable& dest, const TreeNode& node) {
+        // Expect node to be: Add(base, Mul(index, scale))  where scale ∈ {1,2,4,8}
+        //   or any commutation of the operands.
+        // Returns the L2 "w @ w w E" string on match, or "" on no match.
+
+        auto* add = std::get_if<BinOpNode>(&node.data);
+        if (!add || add->op != Op::Add) return "";
+
+        // Try to match: base_side is a Variable, mul_side is Mul(var, const-scale).
+        auto try_match = [](const TreeNode& base_side,
+                            const TreeNode& mul_side,
+                            std::string& base_out,
+                            std::string& index_out,
+                            long long& scale_out) -> bool {
+            auto* base_var = std::get_if<Variable>(&base_side.data);
+            if (!base_var) return false;
+
+            auto* mul = std::get_if<BinOpNode>(&mul_side.data);
+            if (!mul || mul->op != Op::Mul) return false;
+
+            // Mul children: one must be a Number ∈ {1,2,4,8}, the other a Variable.
+            auto extract = [](const TreeNode& a, const TreeNode& b,
+                            std::string& idx, long long& sc) -> bool {
+                auto* var = std::get_if<Variable>(&a.data);
+                auto* num = std::get_if<Number>(&b.data);
+                if (!var || !num) return false;
+                long long v = num->getValue();
+                if (v != 1 && v != 2 && v != 4 && v != 8) return false;
+                idx = var->to_string();
+                sc  = v;
+                return true;
+            };
+
+            if (!extract(*mul->left, *mul->right, index_out, scale_out) &&
+                !extract(*mul->right, *mul->left, index_out, scale_out)) {
+                return false;
+            }
+
+            base_out = base_var->to_string();
+            return true;
+        };
+
+        std::string base, index;
+        long long scale = 0;
+
+        if (!try_match(*add->left,  *add->right, base, index, scale) &&
+            !try_match(*add->right, *add->left,  base, index, scale)) {
+            return "";
+        }
+
+        // Full L2 leaq: w @ w w E
+        return dest.to_string() + " @ " + base + " " + index + " " + std::to_string(scale);
+    }
+
+   static std::vector<std::unique_ptr<Instruction>> emit_instructions(
+        const TreeNode& node,
+        size_t& fresh_idx)
+    {
+        std::vector<std::unique_ptr<Instruction>> result;
+
+        // node is a reference — can't be null. Children (unique_ptr) could be,
+        // but we'll check those when we dereference them.
+
+        if (auto* binop = std::get_if<BinOpNode>(&node.data)) {
+            // let's try leaqmatch before anything first.
+            // if it matches, create a rawL2 instruction and push it to the result.
+
+            // if not, and if a child is not a Number or Variable, recursively call
+            // emit_instructions on it. May need to look one or two levels down
+            // (child / grandchild) to achieve the leaq match.
+        }
+
+        return result;
+    }
 
     void Context::add(std::unique_ptr<Instruction> instr) {
         instructions.push_back(std::move(instr));
@@ -194,21 +271,31 @@ namespace L3 {
     }
 
     void Context::aggregate_tree() {
-        StoreTile storeTile;
+        if (instructions.size() != trees.size()) {
+            throw std::runtime_error(
+                "Context::aggregate_tree: instructions and trees size mismatch (" +
+                std::to_string(instructions.size()) + " vs " +
+                std::to_string(trees.size()) + ")");
+        }
+
+        std::vector<std::unique_ptr<Instruction>> new_instructions;
+
         for (size_t i = 0; i < instructions.size(); i++) {
-            if (!trees[i]) continue;
-            if (instructions[i]->type == InstructionType::Store) {
-                if (storeTile.match(*trees[i])) {
-                    instructions[i] = storeTile.emit(*trees[i]);
-                }
+            // No tree for this instruction — pass it through unchanged.
+            if (trees[i] == nullptr) {
+                new_instructions.push_back(std::move(instructions[i]));
                 continue;
             }
 
-            auto new_instr = emit_from_tree(*trees[i]);
-            if (new_instr) {
-                instructions[i] = std::move(new_instr);
+            // Tree exists — emit instructions from it and append.
+            auto emitted = emit_instructions(*trees[i]);
+            new_instructions.insert(
+                new_instructions.end(),
+                std::make_move_iterator(emitted.begin()),
+                std::make_move_iterator(emitted.end()));
             }
-        }
+
+        instructions = std::move(new_instructions);
     }
 
 } // namespace L3
