@@ -69,16 +69,149 @@ namespace L3 {
     {
         std::vector<std::unique_ptr<Instruction>> result;
 
-        // node is a reference — can't be null. Children (unique_ptr) could be,
-        // but we'll check those when we dereference them.
+        auto* assign = std::get_if<AssignNode>(&node.data);
+        if (!assign) {
+            throw std::runtime_error("emit_instructions: expected AssignNode at top");
+        }
 
-        if (auto* binop = std::get_if<BinOpNode>(&node.data)) {
-            // let's try leaqmatch before anything first.
-            // if it matches, create a rawL2 instruction and push it to the result.
+        // Helper: lift any non-Variable subtree into a fresh temp.
+        auto lift_to_var = [&](const TreeNode& child) -> Variable {
+            if (auto* v = std::get_if<Variable>(&child.data)) return *v;
 
-            // if not, and if a child is not a Number or Variable, recursively call
-            // emit_instructions on it. May need to look one or two levels down
-            // (child / grandchild) to achieve the leaq match.
+            Variable tmp{"%emit_tmp_" + std::to_string(fresh_idx++)};
+            auto tmp_dest  = std::make_unique<TreeNode>(tmp);
+            auto child_cln = clone_tree(child);
+            TreeNode sub_assign{AssignNode{std::move(tmp_dest), std::move(child_cln)}};
+
+            auto sub_instrs = emit_instructions(sub_assign, fresh_idx);
+            result.insert(result.end(),
+                        std::make_move_iterator(sub_instrs.begin()),
+                        std::make_move_iterator(sub_instrs.end()));
+            return tmp;
+        };
+
+        // ---- Case A: dest is a StoreNode  →  emit `store addr <- value` ----
+        if (auto* store_dest = std::get_if<StoreNode>(&assign->dest->data)) {
+            Variable addr_var = lift_to_var(*store_dest->addr);
+
+            const TreeNode& val = *assign->src;
+            S value_s = std::visit([&](const auto& v) -> S {
+                using V = std::decay_t<decltype(v)>;
+                if constexpr (std::is_same_v<V, Variable> || std::is_same_v<V, Number>) {
+                    return S{v};
+                } else {
+                    return S{lift_to_var(val)};
+                }
+            }, val.data);
+
+            auto instr = std::make_unique<StoreInstruction>();
+            instr->setDst(addr_var);
+            instr->setSrc(value_s);
+            result.push_back(std::move(instr));
+            return result;
+        }
+
+        // ---- Case B: dest is a Variable  →  normal assignment ----
+        auto* dest_var = std::get_if<Variable>(&assign->dest->data);
+        if (!dest_var) {
+            throw std::runtime_error("emit_instructions: AssignNode dest must be Variable or StoreNode");
+        }
+
+        const TreeNode& src = *assign->src;
+
+        // B1: dest <- Number
+        if (auto* num = std::get_if<Number>(&src.data)) {
+            auto instr = std::make_unique<AssignInstruction>();
+            instr->setDst(*dest_var);
+            instr->setSrc(S{*num});
+            result.push_back(std::move(instr));
+            return result;
+        }
+
+        // B2: dest <- Variable
+        if (auto* var = std::get_if<Variable>(&src.data)) {
+            auto instr = std::make_unique<AssignInstruction>();
+            instr->setDst(*dest_var);
+            instr->setSrc(S{*var});
+            result.push_back(std::move(instr));
+            return result;
+        }
+
+        // B3: dest <- BinOp(...)
+        if (auto* binop = std::get_if<BinOpNode>(&src.data)) {
+            // Try leaq first.
+            std::string leaq = leaqMatch(*dest_var, src);
+            if (!leaq.empty()) {
+                result.push_back(std::make_unique<RawL2Instruction>(leaq));
+                return result;
+            }
+
+            auto lift_to_t = [&](const TreeNode& child) -> T {
+                if (auto* v = std::get_if<Variable>(&child.data)) return T{*v};
+                if (auto* n = std::get_if<Number>(&child.data))   return T{*n};
+                return T{lift_to_var(child)};
+            };
+
+            T lhs_t = lift_to_t(*binop->left);
+            T rhs_t = lift_to_t(*binop->right);
+
+            auto instr = std::make_unique<OpInstruction>();
+            instr->setDst(*dest_var);
+            instr->setLhs(lhs_t);
+            instr->setOp(binop->op);
+            instr->setRhs(rhs_t);
+            result.push_back(std::move(instr));
+            return result;
+        }
+
+        // B4: dest <- load(addr)
+        if (auto* load = std::get_if<LoadNode>(&src.data)) {
+            Variable addr_var = lift_to_var(*load->addr);
+            auto instr = std::make_unique<LoadInstruction>();
+            instr->setDst(*dest_var);
+            instr->setSrc(addr_var);
+            result.push_back(std::move(instr));
+            return result;
+        }
+
+        // B5: dest <- Compare(...)
+        if (auto* cmp = std::get_if<CompareNode>(&src.data)) {
+            // Plain `dest <- t cmp t`. Lift non-leaf children, just like BinOp.
+            auto lift_to_t = [&](const TreeNode& child) -> T {
+                if (auto* v = std::get_if<Variable>(&child.data)) return T{*v};
+                if (auto* n = std::get_if<Number>(&child.data))   return T{*n};
+                return T{lift_to_var(child)};
+            };
+
+            T lhs_t = lift_to_t(*cmp->left);
+            T rhs_t = lift_to_t(*cmp->right);
+
+            auto instr = std::make_unique<CmpInstruction>();
+            instr->setDst(*dest_var);
+            instr->setLhs(lhs_t);
+            instr->setCmp(cmp->op);
+            instr->setRhs(rhs_t);
+            result.push_back(std::move(instr));
+            return result;
+        }
+
+        // B6: dest <- call callee(args...)
+        if (auto* call = std::get_if<CallNode>(&src.data)) {
+            std::vector<T> arg_ts;
+            arg_ts.reserve(call->args.size());
+            for (const auto& arg : call->args) {
+                const TreeNode& a = *arg;
+                if (auto* v = std::get_if<Variable>(&a.data))      arg_ts.push_back(T{*v});
+                else if (auto* n = std::get_if<Number>(&a.data))   arg_ts.push_back(T{*n});
+                else                                               arg_ts.push_back(T{lift_to_var(a)});
+            }
+
+            auto instr = std::make_unique<VarCallInstruction>();
+            instr->setDst(*dest_var);
+            instr->setCallee(call->callee);
+            for (auto& t : arg_ts) instr->addArg(std::move(t));
+            result.push_back(std::move(instr));
+            return result;
         }
 
         return result;
@@ -267,7 +400,7 @@ namespace L3 {
         }
 
         // combine or merge the last two if they are mergeable 
-        print_trees(true);
+        print_trees(false);
     }
 
     void Context::aggregate_tree() {
@@ -279,6 +412,7 @@ namespace L3 {
         }
 
         std::vector<std::unique_ptr<Instruction>> new_instructions;
+        size_t fresh_idx = 0;
 
         for (size_t i = 0; i < instructions.size(); i++) {
             // No tree for this instruction — pass it through unchanged.
@@ -288,7 +422,7 @@ namespace L3 {
             }
 
             // Tree exists — emit instructions from it and append.
-            auto emitted = emit_instructions(*trees[i]);
+            auto emitted = emit_instructions(*trees[i], fresh_idx);
             new_instructions.insert(
                 new_instructions.end(),
                 std::make_move_iterator(emitted.begin()),

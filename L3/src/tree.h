@@ -38,7 +38,6 @@ namespace L3 {
 
     struct StoreNode {
         std::unique_ptr<TreeNode> addr;
-        std::unique_ptr<TreeNode> value;   // you'll want this for full stores
     };
 
     struct CallNode {
@@ -124,7 +123,6 @@ namespace L3 {
 
         if (auto* store = std::get_if<StoreNode>(&node->data)) {
             if (replace_leaf(store->addr,  target, replacement)) return true;
-            if (replace_leaf(store->value, target, replacement)) return true;
             return false;
         }
 
@@ -199,8 +197,7 @@ namespace L3 {
 
             } else if constexpr (std::is_same_v<T, StoreNode>) {
                 return std::make_unique<TreeNode>(StoreNode{
-                    clone_tree(*data.addr),
-                    clone_tree(*data.value)
+                    clone_tree(*data.addr)
                 });
 
             } else if constexpr (std::is_same_v<T, AssignNode>) {
@@ -289,8 +286,7 @@ namespace L3 {
 
             } else if constexpr (std::is_same_v<T, StoreNode>) {
                 return std::make_unique<TreeNode>(StoreNode{
-                    shrink_tree(*data.addr),
-                    shrink_tree(*data.value)
+                    shrink_tree(*data.addr)
                 });
 
             } else if constexpr (std::is_same_v<T, AssignNode>) {
@@ -349,8 +345,7 @@ namespace L3 {
             } else if constexpr (std::is_same_v<T, LoadNode>) {
                 return "load(" + tree_to_string(*data.addr) + ")";
             } else if constexpr (std::is_same_v<T, StoreNode>) {
-                return "store(" + tree_to_string(*data.addr) 
-                    + " <- " + tree_to_string(*data.value) + ")";
+                return "store(" + tree_to_string(*data.addr) + ")";
             } else if constexpr (std::is_same_v<T, AssignNode>) {
                 return tree_to_string(*data.dest) 
                     + " <- " 
@@ -401,10 +396,7 @@ namespace L3 {
                 return tree_reads(*data.addr);
 
             } else if constexpr (std::is_same_v<T, StoreNode>) {
-                auto r = tree_reads(*data.addr);
-                auto rr = tree_reads(*data.value);
-                r.insert(rr.begin(), rr.end());
-                return r;
+                return tree_reads(*data.addr);
 
             } else if constexpr (std::is_same_v<T, AssignNode>) {
                 // dest is a write not a read, only traverse src

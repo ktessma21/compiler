@@ -369,9 +369,13 @@ public:
     std::unique_ptr<TreeNode> to_tree() const override {
         if (!addr.has_value() || !value.has_value()) return nullptr;
         return std::make_unique<TreeNode>(
-            StoreNode{
-                std::make_unique<TreeNode>(*addr),   // addr
-                std::make_unique<TreeNode>(*value)   // value
+            AssignNode{
+                std::make_unique<TreeNode>(
+                    StoreNode{
+                        std::make_unique<TreeNode>(*addr)
+                    }
+                ),
+                std::make_unique<TreeNode>(*value)
             });
     }
 
@@ -754,123 +758,7 @@ public:
     };
 
 
-     inline std::unique_ptr<Instruction> emit_from_tree(const TreeNode& node) {
-        return std::visit([](const auto& data) -> std::unique_ptr<Instruction> {
-            using T = std::decay_t<decltype(data)>;
-
-            if constexpr (std::is_same_v<T, AssignNode>) {
-                auto* dest_var = std::get_if<Variable>(&data.dest->data);
-                if (!dest_var) return nullptr;
-
-                return std::visit([dest_var](const auto& src) -> std::unique_ptr<Instruction> {
-                    using S = std::decay_t<decltype(src)>;
-
-                    if constexpr (std::is_same_v<S, Number>) {
-                        auto instr = std::make_unique<AssignInstruction>();
-                        instr->setDst(*dest_var);
-                        instr->setSrc(src);
-                        return instr;
-                    } else if constexpr (std::is_same_v<S, Variable>) {
-                        auto instr = std::make_unique<AssignInstruction>();
-                        instr->setDst(*dest_var);
-                        instr->setSrc(src);
-                        return instr;
-                    } else if constexpr (std::is_same_v<S, BinOpNode>) {
-                        auto instr = std::make_unique<OpInstruction>();
-                        instr->setDst(*dest_var);
-                        instr->setOp(src.op);
-                        std::visit([&instr](const auto& l) {
-                            using L = std::decay_t<decltype(l)>;
-                            if constexpr (std::is_same_v<L, Variable> || std::is_same_v<L, Number>)
-                                instr->setLhs(l);
-                        }, src.left->data);
-                        std::visit([&instr](const auto& r) {
-                            using R = std::decay_t<decltype(r)>;
-                            if constexpr (std::is_same_v<R, Variable> || std::is_same_v<R, Number>)
-                                instr->setRhs(r);
-                        }, src.right->data);
-                        return instr;
-                    } else if constexpr (std::is_same_v<S, CompareNode>) {
-                        auto instr = std::make_unique<CmpInstruction>();
-                        instr->setDst(*dest_var);
-                        instr->setCmp(src.op);
-                        std::visit([&instr](const auto& l) {
-                            using L = std::decay_t<decltype(l)>;
-                            if constexpr (std::is_same_v<L, Variable> || std::is_same_v<L, Number>)
-                                instr->setLhs(l);
-                        }, src.left->data);
-                        std::visit([&instr](const auto& r) {
-                            using R = std::decay_t<decltype(r)>;
-                            if constexpr (std::is_same_v<R, Variable> || std::is_same_v<R, Number>)
-                                instr->setRhs(r);
-                        }, src.right->data);
-                        return instr;
-                    } else if constexpr (std::is_same_v<S, LoadNode>) {
-                        auto instr = std::make_unique<LoadInstruction>();
-                        instr->setDst(*dest_var);
-                        if (auto* src_var = std::get_if<Variable>(&src.addr->data)) {
-                            instr->setSrc(*src_var);
-                        }
-                        return instr;
-                    } else if constexpr (std::is_same_v<S, CallNode>) {
-                        auto instr = std::make_unique<VarCallInstruction>();
-                        instr->setDst(*dest_var);
-                        instr->setCallee(src.callee);
-                        for (const auto& arg : src.args) {
-                            std::visit([&instr](const auto& a) {
-                                using A = std::decay_t<decltype(a)>;
-                                if constexpr (std::is_same_v<A, Variable> || std::is_same_v<A, Number>)
-                                    instr->addArg(a);
-                            }, arg->data);
-                        }
-                        return instr;
-                    } else {
-                        return nullptr;  // ← catches all other src types
-                    }
-                }, data.src->data);
-
-            } else if constexpr (std::is_same_v<T, StoreNode>) {
-                auto instr = std::make_unique<StoreInstruction>();
-                if (auto* addr_var = std::get_if<Variable>(&data.addr->data)) {
-                    instr->setDst(*addr_var);
-                }
-                std::visit([&instr](const auto& v) {
-                    using V = std::decay_t<decltype(v)>;
-                    if constexpr (std::is_same_v<V, Variable> || std::is_same_v<V, Number>)
-                        instr->setSrc(v);
-                }, data.value->data);
-                return instr;
-
-            } else if constexpr (std::is_same_v<T, CallNode>) {
-                auto instr = std::make_unique<CallInstruction>();
-                instr->setCallee(data.callee);
-                for (const auto& arg : data.args) {
-                    std::visit([&instr](const auto& a) {
-                        using A = std::decay_t<decltype(a)>;
-                        if constexpr (std::is_same_v<A, Variable> || std::is_same_v<A, Number>)
-                            instr->addArg(a);
-                    }, arg->data);
-                }
-                return instr;
-
-            } else if constexpr (std::is_same_v<T, ReturnNode>) {
-                if (!data.value) {
-                    return std::make_unique<ReturnInstruction>();
-                }
-                auto instr = std::make_unique<ReturnTInstruction>();
-                std::visit([&instr](const auto& v) {
-                    using V = std::decay_t<decltype(v)>;
-                    if constexpr (std::is_same_v<V, Variable> || std::is_same_v<V, Number>)
-                        instr->setValue(v);
-                }, data.value->data);
-                return instr;
-
-            } else {
-                return nullptr;  // ← Variable, Number, BinOpNode etc at top level
-            }
-        }, node.data);
-    }
-
+    
   
 }
 
