@@ -532,7 +532,13 @@ namespace IR {
 
             auto bb = std::make_unique<BasicBlock>();
             bb->label = std::move(lbl);
+
+            BasicBlock* raw = bb.get();  // grab address while we still own it
             p.functions.back().blocks.push_back(std::move(bb));
+
+            if (p.functions.back().blocks.size() == 1) {
+                p.functions.back().setEntry(raw);
+            }
         }
     };
 

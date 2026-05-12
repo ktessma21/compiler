@@ -597,6 +597,7 @@ namespace IR {
         FunctionName               name;
         std::vector<Type>          paramTypes;     // parallel to params
         std::vector<Variable>      params;
+        const BasicBlock* entry = nullptr;
     public:
         std::vector<std::unique_ptr<BasicBlock>> blocks;  // list
         std::map<const BasicBlock*, std::vector<const BasicBlock*>> successors; //edges 
@@ -610,6 +611,10 @@ namespace IR {
         int getNumParams() const { return static_cast<int>(params.size()); }
 
         void setName(FunctionName n)      { name = std::move(n); }
+        void setEntry(const BasicBlock* e) {
+            if (entry) return;
+            entry = e;
+        }
         void setReturnType(Type t)        { returnType = std::move(t); }
         void addParam(Type t, Variable v) {
             paramTypes.push_back(std::move(t));
