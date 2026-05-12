@@ -8,6 +8,7 @@
 #include <vector>
 #include <cassert>
 #include <optional>
+#include <list>
 #include <type_traits>
 #include <set>
 #include "ast_leaves.h"
@@ -599,6 +600,7 @@ namespace IR {
         std::vector<Variable>      params;
         const BasicBlock* entry = nullptr;
     public:
+        std::vector<std::list<BasicBlock*>> traces; 
         std::vector<std::unique_ptr<BasicBlock>> blocks;  // list
         std::map<const BasicBlock*, std::vector<const BasicBlock*>> successors; //edges 
 
