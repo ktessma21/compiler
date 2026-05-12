@@ -11,13 +11,14 @@
 #include <unistd.h>
 #include <utility>
 #include <vector>
+#include <parser.h>
+// #include <generator.h>
+
 
 #include <utils.h>
 
-using namespace std;
-
 void print_help(char *progName) {
-  std::cerr << "Usage: " << progName << "[-v] [-g 0|1] [-O 0|1|2] SOURCE"
+  std::cerr << "Usage: " << progName << " [-v] [-g 0|1] [-O 0|1|2] SOURCE"
             << std::endl;
   return;
 }
@@ -58,7 +59,11 @@ int main(int argc, char **argv) {
   /*
    * Parse the input file.
    */
-  // TODO
+  char *fileName = argv[optind];
+
+  auto program = IR::parse_file(fileName);
+
+  std::cerr << program.to_string();
 
   /*
    * Print the program.
@@ -71,7 +76,7 @@ int main(int argc, char **argv) {
    * Generate the code.
    */
   if (enable_code_generator) {
-    // TODO
+    // IR::generate_code(program);
   }
 
   return 0;
