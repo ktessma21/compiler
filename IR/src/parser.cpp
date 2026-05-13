@@ -547,6 +547,10 @@ namespace IR {
     template<> struct action<insTypeDecl> {
         template<typename Input>
         static void apply(const Input& in, Program& p) {
+
+            if (!p.functions.empty() && !p.functions.back().blocks.size() > 1) {
+                throw std::runtime_error("no type declaration after basic block 0");
+            }
             Tokenizer tk(in.string());
             Type t = parseType(tk);
             std::string var_str = tk.next();

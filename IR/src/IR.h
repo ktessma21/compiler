@@ -600,7 +600,7 @@ namespace IR {
         std::vector<Variable>      params;
         const BasicBlock* entry = nullptr;
     public:
-        // std::map<std::string, Type> varTypes; // variables types 
+        std::map<Variable, Type> varTypes;   // variables types 
 
         std::vector<std::list<BasicBlock*>> traces; 
         std::vector<std::unique_ptr<BasicBlock>> blocks;  // list
