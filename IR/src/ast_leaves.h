@@ -102,8 +102,11 @@ namespace IR {
     struct Type : public ASTNode {
         TypeKind kind = TypeKind::Void;
         int dims = 0; // only meaningful for Int64
+        std::vector<std::string> dim_sizes; // only meaningful for Int64
         Type() = default;
-        Type(TypeKind k, int d = 0) : kind(k), dims(d) {}
+        Type(TypeKind k, int d = 0) : kind(k), dims(d), 
+            dim_sizes(k == TypeKind::Int64 ? d : 0) // pre-size to match dims. 
+         {}
         std::string to_string() const {
             switch (kind) {
                 case TypeKind::Void:  return "void";

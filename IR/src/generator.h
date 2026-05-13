@@ -6,9 +6,113 @@
 namespace IR {
 
     class CodeGenerator {
+
+    private:
+    // Computes the byte address of base[i0][i1]...[i_{k-1}].
+    // Emits the body-base computation (cached per base) and the offset math.
+    // Returns the emitted code and the name of the variable holding the final address.
+    static std::pair<std::string, std::string>
+        compute_index_address(const Variable& base,
+                            const std::vector<T>& indices)
+        {
+            assert(currentFunction);
+
+            const std::string base_name = base.name;
+            const std::string base_str  = base.to_string();
+            const std::string fn_name   = currentFunction->getName();
+
+            auto it = currentFunction->varTypes.find(base_name);
+            assert(it != currentFunction->varTypes.end()
+                && "Index op base must have a declared type");
+            Type& type = it->second;
+            assert(type.kind == TypeKind::Int64
+                && "Index op base must be int64[]...");
+            assert(type.dim_sizes.size() == indices.size()
+                && "Index count must match base's dimension count");
+            const size_t ndim = indices.size();
+
+            std::string out;
+
+            // Body base = base + 8 (size slot) + ndim * 8 (dimension slots)
+            const std::string body_base = "%" + base_name + "_" + fn_name + "_bodybase";
+
+            if (currentFunction->InitVariables.find(body_base)
+                == currentFunction->InitVariables.end()) {
+                currentFunction->InitVariables.insert(body_base);
+
+                std::string o1 = currentFunction->fresh(base_name, "o1");
+                std::string o2 = currentFunction->fresh(base_name, "o2");
+                std::string o  = currentFunction->fresh(base_name, "o");
+
+                out += "\t" + o1 + " <- 8\n";
+                out += "\t" + o2 + " <- " + std::to_string(ndim) + " * 8\n";
+                out += "\t" + o  + " <- " + o1 + " + " + o2 + "\n";
+                out += "\t" + body_base + " <- " + base_str + " + " + o + "\n";
+            }
+
+            // Accumulate into %lin:
+            std::string lin = currentFunction->fresh(base_name, "lin");
+            out += "\t" + lin + " <- 0\n";
+
+            // Build strides (in decoded element units) lazily as we sweep right-to-left.
+            // stride_var holds the current "stride for the dimension we're about to add."
+            std::string stride_var;   // empty means stride == 1
+            for (size_t i = ndim; i-- > 0; ) {
+                const std::string idx = tStr(indices[i]);
+
+                // term = idx * stride   (if stride == 1, term = idx)
+                std::string term;
+                if (stride_var.empty()) {
+                    term = idx;
+                } else {
+                    term = currentFunction->fresh(base_name, "term");
+                    out += "\t" + term + " <- " + idx + " * " + stride_var + "\n";
+                }
+                out += "\t" + lin + " <- " + lin + " + " + term + "\n";
+
+                // Update stride for next (more-significant) dimension:
+                // new_stride = stride * dim_sizes[i]
+                if (i > 0) {
+                    const std::string& d = type.dim_sizes[i];
+                    if (stride_var.empty()) {
+                        stride_var = d;
+                    } else {
+                        std::string ns = currentFunction->fresh(base_name, "stride");
+                        out += "\t" + ns + " <- " + stride_var + " * " + d + "\n";
+                        stride_var = ns;
+                    }
+                }
+            }
+
+            // Convert element offset to byte offset and compute address.
+            std::string byte_off = currentFunction->fresh(base_name, "boff");
+            out += "\t" + byte_off + " <- " + lin + " * 8\n";
+
+            std::string addr = currentFunction->fresh(base_name, "a");
+            out += "\t" + addr + " <- " + body_base + " + " + byte_off + "\n";
+
+            return {out, addr};
+        }
+
+
     public:
 
         static inline Function* currentFunction = nullptr;
+
+        static std::string tStr(const T& v){
+            return std::visit([](const auto& x) { return x.to_string(); }, v);
+        }
+
+        static std::string sStr(const S& v){
+            return std::visit([](const auto& x) -> std::string {
+                    using V = std::decay_t<decltype(x)>;
+                    if constexpr (std::is_same_v<V, Label>)             return ":" + x.name;
+                    else if constexpr (std::is_same_v<V, FunctionName>) return "@" + x.name;
+                    else                                                return x.to_string();
+                }, v);
+        }
+
+    
 
 
         static std::string generate(const AssignInstruction& instr)      { return instr.to_string(); }
@@ -18,7 +122,7 @@ namespace IR {
         static std::string generate(const ReturnInstruction& instr)      { return instr.to_string(); }
         static std::string generate(const ReturnTInstruction& instr)     { return instr.to_string(); }
         static std::string generate(const LabelInstruction& instr)       { return instr.to_string(); }
-        static std::string generate(const IndexLoadInstruction& instr)         { return ""; }
+        
         
         static std::string generate(const LengthInstruction& instr)            { return ""; }
         
@@ -28,19 +132,28 @@ namespace IR {
         static std::string generate(const BrTInstruction& instr)               { return ""; }
         
 
-
-        static std::string generate(const IndexStoreInstruction& instr){ 
+        static std::string generate(const IndexStoreInstruction& instr) {
             assert(instr.verify());
             assert(currentFunction);
-            
-            
-            
-            
-            
-            
-            
-            
-            return ""; }
+
+            auto [out, addr] = compute_index_address(instr.getBase().value(),
+                                                    instr.getIndices());
+            out += "\tstore " + addr + " <- " + sStr(instr.getSrc().value()) + "\n";
+            return out;
+        }
+
+        static std::string generate(const IndexLoadInstruction& instr) {
+            assert(instr.verify());
+            assert(currentFunction);
+
+            auto [out, addr] = compute_index_address(instr.getBase().value(),
+                                                    instr.getIndices());
+            const std::string dst = instr.getDst().value().to_string();
+            out += "\t" + dst + " <- load " + addr + "\n";
+            return out;
+        }
+
+
         static std::string generate(const TypeDeclInstruction& instr) {
             assert(instr.verify());
             assert(currentFunction);
@@ -48,7 +161,7 @@ namespace IR {
             const Variable& var = instr.getVar().value();
             const Type& type    = instr.getType().value();
 
-            currentFunction->varTypes[var] = type;
+            currentFunction->varTypes[var.name] = type;
             return "";
         }
 
@@ -63,14 +176,6 @@ namespace IR {
             const auto& args            = instr.getArgs();
             const size_t k              = args.size();
 
-            static int64_t counter = 0;
-
-            // Helper to mint a fresh variable name unique to this dst/function.
-            auto fresh = [&](const std::string& tag) {
-                return "%" + dst_name + "_" + fn_name + "_" + tag + "_" +
-                    std::to_string(counter++);
-            };
-
             auto argStr = [](const T& v) {
                 return std::visit([](const auto& x) { return x.to_string(); }, v);
             };
@@ -81,13 +186,30 @@ namespace IR {
             std::vector<std::string> decoded;
             decoded.reserve(k);
             for (const auto& a : args) {
-                std::string d = fresh("d");
+                std::string d = currentFunction->fresh(dst_name, "d");
                 out += "\t" + d + " <- " + argStr(a) + " >> 1\n";
                 decoded.push_back(d);
             }
 
+            // record decoded dimension sizes into the destination's type, so later 
+            // IndexLoad /IndexStore can use them.
+
+            {
+                auto it = currentFunction->varTypes.find(dst_name);
+                assert(it != currentFunction->varTypes.end()
+                    && "NewArray destination must have a declared type");
+                Type& type = it->second;
+                assert(type.kind == TypeKind::Int64
+                    && "NewArray destination must be int64[]...");
+                assert(type.dim_sizes.size() == decoded.size()
+                    && "Type's declared dims must match new Array args");
+                for (size_t i = 0; i < decoded.size(); ++i) {
+                    type.dim_sizes[i] = decoded[i];
+                }
+            }
+
             // 2. Multiply all decoded dims pairwise into a single body-size variable.
-            std::string size = fresh("size");
+            std::string size = currentFunction->fresh(dst_name, "size");
             out += "\t" + size + " <- " + decoded[0] + "\n";
             for (size_t i = 1; i < k; ++i) {
                 out += "\t" + size + " <- " + size + " * " + decoded[i] + "\n";
@@ -106,7 +228,7 @@ namespace IR {
             // 6. Store each original (encoded) param at the dimension slots.
             //    Slot 0 holds the size (set by allocate); dimensions go at +8, +16, ...
             for (size_t i = 0; i < k; ++i) {
-                std::string slot = fresh("slot");
+                std::string slot = currentFunction->fresh(dst_name, "slot");
                 const int64_t offset = static_cast<int64_t>((i + 1) * 8);
                 out += "\t" + slot + " <- " + dst + " + " + std::to_string(offset) + "\n";
                 out += "\tstore " + slot + " <- " + argStr(args[i]) + "\n";

@@ -600,11 +600,13 @@ namespace IR {
         std::vector<Variable>      params;
         const BasicBlock* entry = nullptr;
     public:
-        std::map<Variable, Type> varTypes;   // variables types 
+        std::map<std::string, Type> varTypes;   // variables types 
 
         std::vector<std::list<BasicBlock*>> traces; 
         std::vector<std::unique_ptr<BasicBlock>> blocks;  // list
         std::map<const BasicBlock*, std::vector<const BasicBlock*>> successors; //edges 
+        std::set<std::string> InitVariables;
+        int64_t fresh_counter = 0;
    
 
         Function() = default;
@@ -626,8 +628,13 @@ namespace IR {
             params.push_back(std::move(v));
         }
 
-     
-     
+        std::string fresh(const std::string& base_name, const std::string& tag) {
+            std::string r = "%" + base_name + "_" + name.name + "_" + tag + "_" +
+                            std::to_string(fresh_counter++);
+            InitVariables.insert(r);
+            return r;
+        }
+        
 
 
         bool verify() const override {
