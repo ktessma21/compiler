@@ -303,20 +303,7 @@ public:
         return "\t" + dst->to_string() + " <- load " + src->to_string() + "\n";
     }
 
-    std::unique_ptr<TreeNode> to_tree() const override {
-        if (!dst.has_value() || !src.has_value()) return nullptr;
-
-        return std::make_unique<TreeNode>(
-            AssignNode{
-                std::make_unique<TreeNode>(*dst),
-                std::make_unique<TreeNode>(
-                    LoadNode{
-                        std::make_unique<TreeNode>(*src)
-                    }
-                )
-            }
-            );
-        }
+    
 
     std::set<Variable> reads() const override {
         std::set<Variable> r;
@@ -651,13 +638,6 @@ public:
         return r;
     }
 
-    std::unique_ptr<TreeNode> to_tree() const override {
-        if (!cond.has_value()) return nullptr;
-        if (std::holds_alternative<Variable>(cond.value()))
-            return std::make_unique<TreeNode>(*cond);
-        else
-            return std::make_unique<TreeNode>(*cond);
-    }
 };
 
 

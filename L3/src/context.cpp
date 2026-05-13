@@ -70,6 +70,14 @@ namespace L3 {
         const TreeNode& node,
         size_t& fresh_idx)
     {
+
+        // At the very top of emit_instructions, before anything else:
+        // std::cerr << "[emit_instructions] top-level node: "
+        //         << tree_to_string(node) << "\n";
+        // std::cerr << "[emit_instructions] variant index: "
+        //         << node.data.index() << "\n";
+
+
         std::vector<std::unique_ptr<Instruction>> result;
 
         // Helper: lift any non-Variable subtree into a fresh temp.
@@ -199,6 +207,7 @@ namespace L3 {
             // Try leaq first.
             std::string leaq = leaqMatch(*dest_var, src);
             if (!leaq.empty()) {
+                throw std::runtime_error("worked");
                 result.push_back(std::make_unique<RawL2Instruction>(leaq));
                 return result;
             }
@@ -223,6 +232,28 @@ namespace L3 {
 
         // B4: dest <- load(addr)
         if (auto* load = std::get_if<LoadNode>(&src.data)) {
+            const TreeNode& addr = *load->addr;
+            // Try to tile: load(BinOp(Add, Var, Number M)) where M % 8 == 0
+            if (auto* binop = std::get_if<BinOpNode>(&addr.data); binop && binop->op == Op::Add) {
+                auto try_tile = [&](const TreeNode& var_side, const TreeNode& num_side) -> bool {
+                    auto* base = std::get_if<Variable>(&var_side.data);
+                    auto* num  = std::get_if<Number>(&num_side.data);
+                    if (!base || !num) return false;
+                    long long off = num->getValue();
+                    if (off % 8 != 0) return false;
+
+                    std::string instr_str = "\t" + dest_var->to_string() + " <- mem " +
+                                            base->to_string() + " " +
+                                            std::to_string(off) + "\n";
+                    result.push_back(std::make_unique<RawL2Instruction>(instr_str));
+                    return true;
+                };
+
+                if (try_tile(*binop->left, *binop->right)) return result;
+                if (try_tile(*binop->right, *binop->left)) return result;
+            }
+
+
             Variable addr_var = lift_to_var(*load->addr);
             auto instr = std::make_unique<LoadInstruction>();
             instr->setDst(*dest_var);
@@ -431,8 +462,8 @@ namespace L3 {
                 int death = find_death(defined, i + 1);
                 if (death >= (int)instructions.size()) continue;
 
-                bool safe_to_erase = false;
-                bool all_ok = true;
+                bool any_reader_seen = false;
+                bool all_readers_merged = true;
 
                 for (int j = i + 1; j <= death; j++) {
                     bool is_redef = trees[j]
@@ -444,21 +475,21 @@ namespace L3 {
                         : instructions[j]->reads().count(defined);
 
                     if (j_reads) {
+                        any_reader_seen = true;
                         auto source_copy = clone_tree(*trees[i]);
-                        auto merged = L3::merge_tree(std::move(source_copy), std::move(trees[j]));
+                        auto target_copy = clone_tree(*trees[j]);
+                        auto merged = L3::merge_tree(std::move(source_copy), std::move(target_copy));
                         if (merged) {
                             trees[j] = std::move(merged);
-                            safe_to_erase = true;
                         } else {
-                            all_ok = false;
+                            all_readers_merged = false;
                             break;
                         }
                     }
-
                     if (is_redef) break;
                 }
 
-                if (safe_to_erase && all_ok) {
+                if (any_reader_seen && all_readers_merged) {
                     instructions.erase(instructions.begin() + i);
                     trees.erase(trees.begin() + i);
                     liveAnalysisReport.erase(liveAnalysisReport.begin() + i);
@@ -490,12 +521,16 @@ namespace L3 {
         size_t fresh_idx = 0;
 
         for (size_t i = 0; i < instructions.size(); i++) {
-            
-            if (trees[i] == nullptr) {
-              
-                new_instructions.push_back(std::move(instructions[i]));
-                continue;
-            }
+    // std::cerr << "\n[aggregate_tree] i=" << i
+            //   << " original instr: " << instructions[i]->to_string();
+    if (trees[i] == nullptr) {
+        // std::cerr << "[aggregate_tree] tree is null, passing through\n";
+        new_instructions.push_back(std::move(instructions[i]));
+        continue;
+    }
+
+    // std::cerr << "[aggregate_tree] tree: " << tree_to_string(*trees[i]) << "\n";
+
 
 
             // Tree exists — emit instructions from it and append.
