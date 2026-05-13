@@ -112,7 +112,9 @@ namespace IR {
                 }, v);
         }
 
-    
+        // probably don't do anything let's handle it in the backend. because we want to control the traces. 
+        static std::string generate(const BrInstruction& instr)                { return ""; }
+        static std::string generate(const BrTInstruction& instr)               { return ""; }
 
 
         static std::string generate(const AssignInstruction& instr)      { return instr.to_string(); }
@@ -124,17 +126,108 @@ namespace IR {
         static std::string generate(const LabelInstruction& instr)       { return instr.to_string(); }
         
         
-        static std::string generate(const LengthInstruction& instr)            { return ""; }
+       static std::string generate(const LengthInstruction& instr) {
+            assert(instr.verify());
+            assert(currentFunction);
+
+            const std::string dst       = instr.getDst().value().to_string();
+            const Variable&   base      = instr.getBase().value();
+            const std::string base_name = base.name;
+            const std::string base_str  = base.to_string();
+
+            std::string out;
+
+            if (instr.getDim().has_value()) {
+                // Address: base + 8 + dim*8
+                const std::string dim_str = tStr(instr.getDim().value());
+
+                std::string off    = currentFunction->fresh(base_name, "off");
+                std::string dimoff = currentFunction->fresh(base_name, "dimoff");
+                std::string addr   = currentFunction->fresh(base_name, "addr");
+
+                out += "\t" + off    + " <- 8\n";
+                out += "\t" + dimoff + " <- " + dim_str + " * 8\n";
+                out += "\t" + off    + " <- " + off + " + " + dimoff + "\n";
+                out += "\t" + addr   + " <- " + base_str + " + " + off + "\n";
+                out += "\t" + dst    + " <- load " + addr + "\n";
+            } else {
+                // Tuple form:  %dst <- length %base
+                // Length lives in slot 0. but still when it returns we must encode it . 
+                out += "\t" + dst + " <- load " + base_str + "\n";
+                out += "\t" + dst + " <- " + dst + " << 1\n";
+                out += "\t" + dst + " <- " + dst + " + 1\n";
+
+            }
+
+            return out;
+        }
         
-        static std::string generate(const NewTupleInstruction& instr)          { return ""; }
+
+        // same as the L3 code. 
+        static std::string generate(const NewTupleInstruction& instr)
+            {   
+                assert(instr.verify());
+                assert(currentFunction);
+
+                const std::string dst       = instr.getDst().value().to_string();
+                const std::string dst_name  = instr.getDst().value().name;
+                const std::string fn_name   = currentFunction->getName();
+                const T& size = instr.getSize().value();
+
+                auto argStr = [](const T& v) {
+                    return std::visit([](const auto& x) { return x.to_string(); }, v);
+                };
+                
+                std::string out;
+
+                out += "\t" + dst + " <- call allocate(" + argStr(size) + ", 1)\n";
+                
+                return out; 
+            }
         
-        static std::string generate(const BrInstruction& instr)                { return ""; }
-        static std::string generate(const BrTInstruction& instr)               { return ""; }
+        
         
 
         static std::string generate(const IndexStoreInstruction& instr) {
             assert(instr.verify());
             assert(currentFunction);
+
+            const Variable&   base      = instr.getBase().value();
+            const std::string base_name = base.name;
+            const std::string base_str  = base.to_string();
+            const auto&       indices   = instr.getIndices();
+
+            // Look up base's type to choose the indexing path.
+            auto it = currentFunction->varTypes.find(base_name);
+            assert(it != currentFunction->varTypes.end()
+                && "IndexStore base must have a declared type");
+            Type& type = it->second;
+
+            
+
+            // ---- Tuple path ----
+            if (type.kind == TypeKind::Tuple) {
+                std::string out;
+                assert(indices.size() == 1
+                    && "Tuple indexing takes exactly one index");
+
+                const std::string idx_str = tStr(indices[0]);
+                std::string off  = currentFunction->fresh(base_name, "off");
+                std::string addr = currentFunction->fresh(base_name, "addr");
+
+                out += "\t" + off  + " <- " + idx_str + " * 8\n";
+                out += "\t" + off  + " <- " + off + " + 8\n";
+                out += "\t" + addr + " <- " + base_str + " + " + off + "\n";
+                out += "\tstore " + addr + " <- " + sStr(instr.getSrc().value()) + "\n";
+                return out;
+            }
+
+            // ---- Array path ----
+            assert(type.kind == TypeKind::Int64
+                && "IndexStore base must be int64[]... or tuple");
+            assert(type.dim_sizes.size() == indices.size()
+                && "Index count must match base's dimension count");
+
 
             auto [out, addr] = compute_index_address(instr.getBase().value(),
                                                     instr.getIndices());
@@ -145,6 +238,44 @@ namespace IR {
         static std::string generate(const IndexLoadInstruction& instr) {
             assert(instr.verify());
             assert(currentFunction);
+
+            const Variable&   base      = instr.getBase().value();
+            const std::string base_name = base.name;
+            const std::string base_str  = base.to_string();
+            const auto&       indices   = instr.getIndices();
+
+            auto it = currentFunction->varTypes.find(base_name);
+            assert(it != currentFunction->varTypes.end()
+                && "IndexStore base must have a declared type");
+            Type& type = it->second;
+
+            
+
+            // ---- Tuple path ----
+            if (type.kind == TypeKind::Tuple) {
+                std::string out;
+                assert(indices.size() == 1
+                    && "Tuple indexing takes exactly one index");
+
+                const std::string idx_str = tStr(indices[0]);
+                std::string off  = currentFunction->fresh(base_name, "off");
+                std::string addr = currentFunction->fresh(base_name, "addr");
+                const std::string dst = instr.getDst().value().to_string();
+
+                out += "\t" + off  + " <- " + idx_str + " * 8\n";
+                out += "\t" + off  + " <- " + off + " + 8\n";
+                out += "\t" + addr + " <- " + base_str + " + " + off + "\n";
+                out += '\t' + dst + " <- load " + addr + '\n';
+                return out;
+            }
+
+            // ---- Array path ----
+            assert(type.kind == TypeKind::Int64
+                && "IndexStore base must be int64[]... or tuple");
+            assert(type.dim_sizes.size() == indices.size()
+                && "Index count must match base's dimension count");
+
+            const size_t ndim = indices.size();
 
             auto [out, addr] = compute_index_address(instr.getBase().value(),
                                                     instr.getIndices());
