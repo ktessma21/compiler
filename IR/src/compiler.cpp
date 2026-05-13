@@ -63,7 +63,7 @@ int main(int argc, char **argv) {
 
   auto program = IR::parse_file(fileName);
 
-  std::cerr << program.to_string();
+
 
   /*
    * Print the program.
@@ -72,6 +72,11 @@ int main(int argc, char **argv) {
     // TODO
   }
 
+  for (auto& f : program.functions){
+    f.build_traces();
+  }
+
+    std::cerr << program.to_string();
   /*
    * Generate the code.
    */

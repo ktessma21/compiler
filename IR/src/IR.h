@@ -600,9 +600,12 @@ namespace IR {
         std::vector<Variable>      params;
         const BasicBlock* entry = nullptr;
     public:
+        // std::map<std::string, Type> varTypes; // variables types 
+
         std::vector<std::list<BasicBlock*>> traces; 
         std::vector<std::unique_ptr<BasicBlock>> blocks;  // list
         std::map<const BasicBlock*, std::vector<const BasicBlock*>> successors; //edges 
+   
 
         Function() = default;
 
@@ -623,9 +626,59 @@ namespace IR {
             params.push_back(std::move(v));
         }
 
+     
+     
+
+
         bool verify() const override {
             if (name.name.empty()) return false;
             return !blocks.empty();
+        }
+
+        bool dfs_find_loop(const BasicBlock* current,
+                   const BasicBlock* target,
+                   std::set<const BasicBlock*>& visited) {
+            if (!visited.insert(current).second) return false; // already explored
+
+            for (const BasicBlock* s : successors[current]) {
+                if (s == target) return true;                       // direct back to start
+                if (dfs_find_loop(s, target, visited)) return true; // transitively reaches start
+            }
+            return false;
+        }
+ 
+
+        BasicBlock* select_next(BasicBlock* cur, std::vector<const BasicBlock*> next){
+            if (next.empty()) return nullptr;
+
+            for (const BasicBlock* candidate : next) {
+                std::set<const BasicBlock*> visited;
+                if (dfs_find_loop(candidate, cur, visited)) {
+                    return const_cast<BasicBlock*>(candidate);
+                }
+            }
+
+            return const_cast<BasicBlock*>(next.front());
+            // find it through a dominator tree. 
+
+        }
+
+
+        void build_traces() {
+            std::set<BasicBlock*> marked;
+            for (size_t counter = 0; counter < blocks.size(); ++counter) {
+                BasicBlock* bb = blocks[counter].get();
+                if (marked.count(bb)) continue;                   // already in some trace
+
+                std::list<BasicBlock*> tr;
+                while (bb && marked.find(bb) == marked.end()) {
+                    marked.insert(bb);
+                    tr.push_back(bb);
+                    std::vector<const BasicBlock*> next = successors[bb];
+                    bb = select_next(bb, next);                   
+                }
+                if (!tr.empty()) traces.push_back(std::move(tr));
+            }
         }
 
         void build_successor_graph() {
@@ -672,11 +725,25 @@ namespace IR {
                 out += paramTypes[i].to_string() + " " + params[i].to_string();
             }
             out += ") {\n";
-            for (const auto& bb : blocks) {
-                if (bb->label)      out += bb->label->to_string();
-                for (const auto& i : bb->instructions) out += i->to_string();
-                if (bb->terminator) out += bb->terminator->to_string();
+            if (!traces.empty()){
+                assert(traces[0].front() == entry);
+                for (const auto& tr : traces) {
+                    if (tr.empty()) continue;   
+                                          // skip empty traces
+                    for (const BasicBlock* bb : tr) {
+                        if (bb->label)      out += bb->label->to_string();
+                        for (const auto& i : bb->instructions) out += i->to_string();
+                        if (bb->terminator) out += bb->terminator->to_string();
+                    }
+                }
+            }else {
+                for (const auto& bb : blocks) {
+                    if (bb->label)      out += bb->label->to_string();
+                    for (const auto& i : bb->instructions) out += i->to_string();
+                    if (bb->terminator) out += bb->terminator->to_string();
+                }
             }
+            
             out += "}\n";
 
             // out += "size :" + std::to_string(blocks.size()) + '\n';
