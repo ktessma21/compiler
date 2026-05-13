@@ -113,9 +113,16 @@ namespace IR {
         }
 
         // probably don't do anything let's handle it in the backend. because we want to control the traces. 
-        
-        static std::string generate(const BrInstruction& instr)                { return ""; }
-        static std::string generate(const BrTInstruction& instr)               { return ""; }
+
+        static std::string generate(const BrInstruction& instr, const BasicBlock* next)                
+        { 
+            if (instr.getTarget() == next->label->getLabel()) return ""; // just keep going or 
+            return "br " + next->label->getLabel().value().name + '\n';
+        }
+        static std::string generate(const BrTInstruction& instr, const BasicBlock* next){ 
+            
+            return ""; 
+        }
 
 
         static std::string generate(const AssignInstruction& instr)      { return instr.to_string(); }
@@ -372,7 +379,7 @@ namespace IR {
 
 
 
-        static std::string generate(const Instruction& instr) {
+        static std::string generate(const Instruction& instr, const BasicBlock* next = nullptr) {
             switch (instr.type) {
                 case InstructionType::AssignFromS:
                     return generate(static_cast<const AssignInstruction&>(instr));
@@ -395,9 +402,9 @@ namespace IR {
                 case InstructionType::TypeDecl:
                     return generate(static_cast<const TypeDeclInstruction&>(instr));
                 case InstructionType::Br:
-                    return generate(static_cast<const BrInstruction&>(instr));
+                    return generate(static_cast<const BrInstruction&>(instr), next);
                 case InstructionType::BrT:
-                    return generate(static_cast<const BrTInstruction&>(instr));
+                    return generate(static_cast<const BrTInstruction&>(instr), next);
                 case InstructionType::Return:
                     return generate(static_cast<const ReturnInstruction&>(instr));
                 case InstructionType::ReturnT:
@@ -429,5 +436,5 @@ namespace IR {
         }
     };
 
-    void generate_code(const Program& p);
+    void generate_code(Program& p);
 }

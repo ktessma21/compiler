@@ -82,7 +82,8 @@ int main(int argc, char **argv) {
    * Generate the code.
    */
   if (enable_code_generator) {
-    // IR::generate_code(program);
+    IR::generate_code(program);
+    
   }
 
   return 0;
