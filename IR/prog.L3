@@ -1,0 +1,168 @@
+define main() {
+	:entry
+	%size <- 21
+	%v1_main_d_0 <- %size >> 1
+	%v1_main_size_1 <- %v1_main_d_0
+	%v1_main_size_1 <- %v1_main_size_1 + 1
+	%v1_main_size_1 <- %v1_main_size_1 << 1
+	%v1_main_size_1 <- %v1_main_size_1 + 1
+	%v1 <- call allocate(%v1_main_size_1, 1)
+	%v1_main_slot_2 <- %v1 + 8
+	store %v1_main_slot_2 <- %size
+	%v2_main_d_3 <- %size >> 1
+	%v2_main_size_4 <- %v2_main_d_3
+	%v2_main_size_4 <- %v2_main_size_4 + 1
+	%v2_main_size_4 <- %v2_main_size_4 << 1
+	%v2_main_size_4 <- %v2_main_size_4 + 1
+	%v2 <- call allocate(%v2_main_size_4, 1)
+	%v2_main_slot_5 <- %v2 + 8
+	store %v2_main_slot_5 <- %size
+	%v1_main_o1_6 <- 8
+	%v1_main_o2_7 <- 1 * 8
+	%v1_main_o_8 <- %v1_main_o1_6 + %v1_main_o2_7
+	%v1_main_bodybase <- %v1 + %v1_main_o_8
+	%v1_main_lin_9 <- 0
+	%v1_main_lin_9 <- %v1_main_lin_9 + 0
+	%v1_main_boff_10 <- %v1_main_lin_9 * 8
+	%v1_main_a_11 <- %v1_main_bodybase + %v1_main_boff_10
+	store %v1_main_a_11 <- 1
+	%v2_main_o1_12 <- 8
+	%v2_main_o2_13 <- 1 * 8
+	%v2_main_o_14 <- %v2_main_o1_12 + %v2_main_o2_13
+	%v2_main_bodybase <- %v2 + %v2_main_o_14
+	%v2_main_lin_15 <- 0
+	%v2_main_lin_15 <- %v2_main_lin_15 + 0
+	%v2_main_boff_16 <- %v2_main_lin_15 * 8
+	%v2_main_a_17 <- %v2_main_bodybase + %v2_main_boff_16
+	store %v2_main_a_17 <- 2
+	%v1_main_lin_18 <- 0
+	%v1_main_lin_18 <- %v1_main_lin_18 + 1
+	%v1_main_boff_19 <- %v1_main_lin_18 * 8
+	%v1_main_a_20 <- %v1_main_bodybase + %v1_main_boff_19
+	store %v1_main_a_20 <- 3
+	%v2_main_lin_21 <- 0
+	%v2_main_lin_21 <- %v2_main_lin_21 + 1
+	%v2_main_boff_22 <- %v2_main_lin_21 * 8
+	%v2_main_a_23 <- %v2_main_bodybase + %v2_main_boff_22
+	store %v2_main_a_23 <- 4
+	%v1_main_lin_24 <- 0
+	%v1_main_lin_24 <- %v1_main_lin_24 + 2
+	%v1_main_boff_25 <- %v1_main_lin_24 * 8
+	%v1_main_a_26 <- %v1_main_bodybase + %v1_main_boff_25
+	store %v1_main_a_26 <- 5
+	%v2_main_lin_27 <- 0
+	%v2_main_lin_27 <- %v2_main_lin_27 + 2
+	%v2_main_boff_28 <- %v2_main_lin_27 * 8
+	%v2_main_a_29 <- %v2_main_bodybase + %v2_main_boff_28
+	store %v2_main_a_29 <- 6
+	%v1_main_lin_30 <- 0
+	%v1_main_lin_30 <- %v1_main_lin_30 + 3
+	%v1_main_boff_31 <- %v1_main_lin_30 * 8
+	%v1_main_a_32 <- %v1_main_bodybase + %v1_main_boff_31
+	store %v1_main_a_32 <- 7
+	%v2_main_lin_33 <- 0
+	%v2_main_lin_33 <- %v2_main_lin_33 + 3
+	%v2_main_boff_34 <- %v2_main_lin_33 * 8
+	%v2_main_a_35 <- %v2_main_bodybase + %v2_main_boff_34
+	store %v2_main_a_35 <- 8
+	%v1_main_lin_36 <- 0
+	%v1_main_lin_36 <- %v1_main_lin_36 + 4
+	%v1_main_boff_37 <- %v1_main_lin_36 * 8
+	%v1_main_a_38 <- %v1_main_bodybase + %v1_main_boff_37
+	store %v1_main_a_38 <- 9
+	%v2_main_lin_39 <- 0
+	%v2_main_lin_39 <- %v2_main_lin_39 + 4
+	%v2_main_boff_40 <- %v2_main_lin_39 * 8
+	%v2_main_a_41 <- %v2_main_bodybase + %v2_main_boff_40
+	store %v2_main_a_41 <- 10
+	%v1_main_lin_42 <- 0
+	%v1_main_lin_42 <- %v1_main_lin_42 + 5
+	%v1_main_boff_43 <- %v1_main_lin_42 * 8
+	%v1_main_a_44 <- %v1_main_bodybase + %v1_main_boff_43
+	store %v1_main_a_44 <- 11
+	%v2_main_lin_45 <- 0
+	%v2_main_lin_45 <- %v2_main_lin_45 + 5
+	%v2_main_boff_46 <- %v2_main_lin_45 * 8
+	%v2_main_a_47 <- %v2_main_bodybase + %v2_main_boff_46
+	store %v2_main_a_47 <- 12
+	%v1_main_lin_48 <- 0
+	%v1_main_lin_48 <- %v1_main_lin_48 + 6
+	%v1_main_boff_49 <- %v1_main_lin_48 * 8
+	%v1_main_a_50 <- %v1_main_bodybase + %v1_main_boff_49
+	store %v1_main_a_50 <- 13
+	%v2_main_lin_51 <- 0
+	%v2_main_lin_51 <- %v2_main_lin_51 + 6
+	%v2_main_boff_52 <- %v2_main_lin_51 * 8
+	%v2_main_a_53 <- %v2_main_bodybase + %v2_main_boff_52
+	store %v2_main_a_53 <- 14
+	%v1_main_lin_54 <- 0
+	%v1_main_lin_54 <- %v1_main_lin_54 + 7
+	%v1_main_boff_55 <- %v1_main_lin_54 * 8
+	%v1_main_a_56 <- %v1_main_bodybase + %v1_main_boff_55
+	store %v1_main_a_56 <- 15
+	%v2_main_lin_57 <- 0
+	%v2_main_lin_57 <- %v2_main_lin_57 + 7
+	%v2_main_boff_58 <- %v2_main_lin_57 * 8
+	%v2_main_a_59 <- %v2_main_bodybase + %v2_main_boff_58
+	store %v2_main_a_59 <- 16
+	%v1_main_lin_60 <- 0
+	%v1_main_lin_60 <- %v1_main_lin_60 + 8
+	%v1_main_boff_61 <- %v1_main_lin_60 * 8
+	%v1_main_a_62 <- %v1_main_bodybase + %v1_main_boff_61
+	store %v1_main_a_62 <- 17
+	%v2_main_lin_63 <- 0
+	%v2_main_lin_63 <- %v2_main_lin_63 + 8
+	%v2_main_boff_64 <- %v2_main_lin_63 * 8
+	%v2_main_a_65 <- %v2_main_bodybase + %v2_main_boff_64
+	store %v2_main_a_65 <- 18
+	%v1_main_lin_66 <- 0
+	%v1_main_lin_66 <- %v1_main_lin_66 + 9
+	%v1_main_boff_67 <- %v1_main_lin_66 * 8
+	%v1_main_a_68 <- %v1_main_bodybase + %v1_main_boff_67
+	store %v1_main_a_68 <- 19
+	%v2_main_lin_69 <- 0
+	%v2_main_lin_69 <- %v2_main_lin_69 + 9
+	%v2_main_boff_70 <- %v2_main_lin_69 * 8
+	%v2_main_a_71 <- %v2_main_bodybase + %v2_main_boff_70
+	store %v2_main_a_71 <- 20
+	%res <- call @dot_product(%v1, %v2, %size)
+	%res <- %res << 1
+	%res <- %res + 1
+	call print(%res)
+	return
+}
+define dot_product() {
+	:entry
+	%n_decoded <- %n >> 1
+	%prod <- 0
+	%idx <- 0
+	:loop_start
+	%loop_cond <- %idx < %n_decoded
+	%%loop_cond_dot_product_brt_0 <- %loop_cond = 0
+	br %%loop_cond_dot_product_brt_0 :loop_end
+	:loop_body
+	%v1_dot_product_o1_1 <- 8
+	%v1_dot_product_o2_2 <- 1 * 8
+	%v1_dot_product_o_3 <- %v1_dot_product_o1_1 + %v1_dot_product_o2_2
+	%v1_dot_product_bodybase <- %v1 + %v1_dot_product_o_3
+	%v1_dot_product_lin_4 <- 0
+	%v1_dot_product_lin_4 <- %v1_dot_product_lin_4 + %idx
+	%v1_dot_product_boff_5 <- %v1_dot_product_lin_4 * 8
+	%v1_dot_product_a_6 <- %v1_dot_product_bodybase + %v1_dot_product_boff_5
+	%tmp1 <- load %v1_dot_product_a_6
+	%v2_dot_product_o1_7 <- 8
+	%v2_dot_product_o2_8 <- 1 * 8
+	%v2_dot_product_o_9 <- %v2_dot_product_o1_7 + %v2_dot_product_o2_8
+	%v2_dot_product_bodybase <- %v2 + %v2_dot_product_o_9
+	%v2_dot_product_lin_10 <- 0
+	%v2_dot_product_lin_10 <- %v2_dot_product_lin_10 + %idx
+	%v2_dot_product_boff_11 <- %v2_dot_product_lin_10 * 8
+	%v2_dot_product_a_12 <- %v2_dot_product_bodybase + %v2_dot_product_boff_11
+	%tmp2 <- load %v2_dot_product_a_12
+	%tmp3 <- %tmp1 * %tmp2
+	%prod <- %prod + %tmp3
+	%idx <- %idx + 1
+	br :loop_start
+	:loop_end
+	return %prod
+}

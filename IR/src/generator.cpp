@@ -27,12 +27,21 @@ namespace IR {
             CodeGenerator::currentFunction = &f;
 
             // cause a segmentation fault
-            // for (size_t i = 0; i < f.getNumParams(); ++i) {
-            //     f.varTypes[f.getParams()[i].name] = f.getParamTypes()[i];
-            // }
+            const auto& params     = f.getParams();
+            const auto& paramTypes = f.getParamTypes();
+            for (size_t i = 0; i < params.size(); ++i) {
+                f.varTypes[params[i].name] = paramTypes[i];
+            }
 
-            outputFile << "define " + f.getReturnType().to_string() + " " + f.getName() + "(";
+            outputFile << "define @" + f.getName() + "(";
+            for (size_t i = 0; i < params.size(); ++i) {
+                outputFile << "%" << params[i].name;
+                if (i + 1 < params.size()) {
+                    outputFile << ", ";
+                }
+            }
             
+            outputFile << ") {\n";
 
             for (const auto& tr : f.traces) {
                 if (tr.empty()) continue;
@@ -57,8 +66,11 @@ namespace IR {
                     }
                 }
             }
+
+            outputFile << "}\n";
         }
         
+
         outputFile.close();
         return;
     }

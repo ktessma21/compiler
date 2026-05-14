@@ -77,7 +77,10 @@ namespace L3 {
         // std::cerr << "[emit_instructions] variant index: "
         //         << node.data.index() << "\n";
 
-
+// define
+// :entry
+// a @ b c
+// return a
         std::vector<std::unique_ptr<Instruction>> result;
 
         // Helper: lift any non-Variable subtree into a fresh temp.

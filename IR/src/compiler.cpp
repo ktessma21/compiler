@@ -16,6 +16,12 @@
 // #include <generator.h>
 
 
+// https://en.wikipedia.org/wiki/Value_numbering : suggested optimizations to add:
+// - local value numbering (eliminate redundant computations within a basic block)
+// - global value numbering (eliminate redundant computations across basic blocks, using SSA form)
+// - dead code elimination (remove instructions whose results are never used)
+
+
 #include <utils.h>
 
 void print_help(char *progName) {
@@ -77,7 +83,7 @@ int main(int argc, char **argv) {
     f.build_traces();
   }
 
-    std::cerr << program.to_string();
+    // std::cerr << program.to_string();
   /*
    * Generate the code.
    */

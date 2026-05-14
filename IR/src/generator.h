@@ -34,7 +34,7 @@ namespace IR {
             std::string out;
 
             // Body base = base + 8 (size slot) + ndim * 8 (dimension slots)
-            const std::string body_base = "%" + base_name + "_" + fn_name + "_bodybase";
+            const std::string body_base = '%' + base_name + "_" + fn_name + "_bodybase";
 
             if (currentFunction->InitVariables.find(body_base)
                 == currentFunction->InitVariables.end()) {
@@ -103,6 +103,14 @@ namespace IR {
             return std::visit([](const auto& x) { return x.to_string(); }, v);
         }
 
+        static std::string condBase(const T& v){
+            return std::visit([](const auto& x) -> std::string {
+                using V = std::decay_t<decltype(x)>;
+                if constexpr (std::is_same_v<V, Variable>) return x.name;
+                else                                       return x.to_string();
+            }, v);
+        }
+
         static std::string sStr(const S& v){
             return std::visit([](const auto& x) -> std::string {
                     using V = std::decay_t<decltype(x)>;
@@ -113,17 +121,41 @@ namespace IR {
         }
 
         // probably don't do anything let's handle it in the backend. because we want to control the traces. 
-
-        static std::string generate(const BrInstruction& instr, const BasicBlock* next)                
-        { 
-            if (instr.getTarget() == next->label->getLabel()) return ""; // just keep going or 
-            return "br " + next->label->getLabel().value().name + '\n';
+        static std::string generate(const BrInstruction& instr, const BasicBlock* next) {
+            // Fall through if next block in trace IS the branch target
+            if (next && next->label && instr.getTarget() == next->label->getLabel()) {
+                return "";
+            }
+            return instr.to_string();
         }
-        static std::string generate(const BrTInstruction& instr, const BasicBlock* next){ 
+
+        static std::string generate(const BrTInstruction& instr, const BasicBlock* next) {
+            // Conditional: br cond, true_target, false_target
+            const auto& trueTgt  = instr.getTrueTarget();   // adjust names to your API
+            const auto& falseTgt = instr.getFalseTarget();
+            const auto& cond     = instr.getCond();
+
+            bool nextIsFalse = next && next->label && falseTgt == next->label->getLabel();
+            bool nextIsTrue  = next && next->label && trueTgt  == next->label->getLabel();
+
+      
+
+
+            if (nextIsFalse) {
+                return "br " + condBase(*cond) + " " + trueTgt.value().name + '\n';
+            }
+            else {
             
-            return ""; 
+                // // Allocate a fresh variable to hold the negated condition
+                std::string ncond = currentFunction->fresh(condBase(*cond), "brt");
+                std::string out;
+                out += "\t" + ncond + " <- " + tStr(*cond) + " = 0\n";   // tStr, not condBase
+                out += "\tbr " + ncond + " " + falseTgt->to_string() + "\n";
+                return out;
+    
+            }
+          
         }
-
 
         static std::string generate(const AssignInstruction& instr)      { return instr.to_string(); }
         static std::string generate(const OpInstruction& instr)          { return instr.to_string(); }
