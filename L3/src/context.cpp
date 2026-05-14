@@ -171,6 +171,15 @@ namespace L3 {
             const TreeNode& addr_var = *store_dest->addr;
             const TreeNode& val = *assign->src;
 
+
+            // Helper: produce a printable string for the stored value if it's a
+            // Variable or Number; returns empty string if val needs lifting.
+            auto val_to_str = [](const TreeNode& v) -> std::string {
+                if (auto* n = std::get_if<Number>(&v.data))   return n->to_string();
+                if (auto* x = std::get_if<Variable>(&v.data)) return x->to_string();
+                return "";
+            };
+
             // Try to fold `base + N` (N a multiple of 8) into `mem base N`
             if (!isNestedBinop(addr_var)) {
                 if (auto* bin = std::get_if<BinOpNode>(&addr_var.data)) {
@@ -181,23 +190,30 @@ namespace L3 {
                         base = std::get_if<Variable>(&bin->right->data);
                     }
                     if (num && base && num->getValue() % 8 == 0) {
-                        auto& val_num = std::get<Number>(val.data);  // ASSUMPTION: comeback for now
-                        std::string instr_str =
-                            "\tmem " + base->to_string() + " " +
-                            std::to_string(num->getValue()) + " <- " +
-                            val_num.to_string() + "\n";
-                        result.push_back(std::make_unique<RawL2Instruction>(instr_str));
-                        return result;
+                        std::string val_str = val_to_str(val);
+                        if (!val_str.empty()) {
+                            std::string instr_str =
+                                "\tmem " + base->to_string() + " " +
+                                std::to_string(num->getValue()) + " <- " +
+                                val_str + "\n";
+                            result.push_back(std::make_unique<RawL2Instruction>(instr_str));
+                            return result;
+                        }
+                        // else: value needs lifting — fall through to fallback
                     }
-                } else if (auto* var = std::get_if<Variable>(&addr_var.data)){ // clear case: just a variable address, and no folding. 
-                    auto& val_num = std::get<Number>(val.data);  // ASSUMPTION: comeback for now
-                    std::string instr_str =
-                        "\tmem " + var->to_string() + " <- " +
-                        val_num.to_string() + "\n";
-                    result.push_back(std::make_unique<RawL2Instruction>(instr_str));
-                    return result;
+                } else if (auto* var = std::get_if<Variable>(&addr_var.data)) {
+                        // clear case: just a variable address, no folding.
+                        std::string val_str = val_to_str(val);
+                        if (!val_str.empty()) {
+                            std::string instr_str =
+                                "\tmem " + var->to_string() + " 0 <- " +
+                                val_str + "\n";
+                            result.push_back(std::make_unique<RawL2Instruction>(instr_str));
+                            return result;
+                        }
+                        // else: fall through
+                    }
                 }
-            }
 
             // Fallback: lift the address to a variable if it's nested, otherwise use it directly
             Variable addr_var_out = std::visit([&](const auto& v) -> Variable {
@@ -560,7 +576,7 @@ namespace L3 {
         }
 
         // combine or merge the last two if they are mergeable 
-        print_trees(false);
+        print_trees(true);
     }
 
     void Context::aggregate_tree() {
