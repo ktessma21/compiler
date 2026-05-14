@@ -473,10 +473,7 @@ namespace L3 {
 
     void Context::merge_tree() {
 
-        // std::cerr << "[merge_tree] entering, " << instructions.size() << " instructions\n";
-    //    for (const auto& i : instructions) std::cerr << "  " << i->to_string();
-
-
+ 
         if (instructions.size() != trees.size()) {
             std::cerr << "ASSERT FAIL: instructions.size()=" << instructions.size()
                     << " trees.size()=" << trees.size() << "\n";
@@ -609,6 +606,21 @@ namespace L3 {
         print_trees(true);
     }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
     void Context::aggregate_tree() {
         if (instructions.size() != trees.size()) {
             throw std::runtime_error(

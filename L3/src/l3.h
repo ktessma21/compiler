@@ -551,10 +551,6 @@ public:
     std::string to_string() const override {
         return "\treturn\n";
     }
-
-    std::unique_ptr<TreeNode> to_tree() const override {
-        return std::make_unique<TreeNode>(ReturnNode{ nullptr });
-    }
 };
 
 

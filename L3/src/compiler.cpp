@@ -71,6 +71,7 @@ int main(int argc, char **argv) {
           try {
               ctx.build_tree();
               ctx.merge_tree();
+              ctx.aggregate_tree();
           } catch (const std::exception& e) {
               std::cerr << "[FAIL] context died with: " << e.what() << "\n";
               throw;
