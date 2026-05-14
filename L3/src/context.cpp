@@ -298,31 +298,47 @@ namespace L3 {
         // B4: dest <- load(addr)
         if (auto* load = std::get_if<LoadNode>(&src.data)) {
             const TreeNode& addr = *load->addr;
-            // Try to tile: load(BinOp(Add, Var, Number M)) where M % 8 == 0
-            if (auto* binop = std::get_if<BinOpNode>(&addr.data); binop && binop->op == Op::Add) {
-                auto try_tile = [&](const TreeNode& var_side, const TreeNode& num_side) -> bool {
-                    auto* base = std::get_if<Variable>(&var_side.data);
-                    auto* num  = std::get_if<Number>(&num_side.data);
-                    if (!base || !num) return false;
-                    long long off = num->getValue();
-                    if (off % 8 != 0) return false;
 
-                    std::string instr_str = "\t" + dest_var->to_string() + " <- mem " +
-                                            base->to_string() + " " +
-                                            std::to_string(off) + "\n";
+            // Try to fold `base + N` (N a multiple of 8) into `dest <- mem base N`
+            if (!isNestedBinop(addr)) {
+                if (auto* bin = std::get_if<BinOpNode>(&addr.data); bin && bin->op == Op::Add) {
+                    auto* num  = std::get_if<Number>(&bin->right->data);
+                    auto* base = std::get_if<Variable>(&bin->left->data);
+                    if (!num) {
+                        num  = std::get_if<Number>(&bin->left->data);
+                        base = std::get_if<Variable>(&bin->right->data);
+                    }
+                    if (num && base && num->getValue() % 8 == 0) {
+                        std::string instr_str =
+                            "\t" + dest_var->to_string() + " <- mem " +
+                            base->to_string() + " " +
+                            std::to_string(num->getValue()) + "\n";
+                        result.push_back(std::make_unique<RawL2Instruction>(instr_str));
+                        return result;
+                    }
+                } else if (auto* var = std::get_if<Variable>(&addr.data)) {
+                    // clear case: just a variable address, fold to offset 0
+                    std::string instr_str =
+                        "\t" + dest_var->to_string() + " <- mem " +
+                        var->to_string() + " 0\n";
                     result.push_back(std::make_unique<RawL2Instruction>(instr_str));
-                    return true;
-                };
-
-                if (try_tile(*binop->left, *binop->right)) return result;
-                if (try_tile(*binop->right, *binop->left)) return result;
+                    return result;
+                }
             }
 
+            // Fallback: lift the address to a variable, then emit a LoadInstruction
+            Variable addr_var_out = std::visit([&](const auto& v) -> Variable {
+                using V = std::decay_t<decltype(v)>;
+                if constexpr (std::is_same_v<V, Variable>) {
+                    return v;
+                } else {
+                    return lift_to_var(addr);
+                }
+            }, addr.data);
 
-            Variable addr_var = lift_to_var(*load->addr);
             auto instr = std::make_unique<LoadInstruction>();
             instr->setDst(*dest_var);
-            instr->setSrc(addr_var);
+            instr->setSrc(addr_var_out);
             result.push_back(std::move(instr));
             return result;
         }
@@ -455,6 +471,11 @@ namespace L3 {
     }
 
     void Context::merge_tree() {
+
+        // std::cerr << "[merge_tree] entering, " << instructions.size() << " instructions\n";
+    //    for (const auto& i : instructions) std::cerr << "  " << i->to_string();
+
+
         if (instructions.size() != trees.size()) {
             std::cerr << "ASSERT FAIL: instructions.size()=" << instructions.size()
                     << " trees.size()=" << trees.size() << "\n";
@@ -540,15 +561,26 @@ namespace L3 {
                         : instructions[j]->reads().count(defined);
 
                     if (j_reads) {
-                        any_reader_seen = true;
-                        auto source_copy = clone_tree(*trees[i]);
-                        auto target_copy = clone_tree(*trees[j]);
-                        auto merged = L3::merge_tree(std::move(source_copy), std::move(target_copy));
-                        if (merged) {
-                            trees[j] = std::move(merged);
-                        } else {
-                            all_readers_merged = false;
-                            break;
+    // any_reader_seen = true;
+    // std::cerr << "[merge attempt] i=" << i << " j=" << j
+    //           << " defined=" << defined.to_string() << "\n";
+    // std::cerr << "  source tree: " << tree_to_string(*trees[i]) << "\n";
+    // std::cerr << "  target tree: " << tree_to_string(*trees[j]) << "\n";
+                        try {
+                            auto source_copy = clone_tree(*trees[i]);
+                            auto target_copy = clone_tree(*trees[j]);
+                            auto merged = L3::merge_tree(std::move(source_copy), std::move(target_copy));
+                            // std::cerr << "  merge returned: " << (merged ? "ok" : "null") << "\n";
+                            if (merged) {
+                                // std::cerr << "  merged tree: " << tree_to_string(*merged) << "\n";
+                                trees[j] = std::move(merged);
+                            } else {
+                                all_readers_merged = false;
+                                break;
+                            }
+                        } catch (const std::exception& e) {
+                            std::cerr << "  merge threw: " << e.what() << "\n";
+                            throw;
                         }
                     }
                     if (is_redef) break;
@@ -576,7 +608,7 @@ namespace L3 {
         }
 
         // combine or merge the last two if they are mergeable 
-        print_trees(true);
+        print_trees(false);
     }
 
     void Context::aggregate_tree() {

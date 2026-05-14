@@ -321,7 +321,18 @@ public:
         return w;
     }
 
-
+    std::unique_ptr<TreeNode> to_tree() const override {
+        if (!dst.has_value() || !src.has_value()) return nullptr;
+        return std::make_unique<TreeNode>(
+            AssignNode{
+                std::make_unique<TreeNode>(*dst),
+                std::make_unique<TreeNode>(
+                    LoadNode{
+                        std::make_unique<TreeNode>(*src)
+                    }
+                )
+            });
+    }
 
 };
 

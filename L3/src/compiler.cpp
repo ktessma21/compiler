@@ -68,9 +68,13 @@ int main(int argc, char **argv) {
       f.build_blocks();          // 1. build contexts + assign liveness
       
       for (auto& ctx : f.contexts) {
-          ctx.build_tree();      // 2. build trees from instructions
-          ctx.merge_tree();      // 3. merge trees using liveness
-          ctx.aggregate_tree();
+          try {
+              ctx.build_tree();
+              ctx.merge_tree();
+          } catch (const std::exception& e) {
+              std::cerr << "[FAIL] context died with: " << e.what() << "\n";
+              throw;
+          }
           // ctx.print_trees(true);
       }
   }
