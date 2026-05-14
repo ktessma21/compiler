@@ -301,6 +301,7 @@ namespace L3 {
 
             // Try to fold `base + N` (N a multiple of 8) into `dest <- mem base N`
             if (!isNestedBinop(addr)) {
+                std::cerr << "[emit_instructions] trying load folding on addr: ";
                 if (auto* bin = std::get_if<BinOpNode>(&addr.data); bin && bin->op == Op::Add) {
                     auto* num  = std::get_if<Number>(&bin->right->data);
                     auto* base = std::get_if<Variable>(&bin->left->data);
@@ -508,8 +509,7 @@ namespace L3 {
                 // erase dead code: var is written but not in out set
                 bool is_pure = (type == InstructionType::AssignFromS  ||
                                 type == InstructionType::AssignFromOp ||
-                                type == InstructionType::AssignFromCmp ||
-                                type == InstructionType::AssignFromLoad);
+                                type == InstructionType::AssignFromCmp);
 
                 auto writes = instructions[i]->writes();
                 bool result_unused = true;
@@ -561,18 +561,16 @@ namespace L3 {
                         : instructions[j]->reads().count(defined);
 
                     if (j_reads) {
-    // any_reader_seen = true;
-    // std::cerr << "[merge attempt] i=" << i << " j=" << j
-    //           << " defined=" << defined.to_string() << "\n";
-    // std::cerr << "  source tree: " << tree_to_string(*trees[i]) << "\n";
-    // std::cerr << "  target tree: " << tree_to_string(*trees[j]) << "\n";
+                        any_reader_seen = true;
+                        if (!trees[i] || !trees[j]) {
+                            all_readers_merged = false;
+                            break;
+                        }
                         try {
                             auto source_copy = clone_tree(*trees[i]);
                             auto target_copy = clone_tree(*trees[j]);
                             auto merged = L3::merge_tree(std::move(source_copy), std::move(target_copy));
-                            // std::cerr << "  merge returned: " << (merged ? "ok" : "null") << "\n";
                             if (merged) {
-                                // std::cerr << "  merged tree: " << tree_to_string(*merged) << "\n";
                                 trees[j] = std::move(merged);
                             } else {
                                 all_readers_merged = false;
@@ -608,7 +606,7 @@ namespace L3 {
         }
 
         // combine or merge the last two if they are mergeable 
-        print_trees(false);
+        print_trees(true);
     }
 
     void Context::aggregate_tree() {
