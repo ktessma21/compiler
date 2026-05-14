@@ -9,6 +9,15 @@
 namespace L3 {
 
 
+    static bool isNestedBinop(const TreeNode& node) {
+        if (auto* binop = std::get_if<BinOpNode>(&node.data)){
+            return std::holds_alternative<BinOpNode>(binop->left->data) ||
+                    std::holds_alternative<BinOpNode>(binop->right->data);
+        }
+        return false;
+    }
+
+
     static std::string leaqMatch(const Variable& dest, const TreeNode& node) {
         // Expect node to be: Add(base, Mul(index, scale))  where scale ∈ {1,2,4,8}
         //   or any commutation of the operands.
@@ -158,12 +167,49 @@ namespace L3 {
         //         << assign->dest->data.index()
         //         << "  src variant: " << assign->src->data.index() << "\n";
 
-        // ---- Case A: dest is a StoreNode  →  emit `store addr <- value` ----
         if (auto* store_dest = std::get_if<StoreNode>(&assign->dest->data)) {
-            Variable addr_var = lift_to_var(*store_dest->addr);
-
+            const TreeNode& addr_var = *store_dest->addr;
             const TreeNode& val = *assign->src;
-            S value_s = std::visit([&](const auto& v) -> S {
+
+            // Try to fold `base + N` (N a multiple of 8) into `mem base N`
+            if (!isNestedBinop(addr_var)) {
+                if (auto* bin = std::get_if<BinOpNode>(&addr_var.data)) {
+                    auto* num  = std::get_if<Number>(&bin->right->data);
+                    auto* base = std::get_if<Variable>(&bin->left->data);
+                    if (!num) {
+                        num  = std::get_if<Number>(&bin->left->data);
+                        base = std::get_if<Variable>(&bin->right->data);
+                    }
+                    if (num && base && num->getValue() % 8 == 0) {
+                        auto& val_num = std::get<Number>(val.data);  // ASSUMPTION: comeback for now
+                        std::string instr_str =
+                            "\tmem " + base->to_string() + " " +
+                            std::to_string(num->getValue()) + " <- " +
+                            val_num.to_string() + "\n";
+                        result.push_back(std::make_unique<RawL2Instruction>(instr_str));
+                        return result;
+                    }
+                } else if (auto* var = std::get_if<Variable>(&addr_var.data)){ // clear case: just a variable address, and no folding. 
+                    auto& val_num = std::get<Number>(val.data);  // ASSUMPTION: comeback for now
+                    std::string instr_str =
+                        "\tmem " + var->to_string() + " <- " +
+                        val_num.to_string() + "\n";
+                    result.push_back(std::make_unique<RawL2Instruction>(instr_str));
+                    return result;
+                }
+            }
+
+            // Fallback: lift the address to a variable if it's nested, otherwise use it directly
+            Variable addr_var_out = std::visit([&](const auto& v) -> Variable {
+                using V = std::decay_t<decltype(v)>;
+                if constexpr (std::is_same_v<V, Variable>) {
+                    return v;
+                } else {
+                    return lift_to_var(addr_var);
+                }
+            }, addr_var.data);
+
+            S val_s = std::visit([&](const auto& v) -> S {
                 using V = std::decay_t<decltype(v)>;
                 if constexpr (std::is_same_v<V, Variable> || std::is_same_v<V, Number>) {
                     return S{v};
@@ -173,8 +219,8 @@ namespace L3 {
             }, val.data);
 
             auto instr = std::make_unique<StoreInstruction>();
-            instr->setDst(addr_var);
-            instr->setSrc(value_s);
+            instr->setDst(addr_var_out);
+            instr->setSrc(val_s);
             result.push_back(std::move(instr));
             return result;
         }
@@ -504,8 +550,13 @@ namespace L3 {
 
         // after the maximum merged tree possible, go shrink the trees 
         for (auto& t : trees) {
-            if (t)
-                t = std::move(shrink_tree(*t));
+            if (t) {
+                // std::cerr << "[shrink loop] before:\n";
+                // print_trees(true);
+                t = shrink_tree(*t);
+                // std::cerr << "[shrink loop] after:\n";
+                // print_trees(true);
+            }
         }
 
         // combine or merge the last two if they are mergeable 
@@ -524,19 +575,12 @@ namespace L3 {
         size_t fresh_idx = 0;
 
         for (size_t i = 0; i < instructions.size(); i++) {
-    // std::cerr << "\n[aggregate_tree] i=" << i
-            //   << " original instr: " << instructions[i]->to_string();
-    if (trees[i] == nullptr) {
-        // std::cerr << "[aggregate_tree] tree is null, passing through\n";
-        new_instructions.push_back(std::move(instructions[i]));
-        continue;
-    }
+        
+            if (trees[i] == nullptr) {
+                new_instructions.push_back(std::move(instructions[i]));
+                continue;
+            }
 
-    // std::cerr << "[aggregate_tree] tree: " << tree_to_string(*trees[i]) << "\n";
-
-
-
-            // Tree exists — emit instructions from it and append.
             auto emitted = emit_instructions(*trees[i], fresh_idx);
             new_instructions.insert(
                 new_instructions.end(),

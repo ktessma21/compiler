@@ -227,13 +227,31 @@ namespace L3 {
                     data.value ? shrink_tree(*data.value) : nullptr
                 });
             } else if constexpr (std::is_same_v<T, BinOpNode>) {
-                // first recursively shrink children
-                auto left  = shrink_tree(*data.left);
-                auto right = shrink_tree(*data.right);
+                    auto left  = shrink_tree(*data.left);
+                    auto right = shrink_tree(*data.right);
 
+                    auto stringify = [](const TreeNode& tn) -> std::string {
+                        return std::visit([](const auto& v) -> std::string {
+                            using V = std::decay_t<decltype(v)>;
+                            if constexpr (std::is_same_v<V, Variable> || std::is_same_v<V, Number>) {
+                                return v.to_string();
+                            } else {
+                                return "<expr>";
+                            }
+                        }, tn.data);
+                    };
+
+                    // std::cerr << "BinOp: left idx=" << left->data.index()
+                    //         << " (" << stringify(*left) << "), "
+                    //         << "right idx=" << right->data.index()
+                    //         << " (" << stringify(*right) << ")\n";
+
+               
                 // if both children folded to numbers, fold this node too
                 if (std::holds_alternative<Number>(left->data) && 
                     std::holds_alternative<Number>(right->data)) {
+
+                    // std::cerr << "  -> folding\n";
                     
                     long long lv = std::get<Number>(left->data).getValue();
                     long long rv = std::get<Number>(right->data).getValue();
@@ -249,7 +267,8 @@ namespace L3 {
                         default: throw std::runtime_error("unknown op in shrink_tree");
                     }
                     return std::make_unique<TreeNode>(Number{result});
-                }
+                    }
+                // }else{std::cerr << "  -> NOT folding\n";}
 
                 // otherwise return partially folded node
                 return std::make_unique<TreeNode>(BinOpNode{
@@ -295,7 +314,7 @@ namespace L3 {
 
             } else if constexpr (std::is_same_v<T, AssignNode>) {
                 return std::make_unique<TreeNode>(AssignNode{
-                    clone_tree(*data.dest),
+                    shrink_tree(*data.dest),
                     shrink_tree(*data.src)
                 });
             } else if constexpr (std::is_same_v<T, CallNode>) {
