@@ -19,7 +19,8 @@
 
 ## store is always a root node 
 
-
+#id store (%a op Number) <- Number/Variable
+#id store (%a) <- Number/Variable
 
  %newVar2 <- %ar + 8
  store %newVar2 <- 3

@@ -13,6 +13,7 @@
 #include <vector>
 #include <parser.h>
 #include <generator.h>
+#include <munch.h>
 
 
 #include <utils.h>
