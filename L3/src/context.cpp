@@ -502,30 +502,7 @@ namespace L3 {
                 // print_trees(false);
                 if (!trees[i]) continue;
 
-                const auto& live = liveAnalysisReport[i];
-                const auto  type = instructions[i]->type;
-
-                // erase dead code: var is written but not in out set
-                bool is_pure = (type == InstructionType::AssignFromS  ||
-                                type == InstructionType::AssignFromOp ||
-                                type == InstructionType::AssignFromCmp ||
-                                type == InstructionType::AssignFromLoad);
-
-                auto writes = instructions[i]->writes();
-                bool result_unused = true;
-                for (const auto& w : writes) {
-                    if (live.out.count(w)) { result_unused = false; break; }
-                }
-
-                if (is_pure && result_unused) {
-                    instructions.erase(instructions.begin() + i);
-                    trees.erase(trees.begin() + i);
-                    liveAnalysisReport.erase(liveAnalysisReport.begin() + i);
-                    i--;
-                    changed = true;
-                    continue;
-                }
-
+              
                 // find if there is anything to merge 
                 std::set<Variable> diff;
                 std::set_difference(liveAnalysisReport[i].out.begin(), liveAnalysisReport[i].out.end(),
@@ -596,19 +573,10 @@ namespace L3 {
             }
         }
 
-        // after the maximum merged tree possible, go shrink the trees 
-        for (auto& t : trees) {
-            if (t) {
-                // std::cerr << "[shrink loop] before:\n";
-                // print_trees(true);
-                t = shrink_tree(*t);
-                // std::cerr << "[shrink loop] after:\n";
-                // print_trees(true);
-            }
-        }
+        
 
         // combine or merge the last two if they are mergeable 
-        print_trees(false);
+        print_trees(true);
     }
 
     void Context::aggregate_tree() {
