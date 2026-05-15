@@ -35,6 +35,101 @@ namespace L3 {
             virtual int64_t cost() const = 0;
     };
 
+    class ShiftTile : public Tile {
+        public:
+            std::vector<std::unique_ptr<Instruction>> emit(const TreeNode& node) override {
+                std::vector<std::unique_ptr<Instruction>> result;
+
+
+                assert(std::holds_alternative<AssignNode>(node.data));
+                const AssignNode& assign = std::get<AssignNode>(node.data);
+
+                assert(std::holds_alternative<BinOpNode>(assign.src->data));
+                const BinOpNode& add = std::get<BinOpNode>(assign.src->data);
+                assert(add.op == Op::Mul);
+
+                assert(std::holds_alternative<Variable>(assign.dest->data));
+                const Variable& dest = std::get<Variable>(assign.dest->data);
+
+                int64_t shift_amount = 0;
+                const TreeNode* base_node = nullptr;
+
+                // helper : is x a positive power of 2? If so, set out_log to log2(x)
+                auto power_of_two = [](int64_t x, int& out_log) -> bool {
+                    if (x <= 0) return false;
+                    if ((x & (x - 1)) != 0) return false;
+                    int k  = 0;
+                    while ((x >>= 1) != 0) k++;
+                    out_log = k;
+                    return true;
+                }
+
+                const TreeNode* cur = assign.src.get();
+
+                while (true) {
+                    if (!std::holds_alternative<BinOpNode>(cur->data)){
+                        base_node = cur;
+                        break;
+                    }
+                    const BinOpNode& bop = std::get<BinOpNode>(cur.data);
+                    if (bop.op != Op::Mul){
+                        base_node = cur;
+                        break;
+                    }
+
+
+                    const TreeNode* num_side = nullptr;
+                    const TreeNode* other_side = nullptr;
+                    int k = 0;
+
+                    if (std::holds_alternative<number>(bop.right->data) && power_of_two(std::get<Number>(bop.right->data).getValue(), k)) {
+                        num_side = bop.right.get();
+                        other_side = bop.left.get();
+                    } else if (std::holds_alternative<Number>(bop.left->data) && power_of_two(std::get<Number>(bop.left->data).getValue(), k)) {
+                        num_side = bop.left.get();
+                        other_side = bop.right.get();
+                    } else {
+                        base_node = cur;
+                        break;
+
+                    }
+
+                    shift_amount += k;
+                    cur = other_side;
+
+                }
+
+                if (shift_amount == 0){
+                    throw std::runtime_error("ShiftTile: not a shift operation");
+                }
+
+                 // Resolve the base. If it's already a Variable, use directly.
+                // Otherwise, recursively munch it into a fresh temp.
+                Variable base_var;
+                if (std::holds_alternative<Variable>(base_node->data)) {
+                    base_var = std::get<Variable>(base_node->data);
+                } else {
+                    Variable tmp = freshVar();
+                    TreeNode synthetic_assign = make_assign_node(tmp, *base_node);
+                    auto inner_instrs = munch(synthetic_assign);
+                    for (auto& ins : inner_instrs) result.push_back(std::move(ins));
+                    base_var = tmp;
+                }
+
+                auto mov = std::make_unique<AssignInstruction>();
+                mov->setDst(dest);
+                mov->setSrc(base_var);
+                result.push_back(std::move(mov));
+
+                std::string shl_str = "\t" + dest.to_string()
+                                    + " <<= " + std::to_string(shift_amount);
+                result.push_back(std::make_unique<RawL2Instruction>(shl_str));
+
+                return result;
+            }
+
+    }
+
     class LeaqTile : public Tile {
         public:
             std::vector<std::unique_ptr<Instruction>> emit(const TreeNode& node) override {

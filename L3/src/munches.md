@@ -6,6 +6,10 @@
     - if it doesn't match then maybe you can force the bottom to match by recursion and then match the top. You can do all the combination of munching. no heaurestic for now. 
 
 
+# next step is to just make sure the implemented munches work. Nothing more. If those work that's it for now. we will worry about the others later. 
+# for now submit the updated version. 
+
+
 # after munching well replace the munches with instruction and continue removing or unveiling the tile. 
 
 
