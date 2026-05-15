@@ -134,7 +134,15 @@ namespace L3 {
         return false;
     }
 
-    
+
+    // Example of merging:
+    // tree[i]: AssignNode { dest: %v, src: (3 op 1) }
+    // tree[j]: AssignNode { dest: %ar, src: call allocate(%v, 1) }
+
+    // After merge:
+    // tree[j]: AssignNode { dest: %ar, src: call allocate((3 op 1), 1) }
+
+
     inline std::unique_ptr<TreeNode> merge_tree(
         std::unique_ptr<TreeNode> t1,
         std::unique_ptr<TreeNode> t2)
@@ -214,121 +222,7 @@ namespace L3 {
     }
 
 
-    inline  std::unique_ptr<TreeNode> shrink_tree(const TreeNode& node){
-        return std::visit([](const auto& data) -> std::unique_ptr<TreeNode> {
-            using T = std::decay_t<decltype(data)>;
-
-            if constexpr (std::is_same_v<T, Variable> || std::is_same_v<T, Number>) {
-                // leaf nodes — just copy the value
-                return std::make_unique<TreeNode>(data);
-
-            } else if constexpr (std::is_same_v<T, ReturnNode>) {
-                return std::make_unique<TreeNode>(ReturnNode{
-                    data.value ? shrink_tree(*data.value) : nullptr
-                });
-            } else if constexpr (std::is_same_v<T, BinOpNode>) {
-                    auto left  = shrink_tree(*data.left);
-                    auto right = shrink_tree(*data.right);
-
-                    auto stringify = [](const TreeNode& tn) -> std::string {
-                        return std::visit([](const auto& v) -> std::string {
-                            using V = std::decay_t<decltype(v)>;
-                            if constexpr (std::is_same_v<V, Variable> || std::is_same_v<V, Number>) {
-                                return v.to_string();
-                            } else {
-                                return "<expr>";
-                            }
-                        }, tn.data);
-                    };
-
-                    // std::cerr << "BinOp: left idx=" << left->data.index()
-                    //         << " (" << stringify(*left) << "), "
-                    //         << "right idx=" << right->data.index()
-                    //         << " (" << stringify(*right) << ")\n";
-
-               
-                // if both children folded to numbers, fold this node too
-                if (std::holds_alternative<Number>(left->data) && 
-                    std::holds_alternative<Number>(right->data)) {
-
-                    // std::cerr << "  -> folding\n";
-                    
-                    long long lv = std::get<Number>(left->data).getValue();
-                    long long rv = std::get<Number>(right->data).getValue();
-                    long long result;
-
-                    switch (data.op) {
-                        case Op::Add: result = lv + rv; break;
-                        case Op::Sub: result = lv - rv; break;
-                        case Op::Mul: result = lv * rv; break;
-                        case Op::And: result = lv & rv; break;
-                        case Op::Shl: result = lv << rv; break;
-                        case Op::Shr: result = lv >> rv; break;
-                        default: throw std::runtime_error("unknown op in shrink_tree");
-                    }
-                    return std::make_unique<TreeNode>(Number{result});
-                    }
-                // }else{std::cerr << "  -> NOT folding\n";}
-
-                // otherwise return partially folded node
-                return std::make_unique<TreeNode>(BinOpNode{
-                    data.op,
-                    std::move(left),
-                    std::move(right)
-                });
-
-            } else if constexpr (std::is_same_v<T, CompareNode>) {
-                auto left  = shrink_tree(*data.left);
-                auto right = shrink_tree(*data.right);
-
-                if (std::holds_alternative<Number>(left->data) &&
-                    std::holds_alternative<Number>(right->data)) {
-                    long long lv = std::get<Number>(left->data).getValue();
-                    long long rv = std::get<Number>(right->data).getValue();
-                    long long result;
-                    switch (data.op) {
-                        case Cmp::Lt: result = lv <  rv; break;
-                        case Cmp::Le: result = lv <= rv; break;
-                        case Cmp::Eq: result = lv == rv; break;
-                        case Cmp::Ge: result = lv >= rv; break;
-                        case Cmp::Gt: result = lv >  rv; break;
-                    }
-                    return std::make_unique<TreeNode>(Number{result});
-                }
-
-                return std::make_unique<TreeNode>(CompareNode{
-                    data.op,
-                    std::move(left),
-                    std::move(right)
-                });
-
-            } else if constexpr (std::is_same_v<T, LoadNode>) {
-                return std::make_unique<TreeNode>(LoadNode{
-                    shrink_tree(*data.addr)
-                });
-
-            } else if constexpr (std::is_same_v<T, StoreNode>) {
-                return std::make_unique<TreeNode>(StoreNode{
-                    shrink_tree(*data.addr)
-                });
-
-            } else if constexpr (std::is_same_v<T, AssignNode>) {
-                return std::make_unique<TreeNode>(AssignNode{
-                    shrink_tree(*data.dest),
-                    shrink_tree(*data.src)
-                });
-            } else if constexpr (std::is_same_v<T, CallNode>) {
-                    std::vector<std::unique_ptr<TreeNode>> shrinked_args;
-                    for (const auto& arg : data.args) {
-                        shrinked_args.push_back(shrink_tree(*arg));
-                    }
-                    return std::make_unique<TreeNode>(CallNode{
-                        data.callee,
-                        std::move(shrinked_args)
-                    });
-                }         
-            }, node.data);}
-
+  
 
     inline std::string tree_to_string(const TreeNode& node) {
         return std::visit([](const auto& data) -> std::string {
