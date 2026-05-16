@@ -628,9 +628,15 @@ namespace IR {
             params.push_back(std::move(v));
         }
 
-        std::string fresh(const std::string& base_name, const std::string& tag) {
-            std::string r = "%" + base_name + "_" + name.name + "_" + tag + "_" +
-                            std::to_string(fresh_counter++);
+
+        std::string fresh(const std::string& seed, const std::string& tag) {
+            std::string safe_seed = seed;
+            if (safe_seed.empty() || !(std::isalpha(static_cast<unsigned char>(safe_seed[0])) 
+                                        || safe_seed[0] == '_')) {
+                safe_seed = "v" + safe_seed;   // prepend a letter
+            }
+            std::string r = "%" + safe_seed + "_" + getName() + "_" + tag + "_" 
+                    + std::to_string(fresh_counter++);
             InitVariables.insert(r);
             return r;
         }

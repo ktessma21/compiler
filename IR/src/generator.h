@@ -73,12 +73,21 @@ namespace IR {
                 // Update stride for next (more-significant) dimension:
                 // new_stride = stride * dim_sizes[i]
                 if (i > 0) {
-                    const std::string& d = type.dim_sizes[i];
+                    // Load and decode dim_sizes[i] from the array header at runtime.
+                    std::string dim_addr = currentFunction->fresh(base_name, "dimaddr");
+                    std::string dim_enc  = currentFunction->fresh(base_name, "dimenc");
+                    std::string dim_dec  = currentFunction->fresh(base_name, "dimdec");
+                    int64_t dim_offset = static_cast<int64_t>((i + 1) * 8); // slot i, since slot 0 is total size
+                                                                        // and slots 1..k hold dim 0..k-1
+                    out += "\t" + dim_addr + " <- " + base_str + " + " + std::to_string(dim_offset) + "\n";
+                    out += "\t" + dim_enc  + " <- load " + dim_addr + "\n";
+                    out += "\t" + dim_dec  + " <- " + dim_enc + " >> 1\n";
+
                     if (stride_var.empty()) {
-                        stride_var = d;
+                        stride_var = dim_dec;
                     } else {
                         std::string ns = currentFunction->fresh(base_name, "stride");
-                        out += "\t" + ns + " <- " + stride_var + " * " + d + "\n";
+                        out += "\t" + ns + " <- " + stride_var + " * " + dim_dec + "\n";
                         stride_var = ns;
                     }
                 }
@@ -129,33 +138,43 @@ namespace IR {
             return instr.to_string();
         }
 
+        
         static std::string generate(const BrTInstruction& instr, const BasicBlock* next) {
-            // Conditional: br cond, true_target, false_target
-            const auto& trueTgt  = instr.getTrueTarget();   // adjust names to your API
+            const auto& trueTgt  = instr.getTrueTarget();
             const auto& falseTgt = instr.getFalseTarget();
             const auto& cond     = instr.getCond();
 
             bool nextIsFalse = next && next->label && falseTgt == next->label->getLabel();
             bool nextIsTrue  = next && next->label && trueTgt  == next->label->getLabel();
 
-      
-
+            // Use tStr for the condition — it returns "%name" for Variables, correct literal for others.
+            const std::string cond_str = tStr(*cond);
 
             if (nextIsFalse) {
-                return "br " + condBase(*cond) + " " + trueTgt.value().name + '\n';
+                // Next block IS the false target → branch on true, fall through to false.
+                return "\tbr " + cond_str + " :" + trueTgt.value().name + "\n";
             }
-            else {
-            
-                // // Allocate a fresh variable to hold the negated condition
+            else if (nextIsTrue) {
+                // Next block IS the true target → negate cond, branch on negation to false.
                 std::string ncond = currentFunction->fresh(condBase(*cond), "brt");
                 std::string out;
-                out += "\t" + ncond + " <- " + tStr(*cond) + " = 0\n";   // tStr, not condBase
-                out += "\tbr " + ncond + " " + falseTgt->to_string() + "\n";
+                out += "\t" + ncond + " <- " + cond_str + " = 0\n";
+                out += "\tbr " + ncond + " :" + falseTgt.value().name + "\n";
                 return out;
-    
             }
-          
+            else {
+                // Neither is next → need two branches.
+                std::string out;
+                out += "\tbr " + cond_str + " :" + trueTgt.value().name + "\n";
+                out += "\tbr :" + falseTgt.value().name + "\n";
+                return out;
+            }
         }
+
+
+
+
+
 
         static std::string generate(const AssignInstruction& instr)      { return instr.to_string(); }
         static std::string generate(const OpInstruction& instr)          { return instr.to_string(); }
