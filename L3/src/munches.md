@@ -6,6 +6,10 @@
     - if it doesn't match then maybe you can force the bottom to match by recursion and then match the top. You can do all the combination of munching. no heaurestic for now. 
 
 
+# next step is to just make sure the implemented munches work. Nothing more. If those work that's it for now. we will worry about the others later. 
+# for now submit the updated version. 
+
+
 # after munching well replace the munches with instruction and continue removing or unveiling the tile. 
 
 
@@ -15,3 +19,29 @@
 
 ## focus on clear tree building. 
 ## each context 
+
+
+## store is always a root node 
+
+#id store (%a op Number) <- Number/Variable
+#id store (%a) <- Number/Variable
+
+ %newVar2 <- %ar + 8
+ store %newVar2 <- 3
+
+     store 
+       +
+    ar   8
+       |
+       3
+
+ %newVar3 <- %ar + 16
+ store %newVar3 <- 3
+ %newVar5 <- 0
+ %newVar6 <- 1
+ %newVar5 <- %newVar5 + 1
+ %newVar4 <- %newVar5 * 8
+ %newVar4 <- %newVar4 + 24
+ %newVar7 <- %ar + %newVar4
+ store %newVar7 <- 5
+ return 

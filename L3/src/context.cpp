@@ -301,6 +301,7 @@ namespace L3 {
 
             // Try to fold `base + N` (N a multiple of 8) into `dest <- mem base N`
             if (!isNestedBinop(addr)) {
+                std::cerr << "[emit_instructions] trying load folding on addr: ";
                 if (auto* bin = std::get_if<BinOpNode>(&addr.data); bin && bin->op == Op::Add) {
                     auto* num  = std::get_if<Number>(&bin->right->data);
                     auto* base = std::get_if<Variable>(&bin->left->data);
@@ -470,12 +471,31 @@ namespace L3 {
         }
     }
 
+
+    inline bool tree_has_memory_op(const TreeNode& node) {
+    return std::visit([](const auto& data) -> bool {
+        using T = std::decay_t<decltype(data)>;
+        if constexpr (std::is_same_v<T, LoadNode> || std::is_same_v<T, StoreNode>) {
+            return true;
+        } else if constexpr (std::is_same_v<T, Variable> || std::is_same_v<T, Number>) {
+            return false;
+        } else if constexpr (std::is_same_v<T, BinOpNode> || std::is_same_v<T, CompareNode>) {
+            return tree_has_memory_op(*data.left) || tree_has_memory_op(*data.right);
+        } else if constexpr (std::is_same_v<T, AssignNode>) {
+            return tree_has_memory_op(*data.dest) || tree_has_memory_op(*data.src);
+        } else if constexpr (std::is_same_v<T, ReturnNode>) {
+            return data.value && tree_has_memory_op(*data.value);
+        } else if constexpr (std::is_same_v<T, CallNode>) {
+            // Calls can read/write arbitrary memory — treat them as memory ops too
+            return true;
+        }
+        return false;
+    }, node.data);
+}
+
     void Context::merge_tree() {
-
-        // std::cerr << "[merge_tree] entering, " << instructions.size() << " instructions\n";
-    //    for (const auto& i : instructions) std::cerr << "  " << i->to_string();
-
-
+        // print_trees(true);
+ 
         if (instructions.size() != trees.size()) {
             std::cerr << "ASSERT FAIL: instructions.size()=" << instructions.size()
                     << " trees.size()=" << trees.size() << "\n";
@@ -498,87 +518,114 @@ namespace L3 {
             // recompute liveness at start of every pass for each context. 
             liveAnalysisReport = compute_liveness(*this);
 
-            for (int i = 0; i < (int)instructions.size(); i++) {
+            for (size_t i = 0; i < trees.size(); i++) {
                 // print_trees(false);
                 if (!trees[i]) continue;
 
-              
                 // find if there is anything to merge 
-                std::set<Variable> diff;
-                std::set_difference(liveAnalysisReport[i].out.begin(), liveAnalysisReport[i].out.end(),
-                                    liveAnalysisReport[i].in.begin(),  liveAnalysisReport[i].in.end(),
-                                    std::inserter(diff, diff.begin()));
+                auto written = tree_writes(*trees[i]);
+                if (written.empty()) continue;          // store / return / void call
+                assert(written.size() == 1);            // your trees define at most one var
+            
+               
+                // std::cerr << "[" << i << "] diff = { ";
+                // for (auto& v : written) std::cerr << v.to_string() << " ";
+                // std::cerr << "}\n";
 
-                if (diff.empty()) continue;
-                assert(diff.size() == 1);
-                const Variable& defined = *diff.begin();
+                // // also print what the tree actually writes
+                // if (trees[i]) {
+                //     auto w = tree_writes(*trees[i]);
+                //     std::cerr << "[" << i << "] tree_writes = { ";
+                //     for (auto& v : w) std::cerr << v.to_string() << " ";
+                //     std::cerr << "}\n";
+                // }
+  
+                // `defined` is the Variable written by tree[i]. It corresponds to:
+                    //   - AssignNode { dest: Variable, src: ... }  → defined = the Variable in dest
+                    //   - StoreNode trees:  dest = StoreNode (writes memory, no variable)  → skipped (diff empty)
+                    //   - ReturnNode / void CallNode: no dest at all  → skipped (diff empty)
+                const Variable& defined = *written.begin();
 
-                auto find_death = [&](const Variable& var, int start) -> int {
-                    for (int k = start; k < (int)liveAnalysisReport.size(); k++){
-                        if (liveAnalysisReport[k].in.count(var) && !liveAnalysisReport[k].out.count(var)){
-                            return k;
-                        }
-                    }
-                    return (int)liveAnalysisReport.size();
-                };
-
-                int death = find_death(defined, i + 1);
-                if (death >= (int)instructions.size()) continue;
-
-                bool any_reader_seen = false;
-                bool all_readers_merged = true;
-
-                for (int j = i + 1; j <= death; j++) {
-                    bool is_redef = trees[j]
+                for (size_t j = i + 1; j < trees.size(); j++) {
+                    // if j redefines, stop looking further - cannot merge past a redefinition 
+                    bool j_redefs = trees[j]
                         ? tree_writes(*trees[j]).count(defined)
                         : instructions[j]->writes().count(defined);
 
+                    if (j_redefs) break;
+
+                    // if j reads, try to merge tree[i] into tree[j]. 
                     bool j_reads = trees[j]
                         ? tree_reads(*trees[j]).count(defined)
                         : instructions[j]->reads().count(defined);
 
-                    if (j_reads) {
-    // any_reader_seen = true;
-    // std::cerr << "[merge attempt] i=" << i << " j=" << j
-    //           << " defined=" << defined.to_string() << "\n";
-    // std::cerr << "  source tree: " << tree_to_string(*trees[i]) << "\n";
-    // std::cerr << "  target tree: " << tree_to_string(*trees[j]) << "\n";
-                        try {
-                            auto source_copy = clone_tree(*trees[i]);
-                            auto target_copy = clone_tree(*trees[j]);
-                            auto merged = L3::merge_tree(std::move(source_copy), std::move(target_copy));
-                            // std::cerr << "  merge returned: " << (merged ? "ok" : "null") << "\n";
-                            if (merged) {
-                                // std::cerr << "  merged tree: " << tree_to_string(*merged) << "\n";
-                                trees[j] = std::move(merged);
-                            } else {
-                                all_readers_merged = false;
+
+                    if (!j_reads) continue;
+
+                    // Alias-safety check: if either source or target touches memory,
+                    // make sure nothing between them touches memory either.
+                    bool source_has_mem = tree_has_memory_op(*trees[i]);
+                    bool target_has_mem = tree_has_memory_op(*trees[j]);
+                    
+                    if (source_has_mem || target_has_mem) {
+                        bool path_clear = true;
+                        for (size_t k = i + 1; k < j; k++) {
+                            if (!trees[k]) continue;  // labels etc. don't touch memory
+                            if (tree_has_memory_op(*trees[k])) {
+                                path_clear = false;
                                 break;
                             }
-                        } catch (const std::exception& e) {
-                            std::cerr << "  merge threw: " << e.what() << "\n";
-                            throw;
+                        }
+                        if (!path_clear) {
+                            continue;
                         }
                     }
-                    if (is_redef) break;
-                }
 
-                if (any_reader_seen && all_readers_merged) {
+                    // Try to merge tree[i] into tree[j]
+                    try{
+                        auto source_copy = clone_tree(*trees[i]);
+                        auto target_copy = clone_tree(*trees[j]);
+                        auto merged = L3::merge_tree(std::move(source_copy), std::move(target_copy));
+                        trees[j] = std::move(merged);
+                        
+                    }catch (const std::exception& e){
+                        std::cerr << " merge threw: " << e.what() << "\n";
+                        throw;
+                    }
+                    
                     instructions.erase(instructions.begin() + i);
                     trees.erase(trees.begin() + i);
                     liveAnalysisReport.erase(liveAnalysisReport.begin() + i);
                     i--;
                     changed = true;
+                   
                 }
+
+
             }
         }
 
-        
-
+   
+        std::cerr << "=== after merge_tree ===\n";
         // combine or merge the last two if they are mergeable 
         print_trees(true);
     }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
     void Context::aggregate_tree() {
         if (instructions.size() != trees.size()) {
             throw std::runtime_error(
