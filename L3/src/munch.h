@@ -31,11 +31,24 @@ namespace L3 {
     TreeNode make_assign_node(const Variable& dst, const TreeNode& src) {
         return TreeNode(AssignNode{
             std::make_unique<TreeNode>(dst),
-            std::make_unique<TreeNode>(src)
+            clone_tree(src)
         });
     }
 
-    
+    // the recursion, written once, used by munch's ranking
+    // int64_t munchCost(const TreeNode& node) {
+    //     int64_t best = INT64_MAX;
+    //     for (auto& tile : tiles) {
+    //         if (!tile->matches(node)) continue;
+    //         int64_t c = tile->cost();
+    //         // add recursive cost of each operand this tile will force-collapse
+    //         for (const TreeNode* child : tile->collapsedOperands(node)) {
+    //             c += munchCost(*child);
+    //         }
+    //         best = std::min(best, c);
+    //     }
+    //     return best;   // fallback tile guarantees best != INT64_MAX
+    // }
 
 
 
@@ -47,8 +60,19 @@ namespace L3 {
             virtual int64_t cost() const = 0;
     };
 
+    class FallBack : public Tile {
+        public:
+            std::vector<std::unique_ptr<Instruction>> emit(const TreeNode& node) override {
+                std::vector<std::unique_ptr<Instruction>> result;
+                std::string instr_str = "\t; [FALLBACK] :needs work " + tree_to_string(node) + "\n";
+                result.push_back(std::make_unique<RawL2Instruction>(instr_str));
+                return result;
+            }
+    };
+
     class ShiftTile : public Tile {
         public:
+            int64_t cost() const override { return 2; } 
             std::vector<std::unique_ptr<Instruction>> emit(const TreeNode& node) override {
                 std::vector<std::unique_ptr<Instruction>> result;
 
@@ -63,8 +87,7 @@ namespace L3 {
                 assert(std::holds_alternative<Variable>(assign.dest->data));
                 const Variable& dest = std::get<Variable>(assign.dest->data);
 
-                int64_t shift_amount = 0;
-                const TreeNode* base_node = nullptr;
+                
 
                 // helper : is x a positive power of 2? If so, set out_log to log2(x)
                 auto power_of_two = [](int64_t x, int& out_log) -> bool {
@@ -75,6 +98,9 @@ namespace L3 {
                     out_log = k;
                     return true;
                 };
+
+                int64_t shift_amount = 0;
+                const TreeNode* base_node = nullptr;
 
                 const TreeNode* cur = assign.src.get();
 
@@ -139,6 +165,57 @@ namespace L3 {
 
                 return result;
             }
+
+        bool matches(const TreeNode& node) const override {
+           
+            if (!std::holds_alternative<AssignNode>(node.data)) return false;
+            const AssignNode& assign = std::get<AssignNode>(node.data);
+
+            // dest must be a Variable (emit does std::get<Variable> on it)
+            if (!assign.dest || !std::holds_alternative<Variable>(assign.dest->data)) return false;
+
+            // src must exist and be a BinOp (emit asserts this)
+            if (!assign.src || !std::holds_alternative<BinOpNode>(assign.src->data)) return false;
+
+            // same power-of-two test emit uses
+            auto power_of_two = [](int64_t x, int& out_log) -> bool {
+                if (x <= 0) return false;
+                if ((x & (x - 1)) != 0) return false;
+                int k = 0;
+                while ((x >>= 1) != 0) k++;
+                out_log = k;
+                return true;
+            };
+
+            // walk the Mul chain exactly as emit does, accumulating shift_amount
+            int64_t shift_amount = 0;
+            const TreeNode* cur = assign.src.get();
+
+            while (true) {
+                if (!std::holds_alternative<BinOpNode>(cur->data)) break;       // hit base
+                const BinOpNode& bop = std::get<BinOpNode>(cur->data);
+                if (bop.op != Op::Mul) break;                                   // hit base
+
+                const TreeNode* other_side = nullptr;
+                int k = 0;
+
+                if (std::holds_alternative<Number>(bop.right->data) &&
+                    power_of_two(std::get<Number>(bop.right->data).getValue(), k)) {
+                    other_side = bop.left.get();
+                } else if (std::holds_alternative<Number>(bop.left->data) &&
+                        power_of_two(std::get<Number>(bop.left->data).getValue(), k)) {
+                    other_side = bop.right.get();
+                } else {
+                    break;  // no power-of-two factor here -> base
+                }
+
+                shift_amount += k;
+                cur = other_side;
+            }
+
+            // emit throws iff shift_amount == 0, so that's exactly our reject condition
+            return shift_amount != 0;
+        }
 
     };
 
@@ -229,6 +306,52 @@ namespace L3 {
 
                 return result;
             }
+
+
+            bool matches(const TreeNode& node) const override {
+                if (!std::holds_alternative<AssignNode>(node.data)) return false;
+                const AssignNode& assign = std::get<AssignNode>(node.data);
+
+                if (!assign.dest || !std::holds_alternative<Variable>(assign.dest->data)) return false;
+                if (!assign.src  || !std::holds_alternative<BinOpNode>(assign.src->data)) return false;
+
+                const BinOpNode& add = std::get<BinOpNode>(assign.src->data);
+                if (add.op != Op::Add) return false;
+                if (!add.left || !add.right) return false;
+
+                auto is_mul = [](const TreeNode& n) {
+                    return std::holds_alternative<BinOpNode>(n.data)
+                        && std::get<BinOpNode>(n.data).op == Op::Mul;
+                };
+
+                // (Variable, Mul) in either orientation
+                const TreeNode* mul_node = nullptr;
+                if (std::holds_alternative<Variable>(add.left->data) && is_mul(*add.right)) {
+                    mul_node = add.right.get();
+                } else if (std::holds_alternative<Variable>(add.right->data) && is_mul(*add.left)) {
+                    mul_node = add.left.get();
+                } else {
+                    return false;
+                }
+
+                // the Mul must have a Number scale on one side, value in {1,2,4,8}
+                const BinOpNode& mul = std::get<BinOpNode>(mul_node->data);
+                if (!mul.left || !mul.right) return false;
+
+                const TreeNode* scale_node = nullptr;
+                if (std::holds_alternative<Number>(mul.right->data)) {
+                    scale_node = mul.right.get();
+                } else if (std::holds_alternative<Number>(mul.left->data)) {
+                    scale_node = mul.left.get();
+                } else {
+                    return false;
+                }
+
+                int64_t scale = std::get<Number>(scale_node->data).getValue();
+                return scale == 1 || scale == 2 || scale == 4 || scale == 8;
+            }
+
+            int64_t cost() const override { return 1; }   // own footprint: the single @ instruction
         };
 
 
@@ -237,9 +360,7 @@ namespace L3 {
 
         public:
             std::vector<std::unique_ptr<Instruction>> emit(const TreeNode& node) override {
-                
-
-
+               
                 std::vector<std::unique_ptr<Instruction>> result;
 
                 assert(std::holds_alternative<AssignNode>(node.data));
@@ -309,7 +430,7 @@ namespace L3 {
                         if (std::holds_alternative<Variable>(left.data) && std::holds_alternative<BinOpNode>(right.data)){
                             // 1. Recursively munch the inner BinOp into a temp variable.
                             Variable inner_temp = freshVar();
-                            TreeNode synthetic_assign = make_assign_node(inner_temp, *right_tree);
+                            TreeNode synthetic_assign = make_assign_node(inner_temp, right);
                             auto inner_instrs = munch(synthetic_assign);
                             for (auto& ins : inner_instrs) result.push_back(std::move(ins));
 
@@ -346,7 +467,50 @@ namespace L3 {
                 throw std::runtime_error("StoreTile failed to match the node structure in emit");
 
             }
-            bool matches(const TreeNode& node) const override;
+
+            bool matches(const TreeNode& node) const override {
+                if (!std::holds_alternative<AssignNode>(node.data)) return false;
+                const AssignNode& assign = std::get<AssignNode>(node.data);
+
+                if (!assign.dest || !std::holds_alternative<StoreNode>(assign.dest->data)) return false;
+                if (!assign.src) return false;
+
+                const StoreNode& store = std::get<StoreNode>(assign.dest->data);
+                if (!store.addr) return false;
+                const TreeNode& addr = *store.addr;
+
+                // case 1: bare Variable address
+                if (std::holds_alternative<Variable>(addr.data)) return true;
+
+                // remaining cases require Add
+                if (!std::holds_alternative<BinOpNode>(addr.data)) return false;
+                const BinOpNode& binop = std::get<BinOpNode>(addr.data);
+                if (binop.op != Op::Add) return false;
+                if (!binop.left || !binop.right) return false;
+
+                const TreeNode& left  = *binop.left;
+                const TreeNode& right = *binop.right;
+
+                // case 2: (Variable + Number), Number % 8 == 0
+                if (std::holds_alternative<Variable>(left.data) &&
+                    std::holds_alternative<Number>(right.data)) {
+                    return std::get<Number>(right.data).getValue() % 8 == 0;
+                }
+
+                // case 3: (Number + Variable), Number % 8 == 0
+                if (std::holds_alternative<Number>(left.data) &&
+                    std::holds_alternative<Variable>(right.data)) {
+                    return std::get<Number>(left.data).getValue() % 8 == 0;
+                }
+
+                // case 4: (Variable + BinOp) -> emit force-collapses the BinOp
+                if (std::holds_alternative<Variable>(left.data) &&
+                    std::holds_alternative<BinOpNode>(right.data)) {
+                    return true;
+                }
+
+                return false;
+            }
             int64_t cost() const override { return 1; }
 
     };
