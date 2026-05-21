@@ -28,6 +28,13 @@ namespace L3 {
         return Variable("%munch_tmp_" + std::to_string(counter++));
     }
 
+    TreeNode make_assign_node(const Variable& dst, const TreeNode& src) {
+        return TreeNode(AssignNode{
+            std::make_unique<TreeNode>(dst),
+            std::make_unique<TreeNode>(src)
+        });
+    }
+
 
 
     class Tile {
