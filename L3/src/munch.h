@@ -23,7 +23,10 @@
 
 namespace L3 {
 
-
+    Variable freshVar() {
+        static int64_t counter = 0;       // persists across calls, fine
+        return Variable("%munch_tmp_" + std::to_string(counter++));
+    }
 
 
 
@@ -62,7 +65,7 @@ namespace L3 {
                     while ((x >>= 1) != 0) k++;
                     out_log = k;
                     return true;
-                }
+                };
 
                 const TreeNode* cur = assign.src.get();
 
@@ -71,7 +74,7 @@ namespace L3 {
                         base_node = cur;
                         break;
                     }
-                    const BinOpNode& bop = std::get<BinOpNode>(cur.data);
+                    const BinOpNode& bop = std::get<BinOpNode>(cur->data);
                     if (bop.op != Op::Mul){
                         base_node = cur;
                         break;
@@ -82,7 +85,7 @@ namespace L3 {
                     const TreeNode* other_side = nullptr;
                     int k = 0;
 
-                    if (std::holds_alternative<number>(bop.right->data) && power_of_two(std::get<Number>(bop.right->data).getValue(), k)) {
+                    if (std::holds_alternative<Number>(bop.right->data) && power_of_two(std::get<Number>(bop.right->data).getValue(), k)) {
                         num_side = bop.right.get();
                         other_side = bop.left.get();
                     } else if (std::holds_alternative<Number>(bop.left->data) && power_of_two(std::get<Number>(bop.left->data).getValue(), k)) {
@@ -128,7 +131,7 @@ namespace L3 {
                 return result;
             }
 
-    }
+    };
 
     class LeaqTile : public Tile {
         public:
