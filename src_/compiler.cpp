@@ -13,8 +13,6 @@
 #include <vector>
 #include <parser.h>
 #include <generator.h>
-#include <munch.h>
-
 
 #include <utils.h>
 
@@ -64,22 +62,6 @@ int main(int argc, char **argv) {
   char *fileName = argv[optind]; 
 
   auto program = L3::parse_file(fileName);
-  
-  for (auto& f : program.functions) {
-      f.build_blocks();          // 1. build contexts + assign liveness
-      
-      for (auto& ctx : f.contexts) {
-          try {
-              ctx.build_tree();
-              ctx.merge_tree();
-              ctx.aggregate_tree();
-          } catch (const std::exception& e) {
-              std::cerr << "[FAIL] context died with: " << e.what() << "\n";
-              throw;
-          }
-          // ctx.print_trees(true);
-      }
-  }
 
   // std::cerr << program.to_string() ;
 
@@ -101,10 +83,3 @@ int main(int argc, char **argv) {
 
   return 0;
 }
-
-
-// bad loop : first of all the loop should only go until 
-// finding a case where the variable is in the "In" set 
-// but not in "Out" set of the instruction. 
-
- //: the loop should only go 

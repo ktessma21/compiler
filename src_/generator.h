@@ -165,18 +165,11 @@ namespace L3 {
                         return generate(static_cast<const BrTInstruction&>(instr));
                     case InstructionType::Label:
                         return generate(static_cast<const LabelInstruction&>(instr));
-                    case InstructionType::Raw:
-                        return generate(static_cast<const RawL2Instruction&>(instr));
                     case InstructionType::Unknown:
                     default:
                         throw std::runtime_error("generate: unhandled instruction type "
                                                  + std::to_string(static_cast<int>(instr.type)));
                 }
-            }
-
-            static std::string generate(const RawL2Instruction& instr) {
-                assert(instr.verify());
-                return instr.to_string();
             }
 
             static std::string generate(const BrInstruction& instr) {
@@ -314,17 +307,6 @@ namespace L3 {
             }
 
         };
-
-
-    
-
-
-
-
-
-
     void generate_code(const Program& p);
-
-   
 
 }
