@@ -34,6 +34,17 @@ namespace L3 {
         int last = (int)ctx.trees.size() - 1;
         result[last].in  = ctx.liveAnalysisReport[last].in;
         result[last].out = ctx.liveAnalysisReport[last].out;
+        {
+            std::set<Variable> liveIn = result[last].out;
+            if (ctx.trees[last]) {
+                for (const auto& w : tree_writes(*ctx.trees[last])) liveIn.erase(w);
+                for (const auto& r : tree_reads(*ctx.trees[last]))  liveIn.insert(r);
+            } else {
+                for (const auto& w : ctx.instructions[last]->writes()) liveIn.erase(w);
+                for (const auto& r : ctx.instructions[last]->reads())  liveIn.insert(r);
+            }
+            result[last].in = std::move(liveIn);
+        }
 
         bool keep_going = true;
         while (keep_going) {
