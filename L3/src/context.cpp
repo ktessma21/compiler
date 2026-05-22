@@ -4,6 +4,7 @@
 
 #include "context.h" 
 #include "tree.h"
+#include "munch.h"
 
 
 namespace L3 {
@@ -75,316 +76,316 @@ namespace L3 {
    
 
 
-    static std::vector<std::unique_ptr<Instruction>> emit_instructions(
-        const TreeNode& node,
-        size_t& fresh_idx)
-    {
+//     static std::vector<std::unique_ptr<Instruction>> emit_instructions(
+//         const TreeNode& node,
+//         size_t& fresh_idx)
+//     {
 
-        // At the very top of emit_instructions, before anything else:
-        // std::cerr << "[emit_instructions] top-level node: "
-        //         << tree_to_string(node) << "\n";
-        // std::cerr << "[emit_instructions] variant index: "
-        //         << node.data.index() << "\n";
+//         // At the very top of emit_instructions, before anything else:
+//         // std::cerr << "[emit_instructions] top-level node: "
+//         //         << tree_to_string(node) << "\n";
+//         // std::cerr << "[emit_instructions] variant index: "
+//         //         << node.data.index() << "\n";
 
-// define
-// :entry
-// a @ b c
-// return a
-        std::vector<std::unique_ptr<Instruction>> result;
+// // define
+// // :entry
+// // a @ b c
+// // return a
+//         std::vector<std::unique_ptr<Instruction>> result;
 
-        // Helper: lift any non-Variable subtree into a fresh temp.
-        auto lift_to_var = [&](const TreeNode& child) -> Variable {
-            if (auto* v = std::get_if<Variable>(&child.data)) return *v;
+//         // Helper: lift any non-Variable subtree into a fresh temp.
+//         auto lift_to_var = [&](const TreeNode& child) -> Variable {
+//             if (auto* v = std::get_if<Variable>(&child.data)) return *v;
 
-            Variable tmp{"emit_tmp_" + std::to_string(fresh_idx++)};
-            auto tmp_dest  = std::make_unique<TreeNode>(tmp);
-            auto child_cln = clone_tree(child);
-            TreeNode sub_assign{AssignNode{std::move(tmp_dest), std::move(child_cln)}};
+//             Variable tmp{"emit_tmp_" + std::to_string(fresh_idx++)};
+//             auto tmp_dest  = std::make_unique<TreeNode>(tmp);
+//             auto child_cln = clone_tree(child);
+//             TreeNode sub_assign{AssignNode{std::move(tmp_dest), std::move(child_cln)}};
 
-            auto sub_instrs = emit_instructions(sub_assign, fresh_idx);
-            result.insert(result.end(),
-                        std::make_move_iterator(sub_instrs.begin()),
-                        std::make_move_iterator(sub_instrs.end()));
-            return tmp;
-        };
+//             auto sub_instrs = emit_instructions(sub_assign, fresh_idx);
+//             result.insert(result.end(),
+//                         std::make_move_iterator(sub_instrs.begin()),
+//                         std::make_move_iterator(sub_instrs.end()));
+//             return tmp;
+//         };
 
-        // ---- Top-level ReturnNode: `return` or `return t` ----
-        if (auto* ret = std::get_if<ReturnNode>(&node.data)) {
-            if (!ret->value) {
-                result.push_back(std::make_unique<ReturnInstruction>());
-                return result;
-            }
+//         // ---- Top-level ReturnNode: `return` or `return t` ----
+//         if (auto* ret = std::get_if<ReturnNode>(&node.data)) {
+//             if (!ret->value) {
+//                 result.push_back(std::make_unique<ReturnInstruction>());
+//                 return result;
+//             }
 
-            // return t — t must be Variable or Number; lift if not.
-            const TreeNode& v = *ret->value;
-            T val_t = std::visit([&](const auto& x) -> T {
-                using X = std::decay_t<decltype(x)>;
-                if constexpr (std::is_same_v<X, Variable> || std::is_same_v<X, Number>) {
-                    return T{x};
-                } else {
-                    return T{lift_to_var(v)};
-                }
-            }, v.data);
+//             // return t — t must be Variable or Number; lift if not.
+//             const TreeNode& v = *ret->value;
+//             T val_t = std::visit([&](const auto& x) -> T {
+//                 using X = std::decay_t<decltype(x)>;
+//                 if constexpr (std::is_same_v<X, Variable> || std::is_same_v<X, Number>) {
+//                     return T{x};
+//                 } else {
+//                     return T{lift_to_var(v)};
+//                 }
+//             }, v.data);
 
-            auto instr = std::make_unique<ReturnTInstruction>();
-            instr->setValue(val_t);
-            result.push_back(std::move(instr));
-            return result;
-        }
+//             auto instr = std::make_unique<ReturnTInstruction>();
+//             instr->setValue(val_t);
+//             result.push_back(std::move(instr));
+//             return result;
+//         }
 
-        // ---- Top-level bare CallNode (void call): `call callee(args)` ----
-        if (auto* call = std::get_if<CallNode>(&node.data)) {
-            std::vector<T> arg_ts;
-            arg_ts.reserve(call->args.size());
-            for (const auto& arg : call->args) {
-                const TreeNode& a = *arg;
-                if (auto* v = std::get_if<Variable>(&a.data))      arg_ts.push_back(T{*v});
-                else if (auto* n = std::get_if<Number>(&a.data))   arg_ts.push_back(T{*n});
-                else                                               arg_ts.push_back(T{lift_to_var(a)});
-            }
+//         // ---- Top-level bare CallNode (void call): `call callee(args)` ----
+//         if (auto* call = std::get_if<CallNode>(&node.data)) {
+//             std::vector<T> arg_ts;
+//             arg_ts.reserve(call->args.size());
+//             for (const auto& arg : call->args) {
+//                 const TreeNode& a = *arg;
+//                 if (auto* v = std::get_if<Variable>(&a.data))      arg_ts.push_back(T{*v});
+//                 else if (auto* n = std::get_if<Number>(&a.data))   arg_ts.push_back(T{*n});
+//                 else                                               arg_ts.push_back(T{lift_to_var(a)});
+//             }
 
-            auto instr = std::make_unique<CallInstruction>();
-            instr->setCallee(call->callee);
-            for (auto& t : arg_ts) instr->addArg(std::move(t));
-            result.push_back(std::move(instr));
-            return result;
-        }
+//             auto instr = std::make_unique<CallInstruction>();
+//             instr->setCallee(call->callee);
+//             for (auto& t : arg_ts) instr->addArg(std::move(t));
+//             result.push_back(std::move(instr));
+//             return result;
+//         }
 
-        // ---- Top-level branch condition: bare Variable or Number ----
-        // Nothing to emit; the BrT itself was passed through unchanged.
-        if (std::holds_alternative<Variable>(node.data) ||
-            std::holds_alternative<Number>(node.data)) {
-            return result;
-        }
+//         // ---- Top-level branch condition: bare Variable or Number ----
+//         // Nothing to emit; the BrT itself was passed through unchanged.
+//         if (std::holds_alternative<Variable>(node.data) ||
+//             std::holds_alternative<Number>(node.data)) {
+//             return result;
+//         }
 
-        // ---- Everything below requires an AssignNode at the top ----
-        auto* assign = std::get_if<AssignNode>(&node.data);
-        if (!assign) {
-            throw std::runtime_error("emit_instructions: expected AssignNode at top");
-        }
+//         // ---- Everything below requires an AssignNode at the top ----
+//         auto* assign = std::get_if<AssignNode>(&node.data);
+//         if (!assign) {
+//             throw std::runtime_error("emit_instructions: expected AssignNode at top");
+//         }
 
-        // std::cerr << "[emit_instructions] AssignNode dest variant: "
-        //         << assign->dest->data.index()
-        //         << "  src variant: " << assign->src->data.index() << "\n";
+//         // std::cerr << "[emit_instructions] AssignNode dest variant: "
+//         //         << assign->dest->data.index()
+//         //         << "  src variant: " << assign->src->data.index() << "\n";
 
-        if (auto* store_dest = std::get_if<StoreNode>(&assign->dest->data)) {
-            const TreeNode& addr_var = *store_dest->addr;
-            const TreeNode& val = *assign->src;
+//         if (auto* store_dest = std::get_if<StoreNode>(&assign->dest->data)) {
+//             const TreeNode& addr_var = *store_dest->addr;
+//             const TreeNode& val = *assign->src;
 
 
-            // Helper: produce a printable string for the stored value if it's a
-            // Variable or Number; returns empty string if val needs lifting.
-            auto val_to_str = [](const TreeNode& v) -> std::string {
-                if (auto* n = std::get_if<Number>(&v.data))   return n->to_string();
-                if (auto* x = std::get_if<Variable>(&v.data)) return x->to_string();
-                return "";
-            };
+//             // Helper: produce a printable string for the stored value if it's a
+//             // Variable or Number; returns empty string if val needs lifting.
+//             auto val_to_str = [](const TreeNode& v) -> std::string {
+//                 if (auto* n = std::get_if<Number>(&v.data))   return n->to_string();
+//                 if (auto* x = std::get_if<Variable>(&v.data)) return x->to_string();
+//                 return "";
+//             };
 
-            // Try to fold `base + N` (N a multiple of 8) into `mem base N`
-            if (!isNestedBinop(addr_var)) {
-                if (auto* bin = std::get_if<BinOpNode>(&addr_var.data)) {
-                    auto* num  = std::get_if<Number>(&bin->right->data);
-                    auto* base = std::get_if<Variable>(&bin->left->data);
-                    if (!num) {
-                        num  = std::get_if<Number>(&bin->left->data);
-                        base = std::get_if<Variable>(&bin->right->data);
-                    }
-                    if (num && base && num->getValue() % 8 == 0) {
-                        std::string val_str = val_to_str(val);
-                        if (!val_str.empty()) {
-                            std::string instr_str =
-                                "\tmem " + base->to_string() + " " +
-                                std::to_string(num->getValue()) + " <- " +
-                                val_str + "\n";
-                            result.push_back(std::make_unique<RawL2Instruction>(instr_str));
-                            return result;
-                        }
-                        // else: value needs lifting — fall through to fallback
-                    }
-                } else if (auto* var = std::get_if<Variable>(&addr_var.data)) {
-                        // clear case: just a variable address, no folding.
-                        std::string val_str = val_to_str(val);
-                        if (!val_str.empty()) {
-                            std::string instr_str =
-                                "\tmem " + var->to_string() + " 0 <- " +
-                                val_str + "\n";
-                            result.push_back(std::make_unique<RawL2Instruction>(instr_str));
-                            return result;
-                        }
-                        // else: fall through
-                    }
-                }
+//             // Try to fold `base + N` (N a multiple of 8) into `mem base N`
+//             if (!isNestedBinop(addr_var)) {
+//                 if (auto* bin = std::get_if<BinOpNode>(&addr_var.data)) {
+//                     auto* num  = std::get_if<Number>(&bin->right->data);
+//                     auto* base = std::get_if<Variable>(&bin->left->data);
+//                     if (!num) {
+//                         num  = std::get_if<Number>(&bin->left->data);
+//                         base = std::get_if<Variable>(&bin->right->data);
+//                     }
+//                     if (num && base && num->getValue() % 8 == 0) {
+//                         std::string val_str = val_to_str(val);
+//                         if (!val_str.empty()) {
+//                             std::string instr_str =
+//                                 "\tmem " + base->to_string() + " " +
+//                                 std::to_string(num->getValue()) + " <- " +
+//                                 val_str + "\n";
+//                             result.push_back(std::make_unique<RawL2Instruction>(instr_str));
+//                             return result;
+//                         }
+//                         // else: value needs lifting — fall through to fallback
+//                     }
+//                 } else if (auto* var = std::get_if<Variable>(&addr_var.data)) {
+//                         // clear case: just a variable address, no folding.
+//                         std::string val_str = val_to_str(val);
+//                         if (!val_str.empty()) {
+//                             std::string instr_str =
+//                                 "\tmem " + var->to_string() + " 0 <- " +
+//                                 val_str + "\n";
+//                             result.push_back(std::make_unique<RawL2Instruction>(instr_str));
+//                             return result;
+//                         }
+//                         // else: fall through
+//                     }
+//                 }
 
-            // Fallback: lift the address to a variable if it's nested, otherwise use it directly
-            Variable addr_var_out = std::visit([&](const auto& v) -> Variable {
-                using V = std::decay_t<decltype(v)>;
-                if constexpr (std::is_same_v<V, Variable>) {
-                    return v;
-                } else {
-                    return lift_to_var(addr_var);
-                }
-            }, addr_var.data);
+//             // Fallback: lift the address to a variable if it's nested, otherwise use it directly
+//             Variable addr_var_out = std::visit([&](const auto& v) -> Variable {
+//                 using V = std::decay_t<decltype(v)>;
+//                 if constexpr (std::is_same_v<V, Variable>) {
+//                     return v;
+//                 } else {
+//                     return lift_to_var(addr_var);
+//                 }
+//             }, addr_var.data);
 
-            S val_s = std::visit([&](const auto& v) -> S {
-                using V = std::decay_t<decltype(v)>;
-                if constexpr (std::is_same_v<V, Variable> || std::is_same_v<V, Number>) {
-                    return S{v};
-                } else {
-                    return S{lift_to_var(val)};
-                }
-            }, val.data);
+//             S val_s = std::visit([&](const auto& v) -> S {
+//                 using V = std::decay_t<decltype(v)>;
+//                 if constexpr (std::is_same_v<V, Variable> || std::is_same_v<V, Number>) {
+//                     return S{v};
+//                 } else {
+//                     return S{lift_to_var(val)};
+//                 }
+//             }, val.data);
 
-            auto instr = std::make_unique<StoreInstruction>();
-            instr->setDst(addr_var_out);
-            instr->setSrc(val_s);
-            result.push_back(std::move(instr));
-            return result;
-        }
+//             auto instr = std::make_unique<StoreInstruction>();
+//             instr->setDst(addr_var_out);
+//             instr->setSrc(val_s);
+//             result.push_back(std::move(instr));
+//             return result;
+//         }
 
-        // ---- Case B: dest is a Variable  →  normal assignment ----
-        auto* dest_var = std::get_if<Variable>(&assign->dest->data);
-        if (!dest_var) {
-            throw std::runtime_error("emit_instructions: AssignNode dest must be Variable or StoreNode");
-        }
+//         // ---- Case B: dest is a Variable  →  normal assignment ----
+//         auto* dest_var = std::get_if<Variable>(&assign->dest->data);
+//         if (!dest_var) {
+//             throw std::runtime_error("emit_instructions: AssignNode dest must be Variable or StoreNode");
+//         }
 
-        const TreeNode& src = *assign->src;
+//         const TreeNode& src = *assign->src;
 
-        // B1: dest <- Number
-        if (auto* num = std::get_if<Number>(&src.data)) {
-            auto instr = std::make_unique<AssignInstruction>();
-            instr->setDst(*dest_var);
-            instr->setSrc(S{*num});
-            result.push_back(std::move(instr));
-            return result;
-        }
+//         // B1: dest <- Number
+//         if (auto* num = std::get_if<Number>(&src.data)) {
+//             auto instr = std::make_unique<AssignInstruction>();
+//             instr->setDst(*dest_var);
+//             instr->setSrc(S{*num});
+//             result.push_back(std::move(instr));
+//             return result;
+//         }
 
-        // B2: dest <- Variable
-        if (auto* var = std::get_if<Variable>(&src.data)) {
-            auto instr = std::make_unique<AssignInstruction>();
-            instr->setDst(*dest_var);
-            instr->setSrc(S{*var});
-            result.push_back(std::move(instr));
-            return result;
-        }
+//         // B2: dest <- Variable
+//         if (auto* var = std::get_if<Variable>(&src.data)) {
+//             auto instr = std::make_unique<AssignInstruction>();
+//             instr->setDst(*dest_var);
+//             instr->setSrc(S{*var});
+//             result.push_back(std::move(instr));
+//             return result;
+//         }
 
-        // B3: dest <- BinOp(...)
-        if (auto* binop = std::get_if<BinOpNode>(&src.data)) {
-            // Try leaq first.
-            std::string leaq = leaqMatch(*dest_var, src);
-            if (!leaq.empty()) {
-                throw std::runtime_error("worked");
-                result.push_back(std::make_unique<RawL2Instruction>(leaq));
-                return result;
-            }
+//         // B3: dest <- BinOp(...)
+//         if (auto* binop = std::get_if<BinOpNode>(&src.data)) {
+//             // Try leaq first.
+//             std::string leaq = leaqMatch(*dest_var, src);
+//             if (!leaq.empty()) {
+//                 throw std::runtime_error("worked");
+//                 result.push_back(std::make_unique<RawL2Instruction>(leaq));
+//                 return result;
+//             }
 
-            auto lift_to_t = [&](const TreeNode& child) -> T {
-                if (auto* v = std::get_if<Variable>(&child.data)) return T{*v};
-                if (auto* n = std::get_if<Number>(&child.data))   return T{*n};
-                return T{lift_to_var(child)};
-            };
+//             auto lift_to_t = [&](const TreeNode& child) -> T {
+//                 if (auto* v = std::get_if<Variable>(&child.data)) return T{*v};
+//                 if (auto* n = std::get_if<Number>(&child.data))   return T{*n};
+//                 return T{lift_to_var(child)};
+//             };
 
-            T lhs_t = lift_to_t(*binop->left);
-            T rhs_t = lift_to_t(*binop->right);
+//             T lhs_t = lift_to_t(*binop->left);
+//             T rhs_t = lift_to_t(*binop->right);
 
-            auto instr = std::make_unique<OpInstruction>();
-            instr->setDst(*dest_var);
-            instr->setLhs(lhs_t);
-            instr->setOp(binop->op);
-            instr->setRhs(rhs_t);
-            result.push_back(std::move(instr));
-            return result;
-        }
+//             auto instr = std::make_unique<OpInstruction>();
+//             instr->setDst(*dest_var);
+//             instr->setLhs(lhs_t);
+//             instr->setOp(binop->op);
+//             instr->setRhs(rhs_t);
+//             result.push_back(std::move(instr));
+//             return result;
+//         }
 
-        // B4: dest <- load(addr)
-        if (auto* load = std::get_if<LoadNode>(&src.data)) {
-            const TreeNode& addr = *load->addr;
+//         // B4: dest <- load(addr)
+//         if (auto* load = std::get_if<LoadNode>(&src.data)) {
+//             const TreeNode& addr = *load->addr;
 
-            // Try to fold `base + N` (N a multiple of 8) into `dest <- mem base N`
-            if (!isNestedBinop(addr)) {
-                std::cerr << "[emit_instructions] trying load folding on addr: ";
-                if (auto* bin = std::get_if<BinOpNode>(&addr.data); bin && bin->op == Op::Add) {
-                    auto* num  = std::get_if<Number>(&bin->right->data);
-                    auto* base = std::get_if<Variable>(&bin->left->data);
-                    if (!num) {
-                        num  = std::get_if<Number>(&bin->left->data);
-                        base = std::get_if<Variable>(&bin->right->data);
-                    }
-                    if (num && base && num->getValue() % 8 == 0) {
-                        std::string instr_str =
-                            "\t" + dest_var->to_string() + " <- mem " +
-                            base->to_string() + " " +
-                            std::to_string(num->getValue()) + "\n";
-                        result.push_back(std::make_unique<RawL2Instruction>(instr_str));
-                        return result;
-                    }
-                } else if (auto* var = std::get_if<Variable>(&addr.data)) {
-                    // clear case: just a variable address, fold to offset 0
-                    std::string instr_str =
-                        "\t" + dest_var->to_string() + " <- mem " +
-                        var->to_string() + " 0\n";
-                    result.push_back(std::make_unique<RawL2Instruction>(instr_str));
-                    return result;
-                }
-            }
+//             // Try to fold `base + N` (N a multiple of 8) into `dest <- mem base N`
+//             if (!isNestedBinop(addr)) {
+//                 std::cerr << "[emit_instructions] trying load folding on addr: ";
+//                 if (auto* bin = std::get_if<BinOpNode>(&addr.data); bin && bin->op == Op::Add) {
+//                     auto* num  = std::get_if<Number>(&bin->right->data);
+//                     auto* base = std::get_if<Variable>(&bin->left->data);
+//                     if (!num) {
+//                         num  = std::get_if<Number>(&bin->left->data);
+//                         base = std::get_if<Variable>(&bin->right->data);
+//                     }
+//                     if (num && base && num->getValue() % 8 == 0) {
+//                         std::string instr_str =
+//                             "\t" + dest_var->to_string() + " <- mem " +
+//                             base->to_string() + " " +
+//                             std::to_string(num->getValue()) + "\n";
+//                         result.push_back(std::make_unique<RawL2Instruction>(instr_str));
+//                         return result;
+//                     }
+//                 } else if (auto* var = std::get_if<Variable>(&addr.data)) {
+//                     // clear case: just a variable address, fold to offset 0
+//                     std::string instr_str =
+//                         "\t" + dest_var->to_string() + " <- mem " +
+//                         var->to_string() + " 0\n";
+//                     result.push_back(std::make_unique<RawL2Instruction>(instr_str));
+//                     return result;
+//                 }
+//             }
 
-            // Fallback: lift the address to a variable, then emit a LoadInstruction
-            Variable addr_var_out = std::visit([&](const auto& v) -> Variable {
-                using V = std::decay_t<decltype(v)>;
-                if constexpr (std::is_same_v<V, Variable>) {
-                    return v;
-                } else {
-                    return lift_to_var(addr);
-                }
-            }, addr.data);
+//             // Fallback: lift the address to a variable, then emit a LoadInstruction
+//             Variable addr_var_out = std::visit([&](const auto& v) -> Variable {
+//                 using V = std::decay_t<decltype(v)>;
+//                 if constexpr (std::is_same_v<V, Variable>) {
+//                     return v;
+//                 } else {
+//                     return lift_to_var(addr);
+//                 }
+//             }, addr.data);
 
-            auto instr = std::make_unique<LoadInstruction>();
-            instr->setDst(*dest_var);
-            instr->setSrc(addr_var_out);
-            result.push_back(std::move(instr));
-            return result;
-        }
+//             auto instr = std::make_unique<LoadInstruction>();
+//             instr->setDst(*dest_var);
+//             instr->setSrc(addr_var_out);
+//             result.push_back(std::move(instr));
+//             return result;
+//         }
 
-        // B5: dest <- Compare(...)
-        if (auto* cmp = std::get_if<CompareNode>(&src.data)) {
-            auto lift_to_t = [&](const TreeNode& child) -> T {
-                if (auto* v = std::get_if<Variable>(&child.data)) return T{*v};
-                if (auto* n = std::get_if<Number>(&child.data))   return T{*n};
-                return T{lift_to_var(child)};
-            };
+//         // B5: dest <- Compare(...)
+//         if (auto* cmp = std::get_if<CompareNode>(&src.data)) {
+//             auto lift_to_t = [&](const TreeNode& child) -> T {
+//                 if (auto* v = std::get_if<Variable>(&child.data)) return T{*v};
+//                 if (auto* n = std::get_if<Number>(&child.data))   return T{*n};
+//                 return T{lift_to_var(child)};
+//             };
 
-            T lhs_t = lift_to_t(*cmp->left);
-            T rhs_t = lift_to_t(*cmp->right);
+//             T lhs_t = lift_to_t(*cmp->left);
+//             T rhs_t = lift_to_t(*cmp->right);
 
-            auto instr = std::make_unique<CmpInstruction>();
-            instr->setDst(*dest_var);
-            instr->setLhs(lhs_t);
-            instr->setCmp(cmp->op);
-            instr->setRhs(rhs_t);
-            result.push_back(std::move(instr));
-            return result;
-        }
+//             auto instr = std::make_unique<CmpInstruction>();
+//             instr->setDst(*dest_var);
+//             instr->setLhs(lhs_t);
+//             instr->setCmp(cmp->op);
+//             instr->setRhs(rhs_t);
+//             result.push_back(std::move(instr));
+//             return result;
+//         }
 
-        // B6: dest <- call callee(args...)
-        if (auto* call = std::get_if<CallNode>(&src.data)) {
-            std::vector<T> arg_ts;
-            arg_ts.reserve(call->args.size());
-            for (const auto& arg : call->args) {
-                const TreeNode& a = *arg;
-                if (auto* v = std::get_if<Variable>(&a.data))      arg_ts.push_back(T{*v});
-                else if (auto* n = std::get_if<Number>(&a.data))   arg_ts.push_back(T{*n});
-                else                                               arg_ts.push_back(T{lift_to_var(a)});
-            }
+//         // B6: dest <- call callee(args...)
+//         if (auto* call = std::get_if<CallNode>(&src.data)) {
+//             std::vector<T> arg_ts;
+//             arg_ts.reserve(call->args.size());
+//             for (const auto& arg : call->args) {
+//                 const TreeNode& a = *arg;
+//                 if (auto* v = std::get_if<Variable>(&a.data))      arg_ts.push_back(T{*v});
+//                 else if (auto* n = std::get_if<Number>(&a.data))   arg_ts.push_back(T{*n});
+//                 else                                               arg_ts.push_back(T{lift_to_var(a)});
+//             }
 
-            auto instr = std::make_unique<VarCallInstruction>();
-            instr->setDst(*dest_var);
-            instr->setCallee(call->callee);
-            for (auto& t : arg_ts) instr->addArg(std::move(t));
-            result.push_back(std::move(instr));
-            return result;
-        }
+//             auto instr = std::make_unique<VarCallInstruction>();
+//             instr->setDst(*dest_var);
+//             instr->setCallee(call->callee);
+//             for (auto& t : arg_ts) instr->addArg(std::move(t));
+//             result.push_back(std::move(instr));
+//             return result;
+//         }
 
-        return result;
-    }
+//         return result;
+//     }
 
 
 
@@ -644,7 +645,7 @@ namespace L3 {
                 continue;
             }
 
-            auto emitted = emit_instructions(*trees[i], fresh_idx);
+            auto emitted = munch(*trees[i]);
             new_instructions.insert(
                 new_instructions.end(),
                 std::make_move_iterator(emitted.begin()),

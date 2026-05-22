@@ -1,0 +1,24 @@
+(@main
+	(@main
+	 0
+	:_main_entry
+	%%munch_tmp_4 <- 5
+	%%munch_tmp_4 >>= 1
+	%%munch_tmp_5 <- 5
+	%%munch_tmp_5 >>= 1
+	%%munch_tmp_3 <- %%munch_tmp_4
+	%%munch_tmp_3 *= %%munch_tmp_5
+	%%munch_tmp_2 <- %%munch_tmp_3
+	%%munch_tmp_2 <<= 1
+	%%munch_tmp_1 <- %%munch_tmp_2
+	%%munch_tmp_1 += 1
+	%%munch_tmp_0 <- %%munch_tmp_1
+	%%munch_tmp_0 += 6
+	rdi <- %%munch_tmp_0
+	rsi <- 1
+	call allocate 2
+	%a <- rax
+	store %a 8 <- 5	store %a 16 <- 5	store %a 24 <- 5	return
+	)
+)
+

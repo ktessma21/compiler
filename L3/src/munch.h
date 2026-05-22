@@ -25,7 +25,7 @@ namespace L3 {
 
     Variable freshVar() {
         static int64_t counter = 0;       // persists across calls, fine
-        return Variable("%munch_tmp_" + std::to_string(counter++));
+        return Variable("munch_tmp_" + std::to_string(counter++));
     }
 
     TreeNode make_assign_node(const Variable& dst, const TreeNode& src) {
@@ -34,6 +34,8 @@ namespace L3 {
             clone_tree(src)
         });
     }
+
+    std::vector<std::unique_ptr<Instruction>> munch(const TreeNode& node);
 
     // the recursion, written once, used by munch's ranking
     // int64_t munchCost(const TreeNode& node) {
@@ -60,15 +62,77 @@ namespace L3 {
             virtual int64_t cost() const = 0;
     };
 
-    class FallBack : public Tile {
+   
+    class FallbackBinOpTile : public Tile {
         public:
             std::vector<std::unique_ptr<Instruction>> emit(const TreeNode& node) override {
                 std::vector<std::unique_ptr<Instruction>> result;
-                std::string instr_str = "\t; [FALLBACK] :needs work " + tree_to_string(node) + "\n";
-                result.push_back(std::make_unique<RawL2Instruction>(instr_str));
+
+                assert(std::holds_alternative<AssignNode>(node.data));
+                const AssignNode& assign = std::get<AssignNode>(node.data);
+
+                assert(std::holds_alternative<BinOpNode>(assign.src->data));
+                const BinOpNode& binop = std::get<BinOpNode>(assign.src->data);
+
+                assert(std::holds_alternative<Variable>(assign.dest->data));
+                const Variable& dest = std::get<Variable>(assign.dest->data);
+
+                const TreeNode* lhs = binop.left.get();
+                const TreeNode* rhs = binop.right.get();
+
+                // Collapse an operand to a leaf operand (T = Variable | Number).
+                // Leaves pass through untouched; a BinOp is munched into a fresh temp.
+                auto collapse = [&](const TreeNode* operand) -> T {
+                    if (std::holds_alternative<Variable>(operand->data)) {
+                        return T{std::get<Variable>(operand->data)};
+                    } else if (std::holds_alternative<Number>(operand->data)) {
+                        return T{std::get<Number>(operand->data)};
+                    } else {
+                        // sub-expression: munch it into a temp, then use the temp
+                        Variable tmp = freshVar();
+                        TreeNode synthetic = make_assign_node(tmp, *operand);  
+                        auto inner = munch(synthetic);
+                        for (auto& ins : inner) result.push_back(std::move(ins));
+                        return T{tmp};
+                    }
+                };
+
+                T left_operand  = collapse(lhs);
+                T right_operand = collapse(rhs);
+
+                auto op_instr = std::make_unique<OpInstruction>();
+                op_instr->setDst(dest);
+                op_instr->setLhs(left_operand);    
+                op_instr->setOp(binop.op);
+                op_instr->setRhs(right_operand);    
+                result.push_back(std::move(op_instr));
+
                 return result;
             }
+
+            bool matches(const TreeNode& node) const override {
+                if (!std::holds_alternative<AssignNode>(node.data)) return false;
+                const AssignNode& assign = std::get<AssignNode>(node.data);
+
+                if (!assign.dest || !std::holds_alternative<Variable>(assign.dest->data)) return false;
+                if (!assign.src  || !std::holds_alternative<BinOpNode>(assign.src->data)) return false;
+
+                // only claim ops your OpInstruction can actually represent
+                const BinOpNode& binop = std::get<BinOpNode>(assign.src->data);
+                switch (binop.op) {
+                    case Op::Add: case Op::Sub: case Op::Mul:
+                    case Op::And: case Op::Shl: case Op::Shr:
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+
+            int64_t cost() const override { return 2; }   // dst <- L ; dst op= R
     };
+
+
+
 
     class ShiftTile : public Tile {
         public:
@@ -161,6 +225,7 @@ namespace L3 {
 
                 std::string shl_str = "\t" + dest.to_string()
                                     + " <<= " + std::to_string(shift_amount);
+                shl_str += "\n";
                 result.push_back(std::make_unique<RawL2Instruction>(shl_str));
 
                 return result;
@@ -301,7 +366,7 @@ namespace L3 {
                 std::string s = "\t" + dest.to_string()
                             + " @ " + base.to_string()
                             + " "   + index_var.to_string()
-                            + " "   + std::to_string(scale);
+                            + " "   + std::to_string(scale) + "\n";
                 result.push_back(std::make_unique<RawL2Instruction>(s));
 
                 return result;
@@ -404,6 +469,7 @@ namespace L3 {
                                     else if constexpr (std::is_same_v<T, Number>) return node.to_string();
                                     else throw std::runtime_error("store src must be Variable or Number after munching");
                                 }, val.data);
+                                instr_str += "\n";
                                 result.push_back(std::make_unique<RawL2Instruction>(instr_str));
                                 return result;
                             }
@@ -420,6 +486,7 @@ namespace L3 {
                                     else if constexpr (std::is_same_v<T, Number>) return node.to_string();
                                     else throw std::runtime_error("store src must be Variable or Number after munching");
                                 }, val.data);
+                                instr_str += "\n";
                                 result.push_back(std::make_unique<RawL2Instruction>(instr_str));
                                 return result;
                             }
@@ -514,5 +581,81 @@ namespace L3 {
             int64_t cost() const override { return 1; }
 
     };
+
+
+    class CallTile : public Tile {
+        public:
+            std::vector<std::unique_ptr<Instruction>> emit(const TreeNode& node) override {
+                std::vector<std::unique_ptr<Instruction>> result;
+
+                assert(std::holds_alternative<AssignNode>(node.data));
+                const AssignNode& assign = std::get<AssignNode>(node.data);
+
+                assert(std::holds_alternative<CallNode>(assign.src->data));
+                const CallNode& call = std::get<CallNode>(assign.src->data);
+
+                assert(std::holds_alternative<Variable>(assign.dest->data));
+                const Variable& dest = std::get<Variable>(assign.dest->data);
+                auto call_instr = std::make_unique<VarCallInstruction>();
+                call_instr->setDst(dest);
+                call_instr->setCallee(call.callee);
+
+                for (auto& arg : call.args) {
+                    if (std::holds_alternative<Variable>(arg->data)) {
+                        call_instr->addArg(T{std::get<Variable>(arg->data)});
+                    } else if (std::holds_alternative<Number>(arg->data)) {
+                        call_instr->addArg(T{std::get<Number>(arg->data)});
+                    } else {
+                        Variable arg_tmp = freshVar();
+                        TreeNode synthetic_assign = make_assign_node(arg_tmp, *arg);
+                        auto inner_instrs = munch(synthetic_assign);
+                        for (auto& ins : inner_instrs) result.push_back(std::move(ins));
+                        call_instr->addArg(T{arg_tmp});
+                    }
+                }
+
+                result.push_back(std::move(call_instr));
+                return result;
+            }
+
+            bool matches(const TreeNode& node) const override {
+                if (!std::holds_alternative<AssignNode>(node.data)) return false;
+                const AssignNode& assign = std::get<AssignNode>(node.data);
+
+                if (!assign.dest || !std::holds_alternative<Variable>(assign.dest->data)) return false;
+                if (!assign.src  || !std::holds_alternative<CallNode>(assign.src->data))  return false;
+
+                return true;
+            }
+
+            int64_t cost() const override { return 1; }
+    };
+
+    std::vector<std::unique_ptr<Instruction>> munch(const TreeNode& node) {
+        // Build the tile set. For now, the specialized tiles you have.
+        // (Eventually add the fallback/atomic tile as the guaranteed floor.)
+        std::vector<std::unique_ptr<Tile>> tiles;
+        tiles.push_back(std::make_unique<ShiftTile>());
+        tiles.push_back(std::make_unique<LeaqTile>());
+        tiles.push_back(std::make_unique<StoreTile>());
+        tiles.push_back(std::make_unique<CallTile>());
+        tiles.push_back(std::make_unique<FallbackBinOpTile>());
+        // tiles.push_back(std::make_unique<FallbackTile>());  // add when ready
+
+        Tile* best = nullptr;
+        for (auto& t : tiles) {
+            if (!t->matches(node)) continue;
+            if (best == nullptr || t->cost() < best->cost()) {
+                best = t.get();
+            }
+        }
+
+        if (best == nullptr) {
+            std::cerr << tree_to_string(node) << "\n";
+            throw std::runtime_error("munch: no tile matched this node");
+        }
+
+        return best->emit(node);
+    }
 
 }
