@@ -13,7 +13,7 @@
 #include <vector>
 #include <parser.h>
 #include <generator.h>
-#include <munch.h>
+
 
 
 #include <utils.h>
@@ -69,12 +69,24 @@ int main(int argc, char **argv) {
       f.build_blocks();          // 1. build contexts + assign liveness
       
       for (auto& ctx : f.contexts) {
-          try {
+         try {
               ctx.build_tree();
+          } catch (const std::exception& e) {
+              std::cerr << "[FAIL] build_tree died with: " << e.what() << "\n";
+              throw;
+          }
+
+          try {
               ctx.merge_tree();
+          } catch (const std::exception& e) {
+              std::cerr << "[FAIL] merge_tree died with: " << e.what() << "\n";
+              throw;
+          }
+
+          try {
               ctx.aggregate_tree();
           } catch (const std::exception& e) {
-              std::cerr << "[FAIL] context died with: " << e.what() << "\n";
+              std::cerr << "[FAIL] aggregate_tree died with: " << e.what() << "\n";
               throw;
           }
           // ctx.print_trees(true);

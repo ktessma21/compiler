@@ -34,8 +34,7 @@ namespace L3 {
 
         Context current;
         for (auto& instr : instructions) {
-            if ((instr->type == InstructionType::Label || 
-                instr->type == InstructionType::Call) && !current.empty()) {
+            if ((instr->type == InstructionType::Label) && !current.empty()) {
                 current.add(begin, upto);  // assign liveness before push
                 contexts.push_back(std::move(current));
                 current = Context{};

@@ -1,22 +1,1911 @@
-==1662334== Memcheck, a memory error detector
-==1662334== Copyright (C) 2002-2022, and GNU GPL'd, by Julian Seward et al.
-==1662334== Using Valgrind-3.22.0 and LibVEX; rerun with -h for copyright info
-==1662334== Command: bin/L3 tests/test5.L3
-==1662334== 
+SUCC[0] 	:var_declarations
+      -> { 1 }
+SUCC[1] 	br :check_input
+      -> { 2 }
+SUCC[2] 	:check_input
+      -> { 3 }
+SUCC[3] 	%arg1 <- 10
+      -> { 4 }
+SUCC[4] 	%invalid <- %arg1 < 2
+      -> { 5 }
+SUCC[5] 	br %invalid :bad_input
+      -> { 79 6 }
+SUCC[6] 	br :good_input
+      -> { 7 }
+SUCC[7] 	:good_input
+      -> { 8 }
+SUCC[8] 	%arg1 <- call int_encode(%arg1)
+      -> { 9 }
+SUCC[9] 	%newVar1 <- %arg1 >> 1
+      -> { 10 }
+SUCC[10] 	%newVar0 <- %newVar1
+      -> { 11 }
+SUCC[11] 	%newVar0 <- %newVar0 << 1
+      -> { 12 }
+SUCC[12] 	%newVar0 <- %newVar0 + 1
+      -> { 13 }
+SUCC[13] 	%newVar0 <- %newVar0 + 4
+      -> { 14 }
+SUCC[14] 	%arrayAddr <- call allocate(%newVar0, 1)
+      -> { 15 }
+SUCC[15] 	%newVar2 <- %arrayAddr + 8
+      -> { 16 }
+SUCC[16] 	store %newVar2 <- 3
+      -> { 17 }
+SUCC[17] 	%newVar3 <- %arrayAddr + 16
+      -> { 18 }
+SUCC[18] 	store %newVar3 <- %arg1
+      -> { 19 }
+SUCC[19] 	%pos0 <- 0
+      -> { 20 }
+SUCC[20] 	%pos1 <- 1
+      -> { 21 }
+SUCC[21] 	%pos2 <- 2
+      -> { 22 }
+SUCC[22] 	%newVar5 <- 0
+      -> { 23 }
+SUCC[23] 	%newVar6 <- 1
+      -> { 24 }
+SUCC[24] 	%newVar5 <- %newVar5 + %pos0
+      -> { 25 }
+SUCC[25] 	%newVar4 <- %newVar5 * 8
+      -> { 26 }
+SUCC[26] 	%newVar4 <- %newVar4 + 24
+      -> { 27 }
+SUCC[27] 	%newVar7 <- %arrayAddr + %newVar4
+      -> { 28 }
+SUCC[28] 	store %newVar7 <- 0
+      -> { 29 }
+SUCC[29] 	%newVar9 <- 0
+      -> { 30 }
+SUCC[30] 	%newVar10 <- 1
+      -> { 31 }
+SUCC[31] 	%newVar9 <- %newVar9 + %pos1
+      -> { 32 }
+SUCC[32] 	%newVar8 <- %newVar9 * 8
+      -> { 33 }
+SUCC[33] 	%newVar8 <- %newVar8 + 24
+      -> { 34 }
+SUCC[34] 	%newVar11 <- %arrayAddr + %newVar8
+      -> { 35 }
+SUCC[35] 	store %newVar11 <- 1
+      -> { 36 }
+SUCC[36] 	%newVar12 <- 0 * 8
+      -> { 37 }
+SUCC[37] 	%newVar13 <- %newVar12 + 16
+      -> { 38 }
+SUCC[38] 	%newVar14 <- %arrayAddr + %newVar13
+      -> { 39 }
+SUCC[39] 	%arrayLen <- load %newVar14
+      -> { 40 }
+SUCC[40] 	%arrayLen <- call int_decode(%arrayLen)
+      -> { 41 }
+SUCC[41] 	%count <- 3
+      -> { 42 }
+SUCC[42] 	br :loop
+      -> { 43 }
+SUCC[43] 	:loop
+      -> { 44 }
+SUCC[44] 	%ifDone <- %arrayLen < %count
+      -> { 45 }
+SUCC[45] 	br %ifDone :end_loop
+      -> { 75 46 }
+SUCC[46] 	br :loopbody
+      -> { 47 }
+SUCC[47] 	:loopbody
+      -> { 48 }
+SUCC[48] 	%newVar16 <- 0
+      -> { 49 }
+SUCC[49] 	%newVar17 <- 1
+      -> { 50 }
+SUCC[50] 	%newVar16 <- %newVar16 + %pos0
+      -> { 51 }
+SUCC[51] 	%newVar15 <- %newVar16 * 8
+      -> { 52 }
+SUCC[52] 	%newVar15 <- %newVar15 + 24
+      -> { 53 }
+SUCC[53] 	%newVar18 <- %arrayAddr + %newVar15
+      -> { 54 }
+SUCC[54] 	%val0 <- load %newVar18
+      -> { 55 }
+SUCC[55] 	%newVar20 <- 0
+      -> { 56 }
+SUCC[56] 	%newVar21 <- 1
+      -> { 57 }
+SUCC[57] 	%newVar20 <- %newVar20 + %pos1
+      -> { 58 }
+SUCC[58] 	%newVar19 <- %newVar20 * 8
+      -> { 59 }
+SUCC[59] 	%newVar19 <- %newVar19 + 24
+      -> { 60 }
+SUCC[60] 	%newVar22 <- %arrayAddr + %newVar19
+      -> { 61 }
+SUCC[61] 	%val1 <- load %newVar22
+      -> { 62 }
+SUCC[62] 	%val2 <- %val0 + %val1
+      -> { 63 }
+SUCC[63] 	%newVar24 <- 0
+      -> { 64 }
+SUCC[64] 	%newVar25 <- 1
+      -> { 65 }
+SUCC[65] 	%newVar24 <- %newVar24 + %pos2
+      -> { 66 }
+SUCC[66] 	%newVar23 <- %newVar24 * 8
+      -> { 67 }
+SUCC[67] 	%newVar23 <- %newVar23 + 24
+      -> { 68 }
+SUCC[68] 	%newVar26 <- %arrayAddr + %newVar23
+      -> { 69 }
+SUCC[69] 	store %newVar26 <- %val2
+      -> { 70 }
+SUCC[70] 	%count <- %count + 1
+      -> { 71 }
+SUCC[71] 	%pos0 <- %pos0 + 1
+      -> { 72 }
+SUCC[72] 	%pos1 <- %pos1 + 1
+      -> { 73 }
+SUCC[73] 	%pos2 <- %pos2 + 1
+      -> { 74 }
+SUCC[74] 	br :loop
+      -> { 43 }
+SUCC[75] 	:end_loop
+      -> { 76 }
+SUCC[76] 	call array_encode(%arrayAddr)
+      -> { 77 }
+SUCC[77] 	call print(%arrayAddr)
+      -> { 78 }
+SUCC[78] 	return
+      -> { }
+SUCC[79] 	:bad_input
+      -> { 80 }
+SUCC[80] 	return
+      -> { }
+=== FUNCTION-WIDE LIVENESS (pre-slice) ===
+[0] 	:var_declarations
+      out: { }
+[1] 	br :check_input
+      out: { }
+[2] 	:check_input
+      out: { }
+[3] 	%arg1 <- 10
+      out: { %arg1 }
+[4] 	%invalid <- %arg1 < 2
+      out: { %arg1 %invalid }
+[5] 	br %invalid :bad_input
+      out: { %arg1 }
+[6] 	br :good_input
+      out: { %arg1 }
+[7] 	:good_input
+      out: { %arg1 }
+[8] 	%arg1 <- call int_encode(%arg1)
+      out: { %arg1 }
+[9] 	%newVar1 <- %arg1 >> 1
+      out: { %arg1 %newVar1 }
+[10] 	%newVar0 <- %newVar1
+      out: { %arg1 %newVar0 }
+[11] 	%newVar0 <- %newVar0 << 1
+      out: { %arg1 %newVar0 }
+[12] 	%newVar0 <- %newVar0 + 1
+      out: { %arg1 %newVar0 }
+[13] 	%newVar0 <- %newVar0 + 4
+      out: { %arg1 %newVar0 }
+[14] 	%arrayAddr <- call allocate(%newVar0, 1)
+      out: { %arg1 %arrayAddr }
+[15] 	%newVar2 <- %arrayAddr + 8
+      out: { %arg1 %arrayAddr %newVar2 }
+[16] 	store %newVar2 <- 3
+      out: { %arg1 %arrayAddr }
+[17] 	%newVar3 <- %arrayAddr + 16
+      out: { %arg1 %arrayAddr %newVar3 }
+[18] 	store %newVar3 <- %arg1
+      out: { %arrayAddr }
+[19] 	%pos0 <- 0
+      out: { %arrayAddr %pos0 }
+[20] 	%pos1 <- 1
+      out: { %arrayAddr %pos0 %pos1 }
+[21] 	%pos2 <- 2
+      out: { %arrayAddr %pos0 %pos1 %pos2 }
+[22] 	%newVar5 <- 0
+      out: { %arrayAddr %newVar5 %pos0 %pos1 %pos2 }
+[23] 	%newVar6 <- 1
+      out: { %arrayAddr %newVar5 %pos0 %pos1 %pos2 }
+[24] 	%newVar5 <- %newVar5 + %pos0
+      out: { %arrayAddr %newVar5 %pos0 %pos1 %pos2 }
+[25] 	%newVar4 <- %newVar5 * 8
+      out: { %arrayAddr %newVar4 %pos0 %pos1 %pos2 }
+[26] 	%newVar4 <- %newVar4 + 24
+      out: { %arrayAddr %newVar4 %pos0 %pos1 %pos2 }
+[27] 	%newVar7 <- %arrayAddr + %newVar4
+      out: { %arrayAddr %newVar7 %pos0 %pos1 %pos2 }
+[28] 	store %newVar7 <- 0
+      out: { %arrayAddr %pos0 %pos1 %pos2 }
+[29] 	%newVar9 <- 0
+      out: { %arrayAddr %newVar9 %pos0 %pos1 %pos2 }
+[30] 	%newVar10 <- 1
+      out: { %arrayAddr %newVar9 %pos0 %pos1 %pos2 }
+[31] 	%newVar9 <- %newVar9 + %pos1
+      out: { %arrayAddr %newVar9 %pos0 %pos1 %pos2 }
+[32] 	%newVar8 <- %newVar9 * 8
+      out: { %arrayAddr %newVar8 %pos0 %pos1 %pos2 }
+[33] 	%newVar8 <- %newVar8 + 24
+      out: { %arrayAddr %newVar8 %pos0 %pos1 %pos2 }
+[34] 	%newVar11 <- %arrayAddr + %newVar8
+      out: { %arrayAddr %newVar11 %pos0 %pos1 %pos2 }
+[35] 	store %newVar11 <- 1
+      out: { %arrayAddr %pos0 %pos1 %pos2 }
+[36] 	%newVar12 <- 0 * 8
+      out: { %arrayAddr %newVar12 %pos0 %pos1 %pos2 }
+[37] 	%newVar13 <- %newVar12 + 16
+      out: { %arrayAddr %newVar13 %pos0 %pos1 %pos2 }
+[38] 	%newVar14 <- %arrayAddr + %newVar13
+      out: { %arrayAddr %newVar14 %pos0 %pos1 %pos2 }
+[39] 	%arrayLen <- load %newVar14
+      out: { %arrayAddr %arrayLen %pos0 %pos1 %pos2 }
+[40] 	%arrayLen <- call int_decode(%arrayLen)
+      out: { %arrayAddr %arrayLen %pos0 %pos1 %pos2 }
+[41] 	%count <- 3
+      out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+[42] 	br :loop
+      out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+[43] 	:loop
+      out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+[44] 	%ifDone <- %arrayLen < %count
+      out: { %arrayAddr %arrayLen %count %ifDone %pos0 %pos1 %pos2 }
+[45] 	br %ifDone :end_loop
+      out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+[46] 	br :loopbody
+      out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+[47] 	:loopbody
+      out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+[48] 	%newVar16 <- 0
+      out: { %arrayAddr %arrayLen %count %newVar16 %pos0 %pos1 %pos2 }
+[49] 	%newVar17 <- 1
+      out: { %arrayAddr %arrayLen %count %newVar16 %pos0 %pos1 %pos2 }
+[50] 	%newVar16 <- %newVar16 + %pos0
+      out: { %arrayAddr %arrayLen %count %newVar16 %pos0 %pos1 %pos2 }
+[51] 	%newVar15 <- %newVar16 * 8
+      out: { %arrayAddr %arrayLen %count %newVar15 %pos0 %pos1 %pos2 }
+[52] 	%newVar15 <- %newVar15 + 24
+      out: { %arrayAddr %arrayLen %count %newVar15 %pos0 %pos1 %pos2 }
+[53] 	%newVar18 <- %arrayAddr + %newVar15
+      out: { %arrayAddr %arrayLen %count %newVar18 %pos0 %pos1 %pos2 }
+[54] 	%val0 <- load %newVar18
+      out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 %val0 }
+[55] 	%newVar20 <- 0
+      out: { %arrayAddr %arrayLen %count %newVar20 %pos0 %pos1 %pos2 %val0 }
+[56] 	%newVar21 <- 1
+      out: { %arrayAddr %arrayLen %count %newVar20 %pos0 %pos1 %pos2 %val0 }
+[57] 	%newVar20 <- %newVar20 + %pos1
+      out: { %arrayAddr %arrayLen %count %newVar20 %pos0 %pos1 %pos2 %val0 }
+[58] 	%newVar19 <- %newVar20 * 8
+      out: { %arrayAddr %arrayLen %count %newVar19 %pos0 %pos1 %pos2 %val0 }
+[59] 	%newVar19 <- %newVar19 + 24
+      out: { %arrayAddr %arrayLen %count %newVar19 %pos0 %pos1 %pos2 %val0 }
+[60] 	%newVar22 <- %arrayAddr + %newVar19
+      out: { %arrayAddr %arrayLen %count %newVar22 %pos0 %pos1 %pos2 %val0 }
+[61] 	%val1 <- load %newVar22
+      out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 %val0 %val1 }
+[62] 	%val2 <- %val0 + %val1
+      out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 %val2 }
+[63] 	%newVar24 <- 0
+      out: { %arrayAddr %arrayLen %count %newVar24 %pos0 %pos1 %pos2 %val2 }
+[64] 	%newVar25 <- 1
+      out: { %arrayAddr %arrayLen %count %newVar24 %pos0 %pos1 %pos2 %val2 }
+[65] 	%newVar24 <- %newVar24 + %pos2
+      out: { %arrayAddr %arrayLen %count %newVar24 %pos0 %pos1 %pos2 %val2 }
+[66] 	%newVar23 <- %newVar24 * 8
+      out: { %arrayAddr %arrayLen %count %newVar23 %pos0 %pos1 %pos2 %val2 }
+[67] 	%newVar23 <- %newVar23 + 24
+      out: { %arrayAddr %arrayLen %count %newVar23 %pos0 %pos1 %pos2 %val2 }
+[68] 	%newVar26 <- %arrayAddr + %newVar23
+      out: { %arrayAddr %arrayLen %count %newVar26 %pos0 %pos1 %pos2 %val2 }
+[69] 	store %newVar26 <- %val2
+      out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+[70] 	%count <- %count + 1
+      out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+[71] 	%pos0 <- %pos0 + 1
+      out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+[72] 	%pos1 <- %pos1 + 1
+      out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+[73] 	%pos2 <- %pos2 + 1
+      out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+[74] 	br :loop
+      out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+[75] 	:end_loop
+      out: { %arrayAddr }
+[76] 	call array_encode(%arrayAddr)
+      out: { %arrayAddr }
+[77] 	call print(%arrayAddr)
+      out: { }
+[78] 	return
+      out: { }
+[79] 	:bad_input
+      out: { }
+[80] 	return
+      out: { }
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	:var_declarations
+     tree: nullptr
+     in : { }
+     out: { }
+
+[1] 	br :check_input
+     tree: nullptr
+     in : { }
+     out: { }
+
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	:var_declarations
+     tree: nullptr
+     in : { }
+     out: { }
+
+[1] 	br :check_input
+     tree: nullptr
+     in : { }
+     out: { }
+
+=== Context Trees ===
+instructions: 4 trees: 4 liveness: 4
+
+[0] 	:check_input
+     tree: nullptr
+     in : { }
+     out: { }
+
+[1] 	%arg1 <- 10
+     tree: %arg1 <- 10
+     in : { }
+     out: { %arg1 }
+
+[2] 	%invalid <- %arg1 < 2
+     tree: %invalid <- (%arg1 cmp 2)
+     in : { %arg1 }
+     out: { %arg1 %invalid }
+
+[3] 	br %invalid :bad_input
+     tree: br %invalid :bad_input
+     in : { %arg1 %invalid }
+     out: { %arg1 }
+
+=== Context Trees ===
+instructions: 3 trees: 3 liveness: 3
+
+[0] 	:check_input
+     tree: nullptr
+     in : { }
+     out: { }
+
+[1] 	%arg1 <- 10
+     tree: %arg1 <- 10
+     in : { }
+     out: { %arg1 }
+
+[2] 	br %invalid :bad_input
+     tree: br (%arg1 cmp 2) :bad_input
+     in : { %arg1 }
+     out: { %arg1 }
+
+MUNCH tree[1] = %arg1 <- 10
+      EMIT: 	%arg1 <- 10
+FRESH: %__mt_munnching0
+MUNCH tree[2] = br (%arg1 cmp 2) :bad_input
+      EMIT: 	%__mt_munnching0 <- %arg1 < 2
+      EMIT: 	br %__mt_munnching0 :bad_input
 === Context Trees ===
 instructions: 1 trees: 1 liveness: 1
 
-[0] 	return %v3
-     tree: 5
-     in : { %v3 }
+[0] 	br :good_input
+     tree: nullptr
+     in : { %arg1 }
+     out: { %arg1 }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	br :good_input
+     tree: nullptr
+     in : { %arg1 }
+     out: { %arg1 }
+
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	:good_input
+     tree: nullptr
+     in : { %arg1 }
+     out: { %arg1 }
+
+[1] 	%arg1 <- call int_encode(%arg1)
+     tree: %arg1 <- call @int_encode(%arg1)
+     in : { %arg1 }
+     out: { %arg1 }
+
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	:good_input
+     tree: nullptr
+     in : { %arg1 }
+     out: { %arg1 }
+
+[1] 	%arg1 <- call int_encode(%arg1)
+     tree: %arg1 <- call @int_encode(%arg1)
+     in : { %arg1 }
+     out: { %arg1 }
+
+MUNCH tree[1] = %arg1 <- call @int_encode(%arg1)
+      EMIT: 	%arg1 <- call int_encode(%arg1)
+=== Context Trees ===
+instructions: 6 trees: 6 liveness: 6
+
+[0] 	%newVar1 <- %arg1 >> 1
+     tree: %newVar1 <- (%arg1 op 1)
+     in : { %arg1 }
+     out: { %arg1 %newVar1 }
+
+[1] 	%newVar0 <- %newVar1
+     tree: %newVar0 <- %newVar1
+     in : { %arg1 %newVar1 }
+     out: { %arg1 %newVar0 }
+
+[2] 	%newVar0 <- %newVar0 << 1
+     tree: %newVar0 <- (%newVar0 op 1)
+     in : { %arg1 %newVar0 }
+     out: { %arg1 %newVar0 }
+
+[3] 	%newVar0 <- %newVar0 + 1
+     tree: %newVar0 <- (%newVar0 op 1)
+     in : { %arg1 %newVar0 }
+     out: { %arg1 %newVar0 }
+
+[4] 	%newVar0 <- %newVar0 + 4
+     tree: %newVar0 <- (%newVar0 op 4)
+     in : { %arg1 %newVar0 }
+     out: { %arg1 %newVar0 }
+
+[5] 	%arrayAddr <- call allocate(%newVar0, 1)
+     tree: %arrayAddr <- call allocate(%newVar0, 1)
+     in : { %arg1 %newVar0 }
+     out: { %arg1 %arrayAddr }
+
+=== Context Trees ===
+instructions: 5 trees: 5 liveness: 5
+
+[0] 	%newVar0 <- %newVar1
+     tree: %newVar0 <- (%arg1 op 1)
+     in : { %arg1 }
+     out: { %arg1 %newVar0 }
+
+[1] 	%newVar0 <- %newVar0 << 1
+     tree: %newVar0 <- (%newVar0 op 1)
+     in : { %arg1 %newVar0 }
+     out: { %arg1 %newVar0 }
+
+[2] 	%newVar0 <- %newVar0 + 1
+     tree: %newVar0 <- (%newVar0 op 1)
+     in : { %arg1 %newVar0 }
+     out: { %arg1 %newVar0 }
+
+[3] 	%newVar0 <- %newVar0 + 4
+     tree: %newVar0 <- (%newVar0 op 4)
+     in : { %arg1 %newVar0 }
+     out: { %arg1 %newVar0 }
+
+[4] 	%arrayAddr <- call allocate(%newVar0, 1)
+     tree: %arrayAddr <- call allocate(%newVar0, 1)
+     in : { %arg1 %newVar0 }
+     out: { %arg1 %arrayAddr }
+
+MUNCH tree[0] = %newVar0 <- (%arg1 op 1)
+      EMIT: 	%newVar0 <- %arg1 >> 1
+MUNCH tree[1] = %newVar0 <- (%newVar0 op 1)
+      EMIT: 	%newVar0 <- %newVar0 << 1
+MUNCH tree[2] = %newVar0 <- (%newVar0 op 1)
+      EMIT: 	%newVar0 <- %newVar0 + 1
+MUNCH tree[3] = %newVar0 <- (%newVar0 op 4)
+      EMIT: 	%newVar0 <- %newVar0 + 4
+MUNCH tree[4] = %arrayAddr <- call allocate(%newVar0, 1)
+      EMIT: 	%arrayAddr <- call allocate(%newVar0, 1)
+=== Context Trees ===
+instructions: 26 trees: 26 liveness: 26
+
+[0] 	%newVar2 <- %arrayAddr + 8
+     tree: %newVar2 <- (%arrayAddr op 8)
+     in : { %arg1 %arrayAddr }
+     out: { %arg1 %arrayAddr %newVar2 }
+
+[1] 	store %newVar2 <- 3
+     tree: store(%newVar2) <- 3
+     in : { %arg1 %arrayAddr %newVar2 }
+     out: { %arg1 %arrayAddr }
+
+[2] 	%newVar3 <- %arrayAddr + 16
+     tree: %newVar3 <- (%arrayAddr op 16)
+     in : { %arg1 %arrayAddr }
+     out: { %arg1 %arrayAddr %newVar3 }
+
+[3] 	store %newVar3 <- %arg1
+     tree: store(%newVar3) <- %arg1
+     in : { %arg1 %arrayAddr %newVar3 }
+     out: { %arrayAddr }
+
+[4] 	%pos0 <- 0
+     tree: %pos0 <- 0
+     in : { %arrayAddr }
+     out: { %arrayAddr %pos0 }
+
+[5] 	%pos1 <- 1
+     tree: %pos1 <- 1
+     in : { %arrayAddr %pos0 }
+     out: { %arrayAddr %pos0 %pos1 }
+
+[6] 	%pos2 <- 2
+     tree: %pos2 <- 2
+     in : { %arrayAddr %pos0 %pos1 }
+     out: { %arrayAddr %pos0 %pos1 %pos2 }
+
+[7] 	%newVar5 <- 0
+     tree: %newVar5 <- 0
+     in : { %arrayAddr %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %newVar5 %pos0 %pos1 %pos2 }
+
+[8] 	%newVar6 <- 1
+     tree: %newVar6 <- 1
+     in : { %arrayAddr %newVar5 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %newVar5 %pos0 %pos1 %pos2 }
+
+[9] 	%newVar5 <- %newVar5 + %pos0
+     tree: %newVar5 <- (%newVar5 op %pos0)
+     in : { %arrayAddr %newVar5 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %newVar5 %pos0 %pos1 %pos2 }
+
+[10] 	%newVar4 <- %newVar5 * 8
+     tree: %newVar4 <- (%newVar5 op 8)
+     in : { %arrayAddr %newVar5 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %newVar4 %pos0 %pos1 %pos2 }
+
+[11] 	%newVar4 <- %newVar4 + 24
+     tree: %newVar4 <- (%newVar4 op 24)
+     in : { %arrayAddr %newVar4 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %newVar4 %pos0 %pos1 %pos2 }
+
+[12] 	%newVar7 <- %arrayAddr + %newVar4
+     tree: %newVar7 <- (%arrayAddr op %newVar4)
+     in : { %arrayAddr %newVar4 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %newVar7 %pos0 %pos1 %pos2 }
+
+[13] 	store %newVar7 <- 0
+     tree: store(%newVar7) <- 0
+     in : { %arrayAddr %newVar7 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %pos0 %pos1 %pos2 }
+
+[14] 	%newVar9 <- 0
+     tree: %newVar9 <- 0
+     in : { %arrayAddr %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %newVar9 %pos0 %pos1 %pos2 }
+
+[15] 	%newVar10 <- 1
+     tree: %newVar10 <- 1
+     in : { %arrayAddr %newVar9 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %newVar9 %pos0 %pos1 %pos2 }
+
+[16] 	%newVar9 <- %newVar9 + %pos1
+     tree: %newVar9 <- (%newVar9 op %pos1)
+     in : { %arrayAddr %newVar9 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %newVar9 %pos0 %pos1 %pos2 }
+
+[17] 	%newVar8 <- %newVar9 * 8
+     tree: %newVar8 <- (%newVar9 op 8)
+     in : { %arrayAddr %newVar9 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %newVar8 %pos0 %pos1 %pos2 }
+
+[18] 	%newVar8 <- %newVar8 + 24
+     tree: %newVar8 <- (%newVar8 op 24)
+     in : { %arrayAddr %newVar8 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %newVar8 %pos0 %pos1 %pos2 }
+
+[19] 	%newVar11 <- %arrayAddr + %newVar8
+     tree: %newVar11 <- (%arrayAddr op %newVar8)
+     in : { %arrayAddr %newVar8 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %newVar11 %pos0 %pos1 %pos2 }
+
+[20] 	store %newVar11 <- 1
+     tree: store(%newVar11) <- 1
+     in : { %arrayAddr %newVar11 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %pos0 %pos1 %pos2 }
+
+[21] 	%newVar12 <- 0 * 8
+     tree: %newVar12 <- (0 op 8)
+     in : { %arrayAddr %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %newVar12 %pos0 %pos1 %pos2 }
+
+[22] 	%newVar13 <- %newVar12 + 16
+     tree: %newVar13 <- (%newVar12 op 16)
+     in : { %arrayAddr %newVar12 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %newVar13 %pos0 %pos1 %pos2 }
+
+[23] 	%newVar14 <- %arrayAddr + %newVar13
+     tree: %newVar14 <- (%arrayAddr op %newVar13)
+     in : { %arrayAddr %newVar13 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %newVar14 %pos0 %pos1 %pos2 }
+
+[24] 	%arrayLen <- load %newVar14
+     tree: %arrayLen <- load(%newVar14)
+     in : { %arrayAddr %newVar14 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %pos0 %pos1 %pos2 }
+
+[25] 	%arrayLen <- call int_decode(%arrayLen)
+     tree: %arrayLen <- call @int_decode(%arrayLen)
+     in : { %arrayAddr %arrayLen %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %pos0 %pos1 %pos2 }
+
+=== Context Trees ===
+instructions: 19 trees: 19 liveness: 19
+
+[0] 	store %newVar2 <- 3
+     tree: store((%arrayAddr op 8)) <- 3
+     in : { %arg1 %arrayAddr }
+     out: { %arg1 %arrayAddr }
+
+[1] 	store %newVar3 <- %arg1
+     tree: store((%arrayAddr op 16)) <- %arg1
+     in : { %arg1 %arrayAddr }
+     out: { %arrayAddr }
+
+[2] 	%pos0 <- 0
+     tree: %pos0 <- 0
+     in : { %arrayAddr }
+     out: { %arrayAddr %pos0 }
+
+[3] 	%pos1 <- 1
+     tree: %pos1 <- 1
+     in : { %arrayAddr %pos0 }
+     out: { %arrayAddr %pos0 %pos1 }
+
+[4] 	%pos2 <- 2
+     tree: %pos2 <- 2
+     in : { %arrayAddr %pos0 %pos1 }
+     out: { %arrayAddr %pos0 %pos1 %pos2 }
+
+[5] 	%newVar5 <- 0
+     tree: %newVar5 <- 0
+     in : { %arrayAddr %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %newVar5 %pos0 %pos1 %pos2 }
+
+[6] 	%newVar6 <- 1
+     tree: %newVar6 <- 1
+     in : { %arrayAddr %newVar5 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %newVar5 %pos0 %pos1 %pos2 }
+
+[7] 	%newVar5 <- %newVar5 + %pos0
+     tree: %newVar5 <- (%newVar5 op %pos0)
+     in : { %arrayAddr %newVar5 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %newVar5 %pos0 %pos1 %pos2 }
+
+[8] 	%newVar4 <- %newVar5 * 8
+     tree: %newVar4 <- (%newVar5 op 8)
+     in : { %arrayAddr %newVar5 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %newVar4 %pos0 %pos1 %pos2 }
+
+[9] 	%newVar4 <- %newVar4 + 24
+     tree: %newVar4 <- (%newVar4 op 24)
+     in : { %arrayAddr %newVar4 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %newVar4 %pos0 %pos1 %pos2 }
+
+[10] 	store %newVar7 <- 0
+     tree: store((%arrayAddr op %newVar4)) <- 0
+     in : { %arrayAddr %newVar4 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %pos0 %pos1 %pos2 }
+
+[11] 	%newVar9 <- 0
+     tree: %newVar9 <- 0
+     in : { %arrayAddr %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %newVar9 %pos0 %pos1 %pos2 }
+
+[12] 	%newVar10 <- 1
+     tree: %newVar10 <- 1
+     in : { %arrayAddr %newVar9 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %newVar9 %pos0 %pos1 %pos2 }
+
+[13] 	%newVar9 <- %newVar9 + %pos1
+     tree: %newVar9 <- (%newVar9 op %pos1)
+     in : { %arrayAddr %newVar9 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %newVar9 %pos0 %pos1 %pos2 }
+
+[14] 	%newVar8 <- %newVar9 * 8
+     tree: %newVar8 <- (%newVar9 op 8)
+     in : { %arrayAddr %newVar9 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %newVar8 %pos0 %pos1 %pos2 }
+
+[15] 	%newVar8 <- %newVar8 + 24
+     tree: %newVar8 <- (%newVar8 op 24)
+     in : { %arrayAddr %newVar8 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %newVar8 %pos0 %pos1 %pos2 }
+
+[16] 	store %newVar11 <- 1
+     tree: store((%arrayAddr op %newVar8)) <- 1
+     in : { %arrayAddr %newVar8 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %pos0 %pos1 %pos2 }
+
+[17] 	%arrayLen <- load %newVar14
+     tree: %arrayLen <- load((%arrayAddr op ((0 op 8) op 16)))
+     in : { %arrayAddr %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %pos0 %pos1 %pos2 }
+
+[18] 	%arrayLen <- call int_decode(%arrayLen)
+     tree: %arrayLen <- call @int_decode(%arrayLen)
+     in : { %arrayAddr %arrayLen %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %pos0 %pos1 %pos2 }
+
+MUNCH tree[0] = store((%arrayAddr op 8)) <- 3
+      EMIT: 	mem %arrayAddr 8 <- 3
+MUNCH tree[1] = store((%arrayAddr op 16)) <- %arg1
+      EMIT: 	mem %arrayAddr 16 <- %arg1
+MUNCH tree[2] = %pos0 <- 0
+      EMIT: 	%pos0 <- 0
+MUNCH tree[3] = %pos1 <- 1
+      EMIT: 	%pos1 <- 1
+MUNCH tree[4] = %pos2 <- 2
+      EMIT: 	%pos2 <- 2
+MUNCH tree[5] = %newVar5 <- 0
+      EMIT: 	%newVar5 <- 0
+MUNCH tree[6] = %newVar6 <- 1
+      EMIT: 	%newVar6 <- 1
+MUNCH tree[7] = %newVar5 <- (%newVar5 op %pos0)
+      EMIT: 	%newVar5 <- %newVar5 + %pos0
+MUNCH tree[8] = %newVar4 <- (%newVar5 op 8)
+      EMIT: 	%newVar4 <- %newVar5
+      EMIT: 	%newVar4 <<= 3
+MUNCH tree[9] = %newVar4 <- (%newVar4 op 24)
+      EMIT: 	%newVar4 <- %newVar4 + 24
+FRESH: %__mt_munnching1
+MUNCH tree[10] = store((%arrayAddr op %newVar4)) <- 0
+      EMIT: 	%__mt_munnching1 <- %arrayAddr + %newVar4
+      EMIT: 	store %__mt_munnching1 <- 0
+MUNCH tree[11] = %newVar9 <- 0
+      EMIT: 	%newVar9 <- 0
+MUNCH tree[12] = %newVar10 <- 1
+      EMIT: 	%newVar10 <- 1
+MUNCH tree[13] = %newVar9 <- (%newVar9 op %pos1)
+      EMIT: 	%newVar9 <- %newVar9 + %pos1
+MUNCH tree[14] = %newVar8 <- (%newVar9 op 8)
+      EMIT: 	%newVar8 <- %newVar9
+      EMIT: 	%newVar8 <<= 3
+MUNCH tree[15] = %newVar8 <- (%newVar8 op 24)
+      EMIT: 	%newVar8 <- %newVar8 + 24
+FRESH: %__mt_munnching2
+MUNCH tree[16] = store((%arrayAddr op %newVar8)) <- 1
+      EMIT: 	%__mt_munnching2 <- %arrayAddr + %newVar8
+      EMIT: 	store %__mt_munnching2 <- 1
+FRESH: %__mt_munnching3
+FRESH: %__mt_munnching4
+FRESH: %__mt_munnching5
+FRESH: %__mt_munnching6
+MUNCH tree[17] = %arrayLen <- load((%arrayAddr op ((0 op 8) op 16)))
+      EMIT: 	%__mt_munnching6 <- 0
+      EMIT: 	%__mt_munnching5 <- %__mt_munnching6
+      EMIT: 	%__mt_munnching5 <<= 3
+      EMIT: 	%__mt_munnching4 <- %__mt_munnching5 + 16
+      EMIT: 	%__mt_munnching3 <- %arrayAddr + %__mt_munnching4
+      EMIT: 	%arrayLen <- load %__mt_munnching3
+MUNCH tree[18] = %arrayLen <- call @int_decode(%arrayLen)
+      EMIT: 	%arrayLen <- call int_decode(%arrayLen)
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	%count <- 3
+     tree: %count <- 3
+     in : { %arrayAddr %arrayLen %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+
+[1] 	br :loop
+     tree: nullptr
+     in : { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	%count <- 3
+     tree: %count <- 3
+     in : { %arrayAddr %arrayLen %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+
+[1] 	br :loop
+     tree: nullptr
+     in : { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+
+MUNCH tree[0] = %count <- 3
+      EMIT: 	%count <- 3
+=== Context Trees ===
+instructions: 3 trees: 3 liveness: 3
+
+[0] 	:loop
+     tree: nullptr
+     in : { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+
+[1] 	%ifDone <- %arrayLen < %count
+     tree: %ifDone <- (%arrayLen cmp %count)
+     in : { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %ifDone %pos0 %pos1 %pos2 }
+
+[2] 	br %ifDone :end_loop
+     tree: br %ifDone :end_loop
+     in : { %arrayAddr %arrayLen %count %ifDone %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	:loop
+     tree: nullptr
+     in : { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+
+[1] 	br %ifDone :end_loop
+     tree: br (%arrayLen cmp %count) :end_loop
+     in : { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+
+FRESH: %__mt_munnching7
+MUNCH tree[1] = br (%arrayLen cmp %count) :end_loop
+      EMIT: 	%__mt_munnching7 <- %arrayLen < %count
+      EMIT: 	br %__mt_munnching7 :end_loop
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	br :loopbody
+     tree: nullptr
+     in : { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	br :loopbody
+     tree: nullptr
+     in : { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+
+=== Context Trees ===
+instructions: 28 trees: 28 liveness: 28
+
+[0] 	:loopbody
+     tree: nullptr
+     in : { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+
+[1] 	%newVar16 <- 0
+     tree: %newVar16 <- 0
+     in : { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %newVar16 %pos0 %pos1 %pos2 }
+
+[2] 	%newVar17 <- 1
+     tree: %newVar17 <- 1
+     in : { %arrayAddr %arrayLen %count %newVar16 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %newVar16 %pos0 %pos1 %pos2 }
+
+[3] 	%newVar16 <- %newVar16 + %pos0
+     tree: %newVar16 <- (%newVar16 op %pos0)
+     in : { %arrayAddr %arrayLen %count %newVar16 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %newVar16 %pos0 %pos1 %pos2 }
+
+[4] 	%newVar15 <- %newVar16 * 8
+     tree: %newVar15 <- (%newVar16 op 8)
+     in : { %arrayAddr %arrayLen %count %newVar16 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %newVar15 %pos0 %pos1 %pos2 }
+
+[5] 	%newVar15 <- %newVar15 + 24
+     tree: %newVar15 <- (%newVar15 op 24)
+     in : { %arrayAddr %arrayLen %count %newVar15 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %newVar15 %pos0 %pos1 %pos2 }
+
+[6] 	%newVar18 <- %arrayAddr + %newVar15
+     tree: %newVar18 <- (%arrayAddr op %newVar15)
+     in : { %arrayAddr %arrayLen %count %newVar15 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %newVar18 %pos0 %pos1 %pos2 }
+
+[7] 	%val0 <- load %newVar18
+     tree: %val0 <- load(%newVar18)
+     in : { %arrayAddr %arrayLen %count %newVar18 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 %val0 }
+
+[8] 	%newVar20 <- 0
+     tree: %newVar20 <- 0
+     in : { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 %val0 }
+     out: { %arrayAddr %arrayLen %count %newVar20 %pos0 %pos1 %pos2 %val0 }
+
+[9] 	%newVar21 <- 1
+     tree: %newVar21 <- 1
+     in : { %arrayAddr %arrayLen %count %newVar20 %pos0 %pos1 %pos2 %val0 }
+     out: { %arrayAddr %arrayLen %count %newVar20 %pos0 %pos1 %pos2 %val0 }
+
+[10] 	%newVar20 <- %newVar20 + %pos1
+     tree: %newVar20 <- (%newVar20 op %pos1)
+     in : { %arrayAddr %arrayLen %count %newVar20 %pos0 %pos1 %pos2 %val0 }
+     out: { %arrayAddr %arrayLen %count %newVar20 %pos0 %pos1 %pos2 %val0 }
+
+[11] 	%newVar19 <- %newVar20 * 8
+     tree: %newVar19 <- (%newVar20 op 8)
+     in : { %arrayAddr %arrayLen %count %newVar20 %pos0 %pos1 %pos2 %val0 }
+     out: { %arrayAddr %arrayLen %count %newVar19 %pos0 %pos1 %pos2 %val0 }
+
+[12] 	%newVar19 <- %newVar19 + 24
+     tree: %newVar19 <- (%newVar19 op 24)
+     in : { %arrayAddr %arrayLen %count %newVar19 %pos0 %pos1 %pos2 %val0 }
+     out: { %arrayAddr %arrayLen %count %newVar19 %pos0 %pos1 %pos2 %val0 }
+
+[13] 	%newVar22 <- %arrayAddr + %newVar19
+     tree: %newVar22 <- (%arrayAddr op %newVar19)
+     in : { %arrayAddr %arrayLen %count %newVar19 %pos0 %pos1 %pos2 %val0 }
+     out: { %arrayAddr %arrayLen %count %newVar22 %pos0 %pos1 %pos2 %val0 }
+
+[14] 	%val1 <- load %newVar22
+     tree: %val1 <- load(%newVar22)
+     in : { %arrayAddr %arrayLen %count %newVar22 %pos0 %pos1 %pos2 %val0 }
+     out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 %val0 %val1 }
+
+[15] 	%val2 <- %val0 + %val1
+     tree: %val2 <- (%val0 op %val1)
+     in : { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 %val0 %val1 }
+     out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 %val2 }
+
+[16] 	%newVar24 <- 0
+     tree: %newVar24 <- 0
+     in : { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 %val2 }
+     out: { %arrayAddr %arrayLen %count %newVar24 %pos0 %pos1 %pos2 %val2 }
+
+[17] 	%newVar25 <- 1
+     tree: %newVar25 <- 1
+     in : { %arrayAddr %arrayLen %count %newVar24 %pos0 %pos1 %pos2 %val2 }
+     out: { %arrayAddr %arrayLen %count %newVar24 %pos0 %pos1 %pos2 %val2 }
+
+[18] 	%newVar24 <- %newVar24 + %pos2
+     tree: %newVar24 <- (%newVar24 op %pos2)
+     in : { %arrayAddr %arrayLen %count %newVar24 %pos0 %pos1 %pos2 %val2 }
+     out: { %arrayAddr %arrayLen %count %newVar24 %pos0 %pos1 %pos2 %val2 }
+
+[19] 	%newVar23 <- %newVar24 * 8
+     tree: %newVar23 <- (%newVar24 op 8)
+     in : { %arrayAddr %arrayLen %count %newVar24 %pos0 %pos1 %pos2 %val2 }
+     out: { %arrayAddr %arrayLen %count %newVar23 %pos0 %pos1 %pos2 %val2 }
+
+[20] 	%newVar23 <- %newVar23 + 24
+     tree: %newVar23 <- (%newVar23 op 24)
+     in : { %arrayAddr %arrayLen %count %newVar23 %pos0 %pos1 %pos2 %val2 }
+     out: { %arrayAddr %arrayLen %count %newVar23 %pos0 %pos1 %pos2 %val2 }
+
+[21] 	%newVar26 <- %arrayAddr + %newVar23
+     tree: %newVar26 <- (%arrayAddr op %newVar23)
+     in : { %arrayAddr %arrayLen %count %newVar23 %pos0 %pos1 %pos2 %val2 }
+     out: { %arrayAddr %arrayLen %count %newVar26 %pos0 %pos1 %pos2 %val2 }
+
+[22] 	store %newVar26 <- %val2
+     tree: store(%newVar26) <- %val2
+     in : { %arrayAddr %arrayLen %count %newVar26 %pos0 %pos1 %pos2 %val2 }
+     out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+
+[23] 	%count <- %count + 1
+     tree: %count <- (%count op 1)
+     in : { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+
+[24] 	%pos0 <- %pos0 + 1
+     tree: %pos0 <- (%pos0 op 1)
+     in : { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+
+[25] 	%pos1 <- %pos1 + 1
+     tree: %pos1 <- (%pos1 op 1)
+     in : { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+
+[26] 	%pos2 <- %pos2 + 1
+     tree: %pos2 <- (%pos2 op 1)
+     in : { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+
+[27] 	br :loop
+     tree: nullptr
+     in : { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+
+=== Context Trees ===
+instructions: 22 trees: 22 liveness: 22
+
+[0] 	:loopbody
+     tree: nullptr
+     in : { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+
+[1] 	%newVar16 <- 0
+     tree: %newVar16 <- 0
+     in : { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %newVar16 %pos0 %pos1 %pos2 }
+
+[2] 	%newVar17 <- 1
+     tree: %newVar17 <- 1
+     in : { %arrayAddr %arrayLen %count %newVar16 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %newVar16 %pos0 %pos1 %pos2 }
+
+[3] 	%newVar16 <- %newVar16 + %pos0
+     tree: %newVar16 <- (%newVar16 op %pos0)
+     in : { %arrayAddr %arrayLen %count %newVar16 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %newVar16 %pos0 %pos1 %pos2 }
+
+[4] 	%newVar15 <- %newVar16 * 8
+     tree: %newVar15 <- (%newVar16 op 8)
+     in : { %arrayAddr %arrayLen %count %newVar16 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %newVar15 %pos0 %pos1 %pos2 }
+
+[5] 	%newVar15 <- %newVar15 + 24
+     tree: %newVar15 <- (%newVar15 op 24)
+     in : { %arrayAddr %arrayLen %count %newVar15 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %newVar15 %pos0 %pos1 %pos2 }
+
+[6] 	%newVar20 <- 0
+     tree: %newVar20 <- 0
+     in : { %arrayAddr %arrayLen %count %newVar15 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %newVar15 %newVar20 %pos0 %pos1 %pos2 }
+
+[7] 	%newVar21 <- 1
+     tree: %newVar21 <- 1
+     in : { %arrayAddr %arrayLen %count %newVar15 %newVar20 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %newVar15 %newVar20 %pos0 %pos1 %pos2 }
+
+[8] 	%newVar20 <- %newVar20 + %pos1
+     tree: %newVar20 <- (%newVar20 op %pos1)
+     in : { %arrayAddr %arrayLen %count %newVar15 %newVar20 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %newVar15 %newVar20 %pos0 %pos1 %pos2 }
+
+[9] 	%newVar19 <- %newVar20 * 8
+     tree: %newVar19 <- (%newVar20 op 8)
+     in : { %arrayAddr %arrayLen %count %newVar15 %newVar20 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %newVar15 %newVar19 %pos0 %pos1 %pos2 }
+
+[10] 	%newVar19 <- %newVar19 + 24
+     tree: %newVar19 <- (%newVar19 op 24)
+     in : { %arrayAddr %arrayLen %count %newVar15 %newVar19 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %newVar15 %newVar19 %pos0 %pos1 %pos2 }
+
+[11] 	%newVar24 <- 0
+     tree: %newVar24 <- 0
+     in : { %arrayAddr %arrayLen %count %newVar15 %newVar19 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %newVar15 %newVar19 %newVar24 %pos0 %pos1 %pos2 }
+
+[12] 	%newVar25 <- 1
+     tree: %newVar25 <- 1
+     in : { %arrayAddr %arrayLen %count %newVar15 %newVar19 %newVar24 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %newVar15 %newVar19 %newVar24 %pos0 %pos1 %pos2 }
+
+[13] 	%newVar24 <- %newVar24 + %pos2
+     tree: %newVar24 <- (%newVar24 op %pos2)
+     in : { %arrayAddr %arrayLen %count %newVar15 %newVar19 %newVar24 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %newVar15 %newVar19 %newVar24 %pos0 %pos1 %pos2 }
+
+[14] 	%newVar23 <- %newVar24 * 8
+     tree: %newVar23 <- (%newVar24 op 8)
+     in : { %arrayAddr %arrayLen %count %newVar15 %newVar19 %newVar24 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %newVar15 %newVar19 %newVar23 %pos0 %pos1 %pos2 }
+
+[15] 	%newVar23 <- %newVar23 + 24
+     tree: %newVar23 <- (%newVar23 op 24)
+     in : { %arrayAddr %arrayLen %count %newVar15 %newVar19 %newVar23 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %newVar15 %newVar19 %newVar23 %pos0 %pos1 %pos2 }
+
+[16] 	store %newVar26 <- %val2
+     tree: store((%arrayAddr op %newVar23)) <- (load((%arrayAddr op %newVar15)) op load((%arrayAddr op %newVar19)))
+     in : { %arrayAddr %arrayLen %count %newVar15 %newVar19 %newVar23 %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+
+[17] 	%count <- %count + 1
+     tree: %count <- (%count op 1)
+     in : { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+
+[18] 	%pos0 <- %pos0 + 1
+     tree: %pos0 <- (%pos0 op 1)
+     in : { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+
+[19] 	%pos1 <- %pos1 + 1
+     tree: %pos1 <- (%pos1 op 1)
+     in : { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+
+[20] 	%pos2 <- %pos2 + 1
+     tree: %pos2 <- (%pos2 op 1)
+     in : { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+
+[21] 	br :loop
+     tree: nullptr
+     in : { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+     out: { %arrayAddr %arrayLen %count %pos0 %pos1 %pos2 }
+
+MUNCH tree[1] = %newVar16 <- 0
+      EMIT: 	%newVar16 <- 0
+MUNCH tree[2] = %newVar17 <- 1
+      EMIT: 	%newVar17 <- 1
+MUNCH tree[3] = %newVar16 <- (%newVar16 op %pos0)
+      EMIT: 	%newVar16 <- %newVar16 + %pos0
+MUNCH tree[4] = %newVar15 <- (%newVar16 op 8)
+      EMIT: 	%newVar15 <- %newVar16
+      EMIT: 	%newVar15 <<= 3
+MUNCH tree[5] = %newVar15 <- (%newVar15 op 24)
+      EMIT: 	%newVar15 <- %newVar15 + 24
+MUNCH tree[6] = %newVar20 <- 0
+      EMIT: 	%newVar20 <- 0
+MUNCH tree[7] = %newVar21 <- 1
+      EMIT: 	%newVar21 <- 1
+MUNCH tree[8] = %newVar20 <- (%newVar20 op %pos1)
+      EMIT: 	%newVar20 <- %newVar20 + %pos1
+MUNCH tree[9] = %newVar19 <- (%newVar20 op 8)
+      EMIT: 	%newVar19 <- %newVar20
+      EMIT: 	%newVar19 <<= 3
+MUNCH tree[10] = %newVar19 <- (%newVar19 op 24)
+      EMIT: 	%newVar19 <- %newVar19 + 24
+MUNCH tree[11] = %newVar24 <- 0
+      EMIT: 	%newVar24 <- 0
+MUNCH tree[12] = %newVar25 <- 1
+      EMIT: 	%newVar25 <- 1
+MUNCH tree[13] = %newVar24 <- (%newVar24 op %pos2)
+      EMIT: 	%newVar24 <- %newVar24 + %pos2
+MUNCH tree[14] = %newVar23 <- (%newVar24 op 8)
+      EMIT: 	%newVar23 <- %newVar24
+      EMIT: 	%newVar23 <<= 3
+MUNCH tree[15] = %newVar23 <- (%newVar23 op 24)
+      EMIT: 	%newVar23 <- %newVar23 + 24
+FRESH: %__mt_munnching8
+FRESH: %__mt_munnching9
+FRESH: %__mt_munnching10
+FRESH: %__mt_munnching11
+FRESH: %__mt_munnching12
+FRESH: %__mt_munnching13
+MUNCH tree[16] = store((%arrayAddr op %newVar23)) <- (load((%arrayAddr op %newVar15)) op load((%arrayAddr op %newVar19)))
+      EMIT: 	%__mt_munnching8 <- %arrayAddr + %newVar23
+      EMIT: 	%__mt_munnching11 <- %arrayAddr + %newVar15
+      EMIT: 	%__mt_munnching10 <- load %__mt_munnching11
+      EMIT: 	%__mt_munnching13 <- %arrayAddr + %newVar19
+      EMIT: 	%__mt_munnching12 <- load %__mt_munnching13
+      EMIT: 	%__mt_munnching9 <- %__mt_munnching10 + %__mt_munnching12
+      EMIT: 	store %__mt_munnching8 <- %__mt_munnching9
+MUNCH tree[17] = %count <- (%count op 1)
+      EMIT: 	%count <- %count + 1
+MUNCH tree[18] = %pos0 <- (%pos0 op 1)
+      EMIT: 	%pos0 <- %pos0 + 1
+MUNCH tree[19] = %pos1 <- (%pos1 op 1)
+      EMIT: 	%pos1 <- %pos1 + 1
+MUNCH tree[20] = %pos2 <- (%pos2 op 1)
+      EMIT: 	%pos2 <- %pos2 + 1
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	:end_loop
+     tree: nullptr
+     in : { %arrayAddr }
+     out: { %arrayAddr }
+
+[1] 	call array_encode(%arrayAddr)
+     tree: call @array_encode(%arrayAddr)
+     in : { %arrayAddr }
+     out: { %arrayAddr }
+
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	:end_loop
+     tree: nullptr
+     in : { %arrayAddr }
+     out: { %arrayAddr }
+
+[1] 	call array_encode(%arrayAddr)
+     tree: call @array_encode(%arrayAddr)
+     in : { %arrayAddr }
+     out: { %arrayAddr }
+
+MUNCH tree[1] = call @array_encode(%arrayAddr)
+      EMIT: 	call array_encode(%arrayAddr)
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	call print(%arrayAddr)
+     tree: call print(%arrayAddr)
+     in : { %arrayAddr }
      out: { }
 
-==1662334== 
-==1662334== HEAP SUMMARY:
-==1662334==     in use at exit: 0 bytes in 0 blocks
-==1662334==   total heap usage: 317 allocs, 317 frees, 115,104 bytes allocated
-==1662334== 
-==1662334== All heap blocks were freed -- no leaks are possible
-==1662334== 
-==1662334== For lists of detected and suppressed errors, rerun with: -s
-==1662334== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	call print(%arrayAddr)
+     tree: call print(%arrayAddr)
+     in : { %arrayAddr }
+     out: { }
+
+MUNCH tree[0] = call print(%arrayAddr)
+      EMIT: 	call print(%arrayAddr)
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	return
+     tree: nullptr
+     in : { }
+     out: { }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	return
+     tree: nullptr
+     in : { }
+     out: { }
+
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	:bad_input
+     tree: nullptr
+     in : { }
+     out: { }
+
+[1] 	return
+     tree: nullptr
+     in : { }
+     out: { }
+
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	:bad_input
+     tree: nullptr
+     in : { }
+     out: { }
+
+[1] 	return
+     tree: nullptr
+     in : { }
+     out: { }
+
+SUCC[0] 	:entry
+      -> { 1 }
+SUCC[1] 	%newVar0 <- 0 * 8
+      -> { 2 }
+SUCC[2] 	%newVar1 <- %newVar0 + 16
+      -> { 3 }
+SUCC[3] 	%newVar2 <- %arrayAddr + %newVar1
+      -> { 4 }
+SUCC[4] 	%arrayLen <- load %newVar2
+      -> { 5 }
+SUCC[5] 	%arrayLen <- call int_decode(%arrayLen)
+      -> { 6 }
+SUCC[6] 	%pos <- 0
+      -> { 7 }
+SUCC[7] 	br :loop_1
+      -> { 8 }
+SUCC[8] 	:loop_1
+      -> { 9 }
+SUCC[9] 	%ifDone <- %pos = %arrayLen
+      -> { 10 }
+SUCC[10] 	br %ifDone :end_loop_1
+      -> { 30 11 }
+SUCC[11] 	br :loop_body
+      -> { 12 }
+SUCC[12] 	:loop_body
+      -> { 13 }
+SUCC[13] 	%newVar4 <- 0
+      -> { 14 }
+SUCC[14] 	%newVar5 <- 1
+      -> { 15 }
+SUCC[15] 	%newVar4 <- %newVar4 + %pos
+      -> { 16 }
+SUCC[16] 	%newVar3 <- %newVar4 * 8
+      -> { 17 }
+SUCC[17] 	%newVar3 <- %newVar3 + 24
+      -> { 18 }
+SUCC[18] 	%newVar6 <- %arrayAddr + %newVar3
+      -> { 19 }
+SUCC[19] 	%val <- load %newVar6
+      -> { 20 }
+SUCC[20] 	%val <- call int_encode(%val)
+      -> { 21 }
+SUCC[21] 	%newVar8 <- 0
+      -> { 22 }
+SUCC[22] 	%newVar9 <- 1
+      -> { 23 }
+SUCC[23] 	%newVar8 <- %newVar8 + %pos
+      -> { 24 }
+SUCC[24] 	%newVar7 <- %newVar8 * 8
+      -> { 25 }
+SUCC[25] 	%newVar7 <- %newVar7 + 24
+      -> { 26 }
+SUCC[26] 	%newVar10 <- %arrayAddr + %newVar7
+      -> { 27 }
+SUCC[27] 	store %newVar10 <- %val
+      -> { 28 }
+SUCC[28] 	%pos <- %pos + 1
+      -> { 29 }
+SUCC[29] 	br :loop_1
+      -> { 8 }
+SUCC[30] 	:end_loop_1
+      -> { 31 }
+SUCC[31] 	return
+      -> { }
+=== FUNCTION-WIDE LIVENESS (pre-slice) ===
+[0] 	:entry
+      out: { %arrayAddr }
+[1] 	%newVar0 <- 0 * 8
+      out: { %arrayAddr %newVar0 }
+[2] 	%newVar1 <- %newVar0 + 16
+      out: { %arrayAddr %newVar1 }
+[3] 	%newVar2 <- %arrayAddr + %newVar1
+      out: { %arrayAddr %newVar2 }
+[4] 	%arrayLen <- load %newVar2
+      out: { %arrayAddr %arrayLen }
+[5] 	%arrayLen <- call int_decode(%arrayLen)
+      out: { %arrayAddr %arrayLen }
+[6] 	%pos <- 0
+      out: { %arrayAddr %arrayLen %pos }
+[7] 	br :loop_1
+      out: { %arrayAddr %arrayLen %pos }
+[8] 	:loop_1
+      out: { %arrayAddr %arrayLen %pos }
+[9] 	%ifDone <- %pos = %arrayLen
+      out: { %arrayAddr %arrayLen %ifDone %pos }
+[10] 	br %ifDone :end_loop_1
+      out: { %arrayAddr %arrayLen %pos }
+[11] 	br :loop_body
+      out: { %arrayAddr %arrayLen %pos }
+[12] 	:loop_body
+      out: { %arrayAddr %arrayLen %pos }
+[13] 	%newVar4 <- 0
+      out: { %arrayAddr %arrayLen %newVar4 %pos }
+[14] 	%newVar5 <- 1
+      out: { %arrayAddr %arrayLen %newVar4 %pos }
+[15] 	%newVar4 <- %newVar4 + %pos
+      out: { %arrayAddr %arrayLen %newVar4 %pos }
+[16] 	%newVar3 <- %newVar4 * 8
+      out: { %arrayAddr %arrayLen %newVar3 %pos }
+[17] 	%newVar3 <- %newVar3 + 24
+      out: { %arrayAddr %arrayLen %newVar3 %pos }
+[18] 	%newVar6 <- %arrayAddr + %newVar3
+      out: { %arrayAddr %arrayLen %newVar6 %pos }
+[19] 	%val <- load %newVar6
+      out: { %arrayAddr %arrayLen %pos %val }
+[20] 	%val <- call int_encode(%val)
+      out: { %arrayAddr %arrayLen %pos %val }
+[21] 	%newVar8 <- 0
+      out: { %arrayAddr %arrayLen %newVar8 %pos %val }
+[22] 	%newVar9 <- 1
+      out: { %arrayAddr %arrayLen %newVar8 %pos %val }
+[23] 	%newVar8 <- %newVar8 + %pos
+      out: { %arrayAddr %arrayLen %newVar8 %pos %val }
+[24] 	%newVar7 <- %newVar8 * 8
+      out: { %arrayAddr %arrayLen %newVar7 %pos %val }
+[25] 	%newVar7 <- %newVar7 + 24
+      out: { %arrayAddr %arrayLen %newVar7 %pos %val }
+[26] 	%newVar10 <- %arrayAddr + %newVar7
+      out: { %arrayAddr %arrayLen %newVar10 %pos %val }
+[27] 	store %newVar10 <- %val
+      out: { %arrayAddr %arrayLen %pos }
+[28] 	%pos <- %pos + 1
+      out: { %arrayAddr %arrayLen %pos }
+[29] 	br :loop_1
+      out: { %arrayAddr %arrayLen %pos }
+[30] 	:end_loop_1
+      out: { }
+[31] 	return
+      out: { }
+=== Context Trees ===
+instructions: 6 trees: 6 liveness: 6
+
+[0] 	:entry
+     tree: nullptr
+     in : { %arrayAddr }
+     out: { %arrayAddr }
+
+[1] 	%newVar0 <- 0 * 8
+     tree: %newVar0 <- (0 op 8)
+     in : { %arrayAddr }
+     out: { %arrayAddr %newVar0 }
+
+[2] 	%newVar1 <- %newVar0 + 16
+     tree: %newVar1 <- (%newVar0 op 16)
+     in : { %arrayAddr %newVar0 }
+     out: { %arrayAddr %newVar1 }
+
+[3] 	%newVar2 <- %arrayAddr + %newVar1
+     tree: %newVar2 <- (%arrayAddr op %newVar1)
+     in : { %arrayAddr %newVar1 }
+     out: { %arrayAddr %newVar2 }
+
+[4] 	%arrayLen <- load %newVar2
+     tree: %arrayLen <- load(%newVar2)
+     in : { %arrayAddr %newVar2 }
+     out: { %arrayAddr %arrayLen }
+
+[5] 	%arrayLen <- call int_decode(%arrayLen)
+     tree: %arrayLen <- call @int_decode(%arrayLen)
+     in : { %arrayAddr %arrayLen }
+     out: { %arrayAddr %arrayLen }
+
+=== Context Trees ===
+instructions: 3 trees: 3 liveness: 3
+
+[0] 	:entry
+     tree: nullptr
+     in : { %arrayAddr }
+     out: { %arrayAddr }
+
+[1] 	%arrayLen <- load %newVar2
+     tree: %arrayLen <- load((%arrayAddr op ((0 op 8) op 16)))
+     in : { %arrayAddr }
+     out: { %arrayAddr %arrayLen }
+
+[2] 	%arrayLen <- call int_decode(%arrayLen)
+     tree: %arrayLen <- call @int_decode(%arrayLen)
+     in : { %arrayAddr %arrayLen }
+     out: { %arrayAddr %arrayLen }
+
+FRESH: %__mt_munnching14
+FRESH: %__mt_munnching15
+FRESH: %__mt_munnching16
+FRESH: %__mt_munnching17
+MUNCH tree[1] = %arrayLen <- load((%arrayAddr op ((0 op 8) op 16)))
+      EMIT: 	%__mt_munnching17 <- 0
+      EMIT: 	%__mt_munnching16 <- %__mt_munnching17
+      EMIT: 	%__mt_munnching16 <<= 3
+      EMIT: 	%__mt_munnching15 <- %__mt_munnching16 + 16
+      EMIT: 	%__mt_munnching14 <- %arrayAddr + %__mt_munnching15
+      EMIT: 	%arrayLen <- load %__mt_munnching14
+MUNCH tree[2] = %arrayLen <- call @int_decode(%arrayLen)
+      EMIT: 	%arrayLen <- call int_decode(%arrayLen)
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	%pos <- 0
+     tree: %pos <- 0
+     in : { %arrayAddr %arrayLen }
+     out: { %arrayAddr %arrayLen %pos }
+
+[1] 	br :loop_1
+     tree: nullptr
+     in : { %arrayAddr %arrayLen %pos }
+     out: { %arrayAddr %arrayLen %pos }
+
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	%pos <- 0
+     tree: %pos <- 0
+     in : { %arrayAddr %arrayLen }
+     out: { %arrayAddr %arrayLen %pos }
+
+[1] 	br :loop_1
+     tree: nullptr
+     in : { %arrayAddr %arrayLen %pos }
+     out: { %arrayAddr %arrayLen %pos }
+
+MUNCH tree[0] = %pos <- 0
+      EMIT: 	%pos <- 0
+=== Context Trees ===
+instructions: 3 trees: 3 liveness: 3
+
+[0] 	:loop_1
+     tree: nullptr
+     in : { %arrayAddr %arrayLen %pos }
+     out: { %arrayAddr %arrayLen %pos }
+
+[1] 	%ifDone <- %pos = %arrayLen
+     tree: %ifDone <- (%pos cmp %arrayLen)
+     in : { %arrayAddr %arrayLen %pos }
+     out: { %arrayAddr %arrayLen %ifDone %pos }
+
+[2] 	br %ifDone :end_loop_1
+     tree: br %ifDone :end_loop_1
+     in : { %arrayAddr %arrayLen %ifDone %pos }
+     out: { %arrayAddr %arrayLen %pos }
+
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	:loop_1
+     tree: nullptr
+     in : { %arrayAddr %arrayLen %pos }
+     out: { %arrayAddr %arrayLen %pos }
+
+[1] 	br %ifDone :end_loop_1
+     tree: br (%pos cmp %arrayLen) :end_loop_1
+     in : { %arrayAddr %arrayLen %pos }
+     out: { %arrayAddr %arrayLen %pos }
+
+FRESH: %__mt_munnching18
+MUNCH tree[1] = br (%pos cmp %arrayLen) :end_loop_1
+      EMIT: 	%__mt_munnching18 <- %pos = %arrayLen
+      EMIT: 	br %__mt_munnching18 :end_loop_1
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	br :loop_body
+     tree: nullptr
+     in : { %arrayAddr %arrayLen %pos }
+     out: { %arrayAddr %arrayLen %pos }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	br :loop_body
+     tree: nullptr
+     in : { %arrayAddr %arrayLen %pos }
+     out: { %arrayAddr %arrayLen %pos }
+
+=== Context Trees ===
+instructions: 9 trees: 9 liveness: 9
+
+[0] 	:loop_body
+     tree: nullptr
+     in : { %arrayAddr %arrayLen %pos }
+     out: { %arrayAddr %arrayLen %pos }
+
+[1] 	%newVar4 <- 0
+     tree: %newVar4 <- 0
+     in : { %arrayAddr %arrayLen %pos }
+     out: { %arrayAddr %arrayLen %newVar4 %pos }
+
+[2] 	%newVar5 <- 1
+     tree: %newVar5 <- 1
+     in : { %arrayAddr %arrayLen %newVar4 %pos }
+     out: { %arrayAddr %arrayLen %newVar4 %pos }
+
+[3] 	%newVar4 <- %newVar4 + %pos
+     tree: %newVar4 <- (%newVar4 op %pos)
+     in : { %arrayAddr %arrayLen %newVar4 %pos }
+     out: { %arrayAddr %arrayLen %newVar4 %pos }
+
+[4] 	%newVar3 <- %newVar4 * 8
+     tree: %newVar3 <- (%newVar4 op 8)
+     in : { %arrayAddr %arrayLen %newVar4 %pos }
+     out: { %arrayAddr %arrayLen %newVar3 %pos }
+
+[5] 	%newVar3 <- %newVar3 + 24
+     tree: %newVar3 <- (%newVar3 op 24)
+     in : { %arrayAddr %arrayLen %newVar3 %pos }
+     out: { %arrayAddr %arrayLen %newVar3 %pos }
+
+[6] 	%newVar6 <- %arrayAddr + %newVar3
+     tree: %newVar6 <- (%arrayAddr op %newVar3)
+     in : { %arrayAddr %arrayLen %newVar3 %pos }
+     out: { %arrayAddr %arrayLen %newVar6 %pos }
+
+[7] 	%val <- load %newVar6
+     tree: %val <- load(%newVar6)
+     in : { %arrayAddr %arrayLen %newVar6 %pos }
+     out: { %arrayAddr %arrayLen %pos %val }
+
+[8] 	%val <- call int_encode(%val)
+     tree: %val <- call @int_encode(%val)
+     in : { %arrayAddr %arrayLen %pos %val }
+     out: { %arrayAddr %arrayLen %pos %val }
+
+=== Context Trees ===
+instructions: 8 trees: 8 liveness: 8
+
+[0] 	:loop_body
+     tree: nullptr
+     in : { %arrayAddr %arrayLen %pos }
+     out: { %arrayAddr %arrayLen %pos }
+
+[1] 	%newVar4 <- 0
+     tree: %newVar4 <- 0
+     in : { %arrayAddr %arrayLen %pos }
+     out: { %arrayAddr %arrayLen %newVar4 %pos }
+
+[2] 	%newVar5 <- 1
+     tree: %newVar5 <- 1
+     in : { %arrayAddr %arrayLen %newVar4 %pos }
+     out: { %arrayAddr %arrayLen %newVar4 %pos }
+
+[3] 	%newVar4 <- %newVar4 + %pos
+     tree: %newVar4 <- (%newVar4 op %pos)
+     in : { %arrayAddr %arrayLen %newVar4 %pos }
+     out: { %arrayAddr %arrayLen %newVar4 %pos }
+
+[4] 	%newVar3 <- %newVar4 * 8
+     tree: %newVar3 <- (%newVar4 op 8)
+     in : { %arrayAddr %arrayLen %newVar4 %pos }
+     out: { %arrayAddr %arrayLen %newVar3 %pos }
+
+[5] 	%newVar3 <- %newVar3 + 24
+     tree: %newVar3 <- (%newVar3 op 24)
+     in : { %arrayAddr %arrayLen %newVar3 %pos }
+     out: { %arrayAddr %arrayLen %newVar3 %pos }
+
+[6] 	%val <- load %newVar6
+     tree: %val <- load((%arrayAddr op %newVar3))
+     in : { %arrayAddr %arrayLen %newVar3 %pos }
+     out: { %arrayAddr %arrayLen %pos %val }
+
+[7] 	%val <- call int_encode(%val)
+     tree: %val <- call @int_encode(%val)
+     in : { %arrayAddr %arrayLen %pos %val }
+     out: { %arrayAddr %arrayLen %pos %val }
+
+MUNCH tree[1] = %newVar4 <- 0
+      EMIT: 	%newVar4 <- 0
+MUNCH tree[2] = %newVar5 <- 1
+      EMIT: 	%newVar5 <- 1
+MUNCH tree[3] = %newVar4 <- (%newVar4 op %pos)
+      EMIT: 	%newVar4 <- %newVar4 + %pos
+MUNCH tree[4] = %newVar3 <- (%newVar4 op 8)
+      EMIT: 	%newVar3 <- %newVar4
+      EMIT: 	%newVar3 <<= 3
+MUNCH tree[5] = %newVar3 <- (%newVar3 op 24)
+      EMIT: 	%newVar3 <- %newVar3 + 24
+FRESH: %__mt_munnching19
+MUNCH tree[6] = %val <- load((%arrayAddr op %newVar3))
+      EMIT: 	%__mt_munnching19 <- %arrayAddr + %newVar3
+      EMIT: 	%val <- load %__mt_munnching19
+MUNCH tree[7] = %val <- call @int_encode(%val)
+      EMIT: 	%val <- call int_encode(%val)
+=== Context Trees ===
+instructions: 9 trees: 9 liveness: 9
+
+[0] 	%newVar8 <- 0
+     tree: %newVar8 <- 0
+     in : { %arrayAddr %arrayLen %pos %val }
+     out: { %arrayAddr %arrayLen %newVar8 %pos %val }
+
+[1] 	%newVar9 <- 1
+     tree: %newVar9 <- 1
+     in : { %arrayAddr %arrayLen %newVar8 %pos %val }
+     out: { %arrayAddr %arrayLen %newVar8 %pos %val }
+
+[2] 	%newVar8 <- %newVar8 + %pos
+     tree: %newVar8 <- (%newVar8 op %pos)
+     in : { %arrayAddr %arrayLen %newVar8 %pos %val }
+     out: { %arrayAddr %arrayLen %newVar8 %pos %val }
+
+[3] 	%newVar7 <- %newVar8 * 8
+     tree: %newVar7 <- (%newVar8 op 8)
+     in : { %arrayAddr %arrayLen %newVar8 %pos %val }
+     out: { %arrayAddr %arrayLen %newVar7 %pos %val }
+
+[4] 	%newVar7 <- %newVar7 + 24
+     tree: %newVar7 <- (%newVar7 op 24)
+     in : { %arrayAddr %arrayLen %newVar7 %pos %val }
+     out: { %arrayAddr %arrayLen %newVar7 %pos %val }
+
+[5] 	%newVar10 <- %arrayAddr + %newVar7
+     tree: %newVar10 <- (%arrayAddr op %newVar7)
+     in : { %arrayAddr %arrayLen %newVar7 %pos %val }
+     out: { %arrayAddr %arrayLen %newVar10 %pos %val }
+
+[6] 	store %newVar10 <- %val
+     tree: store(%newVar10) <- %val
+     in : { %arrayAddr %arrayLen %newVar10 %pos %val }
+     out: { %arrayAddr %arrayLen %pos }
+
+[7] 	%pos <- %pos + 1
+     tree: %pos <- (%pos op 1)
+     in : { %arrayAddr %arrayLen %pos }
+     out: { %arrayAddr %arrayLen %pos }
+
+[8] 	br :loop_1
+     tree: nullptr
+     in : { %arrayAddr %arrayLen %pos }
+     out: { %arrayAddr %arrayLen %pos }
+
+=== Context Trees ===
+instructions: 8 trees: 8 liveness: 8
+
+[0] 	%newVar8 <- 0
+     tree: %newVar8 <- 0
+     in : { %arrayAddr %arrayLen %pos %val }
+     out: { %arrayAddr %arrayLen %newVar8 %pos %val }
+
+[1] 	%newVar9 <- 1
+     tree: %newVar9 <- 1
+     in : { %arrayAddr %arrayLen %newVar8 %pos %val }
+     out: { %arrayAddr %arrayLen %newVar8 %pos %val }
+
+[2] 	%newVar8 <- %newVar8 + %pos
+     tree: %newVar8 <- (%newVar8 op %pos)
+     in : { %arrayAddr %arrayLen %newVar8 %pos %val }
+     out: { %arrayAddr %arrayLen %newVar8 %pos %val }
+
+[3] 	%newVar7 <- %newVar8 * 8
+     tree: %newVar7 <- (%newVar8 op 8)
+     in : { %arrayAddr %arrayLen %newVar8 %pos %val }
+     out: { %arrayAddr %arrayLen %newVar7 %pos %val }
+
+[4] 	%newVar7 <- %newVar7 + 24
+     tree: %newVar7 <- (%newVar7 op 24)
+     in : { %arrayAddr %arrayLen %newVar7 %pos %val }
+     out: { %arrayAddr %arrayLen %newVar7 %pos %val }
+
+[5] 	store %newVar10 <- %val
+     tree: store((%arrayAddr op %newVar7)) <- %val
+     in : { %arrayAddr %arrayLen %newVar7 %pos %val }
+     out: { %arrayAddr %arrayLen %pos }
+
+[6] 	%pos <- %pos + 1
+     tree: %pos <- (%pos op 1)
+     in : { %arrayAddr %arrayLen %pos }
+     out: { %arrayAddr %arrayLen %pos }
+
+[7] 	br :loop_1
+     tree: nullptr
+     in : { %arrayAddr %arrayLen %pos }
+     out: { %arrayAddr %arrayLen %pos }
+
+MUNCH tree[0] = %newVar8 <- 0
+      EMIT: 	%newVar8 <- 0
+MUNCH tree[1] = %newVar9 <- 1
+      EMIT: 	%newVar9 <- 1
+MUNCH tree[2] = %newVar8 <- (%newVar8 op %pos)
+      EMIT: 	%newVar8 <- %newVar8 + %pos
+MUNCH tree[3] = %newVar7 <- (%newVar8 op 8)
+      EMIT: 	%newVar7 <- %newVar8
+      EMIT: 	%newVar7 <<= 3
+MUNCH tree[4] = %newVar7 <- (%newVar7 op 24)
+      EMIT: 	%newVar7 <- %newVar7 + 24
+FRESH: %__mt_munnching20
+MUNCH tree[5] = store((%arrayAddr op %newVar7)) <- %val
+      EMIT: 	%__mt_munnching20 <- %arrayAddr + %newVar7
+      EMIT: 	store %__mt_munnching20 <- %val
+MUNCH tree[6] = %pos <- (%pos op 1)
+      EMIT: 	%pos <- %pos + 1
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	:end_loop_1
+     tree: nullptr
+     in : { }
+     out: { }
+
+[1] 	return
+     tree: nullptr
+     in : { }
+     out: { }
+
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	:end_loop_1
+     tree: nullptr
+     in : { }
+     out: { }
+
+[1] 	return
+     tree: nullptr
+     in : { }
+     out: { }
+
+SUCC[0] 	:entry
+      -> { 1 }
+SUCC[1] 	%v <- %v << 1
+      -> { 2 }
+SUCC[2] 	%v <- %v + 1
+      -> { 3 }
+SUCC[3] 	return %v
+      -> { }
+=== FUNCTION-WIDE LIVENESS (pre-slice) ===
+[0] 	:entry
+      out: { %v }
+[1] 	%v <- %v << 1
+      out: { %v }
+[2] 	%v <- %v + 1
+      out: { %v }
+[3] 	return %v
+      out: { }
+=== Context Trees ===
+instructions: 4 trees: 4 liveness: 4
+
+[0] 	:entry
+     tree: nullptr
+     in : { %v }
+     out: { %v }
+
+[1] 	%v <- %v << 1
+     tree: %v <- (%v op 1)
+     in : { %v }
+     out: { %v }
+
+[2] 	%v <- %v + 1
+     tree: %v <- (%v op 1)
+     in : { %v }
+     out: { %v }
+
+[3] 	return %v
+     tree: return %v
+     in : { %v }
+     out: { }
+
+=== Context Trees ===
+instructions: 4 trees: 4 liveness: 4
+
+[0] 	:entry
+     tree: nullptr
+     in : { %v }
+     out: { %v }
+
+[1] 	%v <- %v << 1
+     tree: %v <- (%v op 1)
+     in : { %v }
+     out: { %v }
+
+[2] 	%v <- %v + 1
+     tree: %v <- (%v op 1)
+     in : { %v }
+     out: { %v }
+
+[3] 	return %v
+     tree: return %v
+     in : { %v }
+     out: { }
+
+MUNCH tree[1] = %v <- (%v op 1)
+      EMIT: 	%v <- %v << 1
+MUNCH tree[2] = %v <- (%v op 1)
+      EMIT: 	%v <- %v + 1
+MUNCH tree[3] = return %v
+      EMIT: 	return %v
+SUCC[0] 	:entry
+      -> { 1 }
+SUCC[1] 	%v <- %v >> 1
+      -> { 2 }
+SUCC[2] 	return %v
+      -> { }
+=== FUNCTION-WIDE LIVENESS (pre-slice) ===
+[0] 	:entry
+      out: { %v }
+[1] 	%v <- %v >> 1
+      out: { %v }
+[2] 	return %v
+      out: { }
+=== Context Trees ===
+instructions: 3 trees: 3 liveness: 3
+
+[0] 	:entry
+     tree: nullptr
+     in : { %v }
+     out: { %v }
+
+[1] 	%v <- %v >> 1
+     tree: %v <- (%v op 1)
+     in : { %v }
+     out: { %v }
+
+[2] 	return %v
+     tree: return %v
+     in : { %v }
+     out: { }
+
+=== Context Trees ===
+instructions: 3 trees: 3 liveness: 3
+
+[0] 	:entry
+     tree: nullptr
+     in : { %v }
+     out: { %v }
+
+[1] 	%v <- %v >> 1
+     tree: %v <- (%v op 1)
+     in : { %v }
+     out: { %v }
+
+[2] 	return %v
+     tree: return %v
+     in : { %v }
+     out: { }
+
+MUNCH tree[1] = %v <- (%v op 1)
+      EMIT: 	%v <- %v >> 1
+MUNCH tree[2] = return %v
+      EMIT: 	return %v

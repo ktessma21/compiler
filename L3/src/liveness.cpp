@@ -120,15 +120,28 @@ namespace L3 {
                     break;
                 } 
 
-                case InstructionType::BrT:{
+                case InstructionType::BrT: {
                     auto* c = dynamic_cast<BrTInstruction*>(f.instructions[i].get());
-                    successors[i] = { i+1, labelIndex.at(c->getTarget().value().name) };
+                    successors[i] = { labelIndex.at(c->getTarget().value().name) };
+                    if (i + 1 < f.instructions.size()) {
+                        successors[i].push_back(i + 1);   // fall-through when condition is false
+                    }
                     break;
                 }
 
             }
         }
 
+
+
+        if (std::getenv("L3_DEBUG")) {
+            for (size_t i = 0; i < f.instructions.size(); i++) {
+                std::cerr << "SUCC[" << i << "] " << f.instructions[i]->to_string();
+                std::cerr << "      -> { ";
+                for (size_t s : successors[i]) std::cerr << s << " ";
+                std::cerr << "}\n";
+            }
+        }
 
         std::vector<LivenessInfo> result(f.instructions.size()); // initialized 
 
@@ -151,6 +164,16 @@ namespace L3 {
                     result[i].out = std::move(liveOut);
                     keep_going = true;
                 }
+            }
+        }
+
+        if (std::getenv("L3_DEBUG")) {
+            std::cerr << "=== FUNCTION-WIDE LIVENESS (pre-slice) ===\n";
+            for (size_t i = 0; i < f.instructions.size(); i++) {
+                std::cerr << "[" << i << "] " << f.instructions[i]->to_string();
+                std::cerr << "      out: { ";
+                for (const auto& v : result[i].out) std::cerr << v.to_string() << " ";
+                std::cerr << "}\n";
             }
         }
     //    printLiveness(result, f, true); // print for debugging
