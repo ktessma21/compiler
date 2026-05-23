@@ -1,81 +1,931 @@
 === Context Trees ===
+instructions: 3 trees: 3 liveness: 3
+
+[0] 	:_self
+     tree: nullptr
+     in : { %x %y }
+     out: { %x %y }
+
+[1] 	%ans <- %x + %y
+     tree: %ans <- (%x op %y)
+     in : { %x %y }
+     out: { %ans }
+
+[2] 	return %ans
+     tree: return %ans
+     in : { %ans }
+     out: { }
+
+=== Context Trees ===
 instructions: 2 trees: 2 liveness: 2
 
-[0] 	:entry
+[0] 	:_self
      tree: nullptr
-     in : { }
+     in : { %x %y }
+     out: { %x %y }
+
+[1] 	return %ans
+     tree: return (%x op %y)
+     in : { %x %y }
      out: { }
 
-[1] 	%t <- call createMyClosure(3)
-     tree: %t <- call @createMyClosure(3)
-     in : { }
-     out: { %t }
+FRESH: %__mt_munnching0
+MUNCH tree[1] = return (%x op %y)
+      EMIT: 	%__mt_munnching0 <- %x + %y
+      EMIT: 	return %__mt_munnching0
+=== Context Trees ===
+instructions: 3 trees: 3 liveness: 3
+
+[0] 	:_self
+     tree: nullptr
+     in : { %x %y }
+     out: { %x %y }
+
+[1] 	%ans <- %x - %y
+     tree: %ans <- (%x op %y)
+     in : { %x %y }
+     out: { %ans }
+
+[2] 	return %ans
+     tree: return %ans
+     in : { %ans }
+     out: { }
 
 === Context Trees ===
 instructions: 2 trees: 2 liveness: 2
 
-[0] 	:entry
+[0] 	:_self
+     tree: nullptr
+     in : { %x %y }
+     out: { %x %y }
+
+[1] 	return %ans
+     tree: return (%x op %y)
+     in : { %x %y }
+     out: { }
+
+FRESH: %__mt_munnching1
+MUNCH tree[1] = return (%x op %y)
+      EMIT: 	%__mt_munnching1 <- %x - %y
+      EMIT: 	return %__mt_munnching1
+=== Context Trees ===
+instructions: 3 trees: 3 liveness: 3
+
+[0] 	:_self
+     tree: nullptr
+     in : { %x %y }
+     out: { %x %y }
+
+[1] 	%ans <- %x * %y
+     tree: %ans <- (%x op %y)
+     in : { %x %y }
+     out: { %ans }
+
+[2] 	return %ans
+     tree: return %ans
+     in : { %ans }
+     out: { }
+
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	:_self
+     tree: nullptr
+     in : { %x %y }
+     out: { %x %y }
+
+[1] 	return %ans
+     tree: return (%x op %y)
+     in : { %x %y }
+     out: { }
+
+FRESH: %__mt_munnching2
+MUNCH tree[1] = return (%x op %y)
+      EMIT: 	%__mt_munnching2 <- %x * %y
+      EMIT: 	return %__mt_munnching2
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	:_start
      tree: nullptr
      in : { }
      out: { }
 
-[1] 	%t <- call createMyClosure(3)
-     tree: %t <- call @createMyClosure(3)
+[1] 	%ops <- call allocate(7, 1)
+     tree: %ops <- call allocate(7, 1)
      in : { }
-     out: { %t }
+     out: { %ops }
 
 === Context Trees ===
-instructions: 1 trees: 1 liveness: 1
+instructions: 2 trees: 2 liveness: 2
 
-[0] 	%v <- call callMyClosure(%t, 4)
-     tree: %v <- call @callMyClosure(%t, 4)
-     in : { %t }
-     out: { %v }
-
-=== Context Trees ===
-instructions: 1 trees: 1 liveness: 1
-
-[0] 	%v <- call callMyClosure(%t, 4)
-     tree: %v <- call @callMyClosure(%t, 4)
-     in : { %t }
-     out: { %v }
-
-=== Context Trees ===
-instructions: 1 trees: 1 liveness: 1
-
-[0] 	%x <- call encodeValue(%v)
-     tree: %x <- call @encodeValue(%v)
-     in : { %v }
-     out: { %x }
-
-=== Context Trees ===
-instructions: 1 trees: 1 liveness: 1
-
-[0] 	%x <- call encodeValue(%v)
-     tree: %x <- call @encodeValue(%v)
-     in : { %v }
-     out: { %x }
-
-=== Context Trees ===
-instructions: 1 trees: 1 liveness: 1
-
-[0] 	call print(%x)
-     tree: call print(%x)
-     in : { %x }
+[0] 	:_start
+     tree: nullptr
+     in : { }
      out: { }
 
+[1] 	%ops <- call allocate(7, 1)
+     tree: %ops <- call allocate(7, 1)
+     in : { }
+     out: { %ops }
+
+MUNCH tree[1] = %ops <- call allocate(7, 1)
+      EMIT: 	%ops <- call allocate(7, 1)
+=== Context Trees ===
+instructions: 19 trees: 19 liveness: 19
+
+[0] 	%plus <- @plus
+     tree: nullptr
+     in : { %ops }
+     out: { %ops %plus }
+
+[1] 	%minus <- @minus
+     tree: nullptr
+     in : { %ops %plus }
+     out: { %minus %ops %plus }
+
+[2] 	%times <- @times
+     tree: nullptr
+     in : { %minus %ops %plus }
+     out: { %minus %ops %plus %times }
+
+[3] 	%newVar1 <- 0 * 8
+     tree: %newVar1 <- (0 op 8)
+     in : { %minus %ops %plus %times }
+     out: { %minus %newVar1 %ops %plus %times }
+
+[4] 	%newVar0 <- %newVar1 + 8
+     tree: %newVar0 <- (%newVar1 op 8)
+     in : { %minus %newVar1 %ops %plus %times }
+     out: { %minus %newVar0 %ops %plus %times }
+
+[5] 	%newVar2 <- %ops + %newVar0
+     tree: %newVar2 <- (%ops op %newVar0)
+     in : { %minus %newVar0 %ops %plus %times }
+     out: { %minus %newVar2 %ops %plus %times }
+
+[6] 	store %newVar2 <- %plus
+     tree: store(%newVar2) <- %plus
+     in : { %minus %newVar2 %ops %plus %times }
+     out: { %minus %ops %times }
+
+[7] 	%newVar4 <- 1 * 8
+     tree: %newVar4 <- (1 op 8)
+     in : { %minus %ops %times }
+     out: { %minus %newVar4 %ops %times }
+
+[8] 	%newVar3 <- %newVar4 + 8
+     tree: %newVar3 <- (%newVar4 op 8)
+     in : { %minus %newVar4 %ops %times }
+     out: { %minus %newVar3 %ops %times }
+
+[9] 	%newVar5 <- %ops + %newVar3
+     tree: %newVar5 <- (%ops op %newVar3)
+     in : { %minus %newVar3 %ops %times }
+     out: { %minus %newVar5 %ops %times }
+
+[10] 	store %newVar5 <- %minus
+     tree: store(%newVar5) <- %minus
+     in : { %minus %newVar5 %ops %times }
+     out: { %ops %times }
+
+[11] 	%newVar7 <- 2 * 8
+     tree: %newVar7 <- (2 op 8)
+     in : { %ops %times }
+     out: { %newVar7 %ops %times }
+
+[12] 	%newVar6 <- %newVar7 + 8
+     tree: %newVar6 <- (%newVar7 op 8)
+     in : { %newVar7 %ops %times }
+     out: { %newVar6 %ops %times }
+
+[13] 	%newVar8 <- %ops + %newVar6
+     tree: %newVar8 <- (%ops op %newVar6)
+     in : { %newVar6 %ops %times }
+     out: { %newVar8 %ops %times }
+
+[14] 	store %newVar8 <- %times
+     tree: store(%newVar8) <- %times
+     in : { %newVar8 %ops %times }
+     out: { %ops }
+
+[15] 	%X <- 7
+     tree: %X <- 7
+     in : { %ops }
+     out: { %X %ops }
+
+[16] 	%Y <- 2
+     tree: %Y <- 2
+     in : { %X %ops }
+     out: { %X %Y %ops }
+
+[17] 	%i <- 0
+     tree: %i <- 0
+     in : { %X %Y %ops }
+     out: { %X %Y %i %ops }
+
+[18] 	br :L1
+     tree: nullptr
+     in : { %X %Y %i %ops }
+     out: { %X %Y %i %ops }
+
+=== Context Trees ===
+instructions: 10 trees: 10 liveness: 10
+
+[0] 	%plus <- @plus
+     tree: nullptr
+     in : { %ops }
+     out: { %ops %plus }
+
+[1] 	%minus <- @minus
+     tree: nullptr
+     in : { %ops %plus }
+     out: { %minus %ops %plus }
+
+[2] 	%times <- @times
+     tree: nullptr
+     in : { %minus %ops %plus }
+     out: { %minus %ops %plus %times }
+
+[3] 	store %newVar2 <- %plus
+     tree: store((%ops op ((0 op 8) op 8))) <- %plus
+     in : { %minus %ops %plus %times }
+     out: { %minus %ops %times }
+
+[4] 	store %newVar5 <- %minus
+     tree: store((%ops op ((1 op 8) op 8))) <- %minus
+     in : { %minus %ops %times }
+     out: { %ops %times }
+
+[5] 	store %newVar8 <- %times
+     tree: store((%ops op ((2 op 8) op 8))) <- %times
+     in : { %ops %times }
+     out: { %ops }
+
+[6] 	%X <- 7
+     tree: %X <- 7
+     in : { %ops }
+     out: { %X %ops }
+
+[7] 	%Y <- 2
+     tree: %Y <- 2
+     in : { %X %ops }
+     out: { %X %Y %ops }
+
+[8] 	%i <- 0
+     tree: %i <- 0
+     in : { %X %Y %ops }
+     out: { %X %Y %i %ops }
+
+[9] 	br :L1
+     tree: nullptr
+     in : { %X %Y %i %ops }
+     out: { %X %Y %i %ops }
+
+FRESH: %__mt_munnching3
+FRESH: %__mt_munnching4
+FRESH: %__mt_munnching5
+FRESH: %__mt_munnching6
+MUNCH tree[3] = store((%ops op ((0 op 8) op 8))) <- %plus
+      EMIT: 	%__mt_munnching5 <- 0
+      EMIT: 	%__mt_munnching4 <- %__mt_munnching5
+      EMIT: 	%__mt_munnching4 <<= 3
+      EMIT: 	%__mt_munnching3 <- %__mt_munnching4 + 8
+      EMIT: 	%__mt_munnching6 <- %ops + %__mt_munnching3
+      EMIT: 	store %__mt_munnching6 <- %plus
+FRESH: %__mt_munnching7
+FRESH: %__mt_munnching8
+FRESH: %__mt_munnching9
+FRESH: %__mt_munnching10
+MUNCH tree[4] = store((%ops op ((1 op 8) op 8))) <- %minus
+      EMIT: 	%__mt_munnching9 <- 1
+      EMIT: 	%__mt_munnching8 <- %__mt_munnching9
+      EMIT: 	%__mt_munnching8 <<= 3
+      EMIT: 	%__mt_munnching7 <- %__mt_munnching8 + 8
+      EMIT: 	%__mt_munnching10 <- %ops + %__mt_munnching7
+      EMIT: 	store %__mt_munnching10 <- %minus
+FRESH: %__mt_munnching11
+FRESH: %__mt_munnching12
+FRESH: %__mt_munnching13
+FRESH: %__mt_munnching14
+MUNCH tree[5] = store((%ops op ((2 op 8) op 8))) <- %times
+      EMIT: 	%__mt_munnching13 <- 2
+      EMIT: 	%__mt_munnching12 <- %__mt_munnching13
+      EMIT: 	%__mt_munnching12 <<= 3
+      EMIT: 	%__mt_munnching11 <- %__mt_munnching12 + 8
+      EMIT: 	%__mt_munnching14 <- %ops + %__mt_munnching11
+      EMIT: 	store %__mt_munnching14 <- %times
+MUNCH tree[6] = %X <- 7
+      EMIT: 	%X <- 7
+MUNCH tree[7] = %Y <- 2
+      EMIT: 	%Y <- 2
+MUNCH tree[8] = %i <- 0
+      EMIT: 	%i <- 0
+=== Context Trees ===
+instructions: 6 trees: 6 liveness: 6
+
+[0] 	:L1
+     tree: nullptr
+     in : { %X %Y %i %ops }
+     out: { %X %Y %i %ops }
+
+[1] 	%newVar10 <- %i * 8
+     tree: %newVar10 <- (%i op 8)
+     in : { %X %Y %i %ops }
+     out: { %X %Y %i %newVar10 %ops }
+
+[2] 	%newVar9 <- %newVar10 + 8
+     tree: %newVar9 <- (%newVar10 op 8)
+     in : { %X %Y %i %newVar10 %ops }
+     out: { %X %Y %i %newVar9 %ops }
+
+[3] 	%newVar11 <- %ops + %newVar9
+     tree: %newVar11 <- (%ops op %newVar9)
+     in : { %X %Y %i %newVar9 %ops }
+     out: { %X %Y %i %newVar11 %ops }
+
+[4] 	%f <- load %newVar11
+     tree: %f <- load(%newVar11)
+     in : { %X %Y %i %newVar11 %ops }
+     out: { %X %Y %f %i %ops }
+
+[5] 	%ans <- call %f(%ops, %X, %Y)
+     tree: %ans <- call %f(%ops, %X, %Y)
+     in : { %X %Y %f %i %ops }
+     out: { %X %Y %ans %i %ops }
+
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	:L1
+     tree: nullptr
+     in : { %X %Y %f %i %ops }
+     out: { %X %Y %f %i %ops }
+
+[1] 	%ans <- call %f(%ops, %X, %Y)
+     tree: nullptr
+     in : { %X %Y %f %i %ops }
+     out: { %X %Y %ans %i %ops }
+
+=== Context Trees ===
+instructions: 3 trees: 3 liveness: 3
+
+[0] 	%num <- %ans * 2
+     tree: %num <- (%ans op 2)
+     in : { %X %Y %ans %i %ops }
+     out: { %X %Y %i %num %ops }
+
+[1] 	%num <- %num + 1
+     tree: %num <- (%num op 1)
+     in : { %X %Y %i %num %ops }
+     out: { %X %Y %i %num %ops }
+
+[2] 	call print(%num)
+     tree: call print(%num)
+     in : { %X %Y %i %num %ops }
+     out: { %X %Y %i %ops }
+
 === Context Trees ===
 instructions: 1 trees: 1 liveness: 1
 
-[0] 	call print(%x)
-     tree: call print(%x)
-     in : { %x }
-     out: { }
+[0] 	call print(%num)
+     tree: call print(((%ans op 2) op 1))
+     in : { %X %Y %ans %i %ops }
+     out: { %X %Y %i %ops }
+
+FRESH: %__mt_munnching15
+FRESH: %__mt_munnching16
+MUNCH tree[0] = call print(((%ans op 2) op 1))
+      EMIT: 	%__mt_munnching16 <- %ans
+      EMIT: 	%__mt_munnching16 <<= 1
+      EMIT: 	%__mt_munnching15 <- %__mt_munnching16 + 1
+      EMIT: 	call print(%__mt_munnching15)
+=== Context Trees ===
+instructions: 3 trees: 3 liveness: 3
+
+[0] 	%i <- %i + 1
+     tree: %i <- (%i op 1)
+     in : { %X %Y %i %ops }
+     out: { %X %Y %i %ops }
+
+[1] 	%fin <- %i < 3
+     tree: %fin <- (%i cmp 3)
+     in : { %X %Y %i %ops }
+     out: { %X %Y %fin %i %ops }
+
+[2] 	br %fin :L1
+     tree: br %fin :L1
+     in : { %X %Y %fin %i %ops }
+     out: { %X %Y %i %ops }
+
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	%i <- %i + 1
+     tree: %i <- (%i op 1)
+     in : { %X %Y %i %ops }
+     out: { %X %Y %i %ops }
+
+[1] 	br %fin :L1
+     tree: br (%i cmp 3) :L1
+     in : { %X %Y %i %ops }
+     out: { %X %Y %i %ops }
+
+MUNCH tree[0] = %i <- (%i op 1)
+      EMIT: 	%i <- %i + 1
+FRESH: %__mt_munnching17
+MUNCH tree[1] = br (%i cmp 3) :L1
+      EMIT: 	%__mt_munnching17 <- %i < 3
+      EMIT: 	br %__mt_munnching17 :L1
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	br :L2b
+     tree: nullptr
+     in : { %ops }
+     out: { %ops }
 
 === Context Trees ===
 instructions: 1 trees: 1 liveness: 1
 
-[0] 	return
+[0] 	br :L2b
+     tree: nullptr
+     in : { %ops }
+     out: { %ops }
+
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	:L2b
+     tree: nullptr
+     in : { %ops }
+     out: { %ops }
+
+[1] 	%cGs <- call allocate(7, 1)
+     tree: %cGs <- call allocate(7, 1)
+     in : { %ops }
+     out: { %cGs %ops }
+
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	:L2b
+     tree: nullptr
+     in : { %ops }
+     out: { %ops }
+
+[1] 	%cGs <- call allocate(7, 1)
+     tree: %cGs <- call allocate(7, 1)
+     in : { %ops }
+     out: { %cGs %ops }
+
+MUNCH tree[1] = %cGs <- call allocate(7, 1)
+      EMIT: 	%cGs <- call allocate(7, 1)
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	%i <- 0
+     tree: %i <- 0
+     in : { %cGs %ops }
+     out: { %cGs %i %ops }
+
+[1] 	br :L2
+     tree: nullptr
+     in : { %cGs %i %ops }
+     out: { %cGs %i %ops }
+
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	%i <- 0
+     tree: %i <- 0
+     in : { %cGs %ops }
+     out: { %cGs %i %ops }
+
+[1] 	br :L2
+     tree: nullptr
+     in : { %cGs %i %ops }
+     out: { %cGs %i %ops }
+
+MUNCH tree[0] = %i <- 0
+      EMIT: 	%i <- 0
+=== Context Trees ===
+instructions: 6 trees: 6 liveness: 6
+
+[0] 	:L2
+     tree: nullptr
+     in : { %cGs %i %ops }
+     out: { %cGs %i %ops }
+
+[1] 	%newVar13 <- %i * 8
+     tree: %newVar13 <- (%i op 8)
+     in : { %cGs %i %ops }
+     out: { %cGs %i %newVar13 %ops }
+
+[2] 	%newVar12 <- %newVar13 + 8
+     tree: %newVar12 <- (%newVar13 op 8)
+     in : { %cGs %i %newVar13 %ops }
+     out: { %cGs %i %newVar12 %ops }
+
+[3] 	%newVar14 <- %ops + %newVar12
+     tree: %newVar14 <- (%ops op %newVar12)
+     in : { %cGs %i %newVar12 %ops }
+     out: { %cGs %i %newVar14 %ops }
+
+[4] 	%f <- load %newVar14
+     tree: %f <- load(%newVar14)
+     in : { %cGs %i %newVar14 %ops }
+     out: { %cGs %f %i %ops }
+
+[5] 	%cF <- call allocate(3, 1)
+     tree: %cF <- call allocate(3, 1)
+     in : { %cGs %f %i %ops }
+     out: { %cF %cGs %f %i %ops }
+
+=== Context Trees ===
+instructions: 3 trees: 3 liveness: 3
+
+[0] 	:L2
+     tree: nullptr
+     in : { %cGs %i %ops }
+     out: { %cGs %i %ops }
+
+[1] 	%f <- load %newVar14
+     tree: %f <- load((%ops op ((%i op 8) op 8)))
+     in : { %cGs %i %ops }
+     out: { %cGs %f %i %ops }
+
+[2] 	%cF <- call allocate(3, 1)
+     tree: %cF <- call allocate(3, 1)
+     in : { %cGs %f %i %ops }
+     out: { %cF %cGs %f %i %ops }
+
+FRESH: %__mt_munnching18
+FRESH: %__mt_munnching19
+FRESH: %__mt_munnching20
+MUNCH tree[1] = %f <- load((%ops op ((%i op 8) op 8)))
+      EMIT: 	%__mt_munnching19 <- %i
+      EMIT: 	%__mt_munnching19 <<= 3
+      EMIT: 	%__mt_munnching18 <- %__mt_munnching19 + 8
+      EMIT: 	%__mt_munnching20 <- %ops + %__mt_munnching18
+      EMIT: 	%f <- load %__mt_munnching20
+MUNCH tree[2] = %cF <- call allocate(3, 1)
+      EMIT: 	%cF <- call allocate(3, 1)
+=== Context Trees ===
+instructions: 5 trees: 5 liveness: 5
+
+[0] 	%newVar16 <- 0 * 8
+     tree: %newVar16 <- (0 op 8)
+     in : { %cF %cGs %f %i %ops }
+     out: { %cF %cGs %f %i %newVar16 %ops }
+
+[1] 	%newVar15 <- %newVar16 + 8
+     tree: %newVar15 <- (%newVar16 op 8)
+     in : { %cF %cGs %f %i %newVar16 %ops }
+     out: { %cF %cGs %f %i %newVar15 %ops }
+
+[2] 	%newVar17 <- %cF + %newVar15
+     tree: %newVar17 <- (%cF op %newVar15)
+     in : { %cF %cGs %f %i %newVar15 %ops }
+     out: { %cF %cGs %f %i %newVar17 %ops }
+
+[3] 	store %newVar17 <- %f
+     tree: store(%newVar17) <- %f
+     in : { %cF %cGs %f %i %newVar17 %ops }
+     out: { %cF %cGs %i %ops }
+
+[4] 	%cG <- call curry(%cF)
+     tree: %cG <- call @curry(%cF)
+     in : { %cF %cGs %i %ops }
+     out: { %cG %cGs %i %ops }
+
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	store %newVar17 <- %f
+     tree: store((%cF op ((0 op 8) op 8))) <- %f
+     in : { %cF %cGs %f %i %ops }
+     out: { %cF %cGs %i %ops }
+
+[1] 	%cG <- call curry(%cF)
+     tree: %cG <- call @curry(%cF)
+     in : { %cF %cGs %i %ops }
+     out: { %cG %cGs %i %ops }
+
+FRESH: %__mt_munnching21
+FRESH: %__mt_munnching22
+FRESH: %__mt_munnching23
+FRESH: %__mt_munnching24
+MUNCH tree[0] = store((%cF op ((0 op 8) op 8))) <- %f
+      EMIT: 	%__mt_munnching23 <- 0
+      EMIT: 	%__mt_munnching22 <- %__mt_munnching23
+      EMIT: 	%__mt_munnching22 <<= 3
+      EMIT: 	%__mt_munnching21 <- %__mt_munnching22 + 8
+      EMIT: 	%__mt_munnching24 <- %cF + %__mt_munnching21
+      EMIT: 	store %__mt_munnching24 <- %f
+MUNCH tree[1] = %cG <- call @curry(%cF)
+      EMIT: 	%cG <- call curry(%cF)
+=== Context Trees ===
+instructions: 7 trees: 7 liveness: 7
+
+[0] 	%newVar19 <- %i * 8
+     tree: %newVar19 <- (%i op 8)
+     in : { %cG %cGs %i %ops }
+     out: { %cG %cGs %i %newVar19 %ops }
+
+[1] 	%newVar18 <- %newVar19 + 8
+     tree: %newVar18 <- (%newVar19 op 8)
+     in : { %cG %cGs %i %newVar19 %ops }
+     out: { %cG %cGs %i %newVar18 %ops }
+
+[2] 	%newVar20 <- %cGs + %newVar18
+     tree: %newVar20 <- (%cGs op %newVar18)
+     in : { %cG %cGs %i %newVar18 %ops }
+     out: { %cG %cGs %i %newVar20 %ops }
+
+[3] 	store %newVar20 <- %cG
+     tree: store(%newVar20) <- %cG
+     in : { %cG %cGs %i %newVar20 %ops }
+     out: { %cGs %i %ops }
+
+[4] 	%i <- %i + 1
+     tree: %i <- (%i op 1)
+     in : { %cGs %i %ops }
+     out: { %cGs %i %ops }
+
+[5] 	%fin <- %i < 3
+     tree: %fin <- (%i cmp 3)
+     in : { %cGs %i %ops }
+     out: { %cGs %fin %i %ops }
+
+[6] 	br %fin :L2
+     tree: br %fin :L2
+     in : { %cGs %fin %i %ops }
+     out: { %cGs %i %ops }
+
+=== Context Trees ===
+instructions: 3 trees: 3 liveness: 3
+
+[0] 	store %newVar20 <- %cG
+     tree: store((%cGs op ((%i op 8) op 8))) <- %cG
+     in : { %cG %cGs %i %ops }
+     out: { %cGs %i %ops }
+
+[1] 	%i <- %i + 1
+     tree: %i <- (%i op 1)
+     in : { %cGs %i %ops }
+     out: { %cGs %i %ops }
+
+[2] 	br %fin :L2
+     tree: br (%i cmp 3) :L2
+     in : { %cGs %i %ops }
+     out: { %cGs %i %ops }
+
+FRESH: %__mt_munnching25
+FRESH: %__mt_munnching26
+FRESH: %__mt_munnching27
+MUNCH tree[0] = store((%cGs op ((%i op 8) op 8))) <- %cG
+      EMIT: 	%__mt_munnching26 <- %i
+      EMIT: 	%__mt_munnching26 <<= 3
+      EMIT: 	%__mt_munnching25 <- %__mt_munnching26 + 8
+      EMIT: 	%__mt_munnching27 <- %cGs + %__mt_munnching25
+      EMIT: 	store %__mt_munnching27 <- %cG
+MUNCH tree[1] = %i <- (%i op 1)
+      EMIT: 	%i <- %i + 1
+FRESH: %__mt_munnching28
+MUNCH tree[2] = br (%i cmp 3) :L2
+      EMIT: 	%__mt_munnching28 <- %i < 3
+      EMIT: 	br %__mt_munnching28 :L2
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	br :L3b
+     tree: nullptr
+     in : { %X %Y %cGs }
+     out: { %X %Y %cGs }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	br :L3b
+     tree: nullptr
+     in : { %X %Y %cGs }
+     out: { %X %Y %cGs }
+
+=== Context Trees ===
+instructions: 3 trees: 3 liveness: 3
+
+[0] 	:L3b
+     tree: nullptr
+     in : { %X %Y %cGs }
+     out: { %X %Y %cGs }
+
+[1] 	%i <- 0
+     tree: %i <- 0
+     in : { %X %Y %cGs }
+     out: { %X %Y %cGs %i }
+
+[2] 	br :L3
+     tree: nullptr
+     in : { %X %Y %cGs %i }
+     out: { %X %Y %cGs %i }
+
+=== Context Trees ===
+instructions: 3 trees: 3 liveness: 3
+
+[0] 	:L3b
+     tree: nullptr
+     in : { %X %Y %cGs }
+     out: { %X %Y %cGs }
+
+[1] 	%i <- 0
+     tree: %i <- 0
+     in : { %X %Y %cGs }
+     out: { %X %Y %cGs %i }
+
+[2] 	br :L3
+     tree: nullptr
+     in : { %X %Y %cGs %i }
+     out: { %X %Y %cGs %i }
+
+MUNCH tree[1] = %i <- 0
+      EMIT: 	%i <- 0
+=== Context Trees ===
+instructions: 10 trees: 10 liveness: 10
+
+[0] 	:L3
+     tree: nullptr
+     in : { %X %Y %cGs %i }
+     out: { %X %Y %cGs %i }
+
+[1] 	%newVar22 <- %i * 8
+     tree: %newVar22 <- (%i op 8)
+     in : { %X %Y %cGs %i }
+     out: { %X %Y %cGs %i %newVar22 }
+
+[2] 	%newVar21 <- %newVar22 + 8
+     tree: %newVar21 <- (%newVar22 op 8)
+     in : { %X %Y %cGs %i %newVar22 }
+     out: { %X %Y %cGs %i %newVar21 }
+
+[3] 	%newVar23 <- %cGs + %newVar21
+     tree: %newVar23 <- (%cGs op %newVar21)
+     in : { %X %Y %cGs %i %newVar21 }
+     out: { %X %Y %cGs %i %newVar23 }
+
+[4] 	%cG <- load %newVar23
+     tree: %cG <- load(%newVar23)
+     in : { %X %Y %cGs %i %newVar23 }
+     out: { %X %Y %cG %cGs %i }
+
+[5] 	%newVar25 <- 0 * 8
+     tree: %newVar25 <- (0 op 8)
+     in : { %X %Y %cG %cGs %i }
+     out: { %X %Y %cG %cGs %i %newVar25 }
+
+[6] 	%newVar24 <- %newVar25 + 8
+     tree: %newVar24 <- (%newVar25 op 8)
+     in : { %X %Y %cG %cGs %i %newVar25 }
+     out: { %X %Y %cG %cGs %i %newVar24 }
+
+[7] 	%newVar26 <- %cG + %newVar24
+     tree: %newVar26 <- (%cG op %newVar24)
+     in : { %X %Y %cG %cGs %i %newVar24 }
+     out: { %X %Y %cG %cGs %i %newVar26 }
+
+[8] 	%g <- load %newVar26
+     tree: %g <- load(%newVar26)
+     in : { %X %Y %cG %cGs %i %newVar26 }
+     out: { %X %Y %cG %cGs %g %i }
+
+[9] 	%cH <- call %g(%cG, %X)
+     tree: %cH <- call %g(%cG, %X)
+     in : { %X %Y %cG %cGs %g %i }
+     out: { %X %Y %cGs %cH %i }
+
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	:L3
+     tree: nullptr
+     in : { %X %Y %cG %cGs %g %i }
+     out: { %X %Y %cG %cGs %g %i }
+
+[1] 	%cH <- call %g(%cG, %X)
+     tree: nullptr
+     in : { %X %Y %cG %cGs %g %i }
+     out: { %X %Y %cGs %cH %i }
+
+=== Context Trees ===
+instructions: 5 trees: 5 liveness: 5
+
+[0] 	%newVar28 <- 0 * 8
+     tree: %newVar28 <- (0 op 8)
+     in : { %X %Y %cGs %cH %i }
+     out: { %X %Y %cGs %cH %i %newVar28 }
+
+[1] 	%newVar27 <- %newVar28 + 8
+     tree: %newVar27 <- (%newVar28 op 8)
+     in : { %X %Y %cGs %cH %i %newVar28 }
+     out: { %X %Y %cGs %cH %i %newVar27 }
+
+[2] 	%newVar29 <- %cH + %newVar27
+     tree: %newVar29 <- (%cH op %newVar27)
+     in : { %X %Y %cGs %cH %i %newVar27 }
+     out: { %X %Y %cGs %cH %i %newVar29 }
+
+[3] 	%h <- load %newVar29
+     tree: %h <- load(%newVar29)
+     in : { %X %Y %cGs %cH %i %newVar29 }
+     out: { %X %Y %cGs %cH %h %i }
+
+[4] 	%ans <- call %h(%cH, %Y)
+     tree: %ans <- call %h(%cH, %Y)
+     in : { %X %Y %cGs %cH %h %i }
+     out: { %X %Y %ans %cGs %i }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	%ans <- call %h(%cH, %Y)
+     tree: nullptr
+     in : { %X %Y %cGs %cH %h %i }
+     out: { %X %Y %ans %cGs %i }
+
+=== Context Trees ===
+instructions: 3 trees: 3 liveness: 3
+
+[0] 	%num <- %ans * 2
+     tree: %num <- (%ans op 2)
+     in : { %X %Y %ans %cGs %i }
+     out: { %X %Y %cGs %i %num }
+
+[1] 	%num <- %num + 1
+     tree: %num <- (%num op 1)
+     in : { %X %Y %cGs %i %num }
+     out: { %X %Y %cGs %i %num }
+
+[2] 	call print(%num)
+     tree: call print(%num)
+     in : { %X %Y %cGs %i %num }
+     out: { %X %Y %cGs %i }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	call print(%num)
+     tree: call print(((%ans op 2) op 1))
+     in : { %X %Y %ans %cGs %i }
+     out: { %X %Y %cGs %i }
+
+FRESH: %__mt_munnching29
+FRESH: %__mt_munnching30
+MUNCH tree[0] = call print(((%ans op 2) op 1))
+      EMIT: 	%__mt_munnching30 <- %ans
+      EMIT: 	%__mt_munnching30 <<= 1
+      EMIT: 	%__mt_munnching29 <- %__mt_munnching30 + 1
+      EMIT: 	call print(%__mt_munnching29)
+=== Context Trees ===
+instructions: 3 trees: 3 liveness: 3
+
+[0] 	%i <- %i + 1
+     tree: %i <- (%i op 1)
+     in : { %X %Y %cGs %i }
+     out: { %X %Y %cGs %i }
+
+[1] 	%fin <- %i < 3
+     tree: %fin <- (%i cmp 3)
+     in : { %X %Y %cGs %i }
+     out: { %X %Y %cGs %fin %i }
+
+[2] 	br %fin :L3
+     tree: br %fin :L3
+     in : { %X %Y %cGs %fin %i }
+     out: { %X %Y %cGs %i }
+
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	%i <- %i + 1
+     tree: %i <- (%i op 1)
+     in : { %X %Y %cGs %i }
+     out: { %X %Y %cGs %i }
+
+[1] 	br %fin :L3
+     tree: br (%i cmp 3) :L3
+     in : { %X %Y %cGs %i }
+     out: { %X %Y %cGs %i }
+
+MUNCH tree[0] = %i <- (%i op 1)
+      EMIT: 	%i <- %i + 1
+FRESH: %__mt_munnching31
+MUNCH tree[1] = br (%i cmp 3) :L3
+      EMIT: 	%__mt_munnching31 <- %i < 3
+      EMIT: 	br %__mt_munnching31 :L3
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	br :exit
      tree: nullptr
      in : { }
      out: { }
@@ -83,47 +933,446 @@ instructions: 1 trees: 1 liveness: 1
 === Context Trees ===
 instructions: 1 trees: 1 liveness: 1
 
-[0] 	return
+[0] 	br :exit
      tree: nullptr
      in : { }
+     out: { }
+
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	:exit
+     tree: nullptr
+     in : { }
+     out: { }
+
+[1] 	return
+     tree: nullptr
+     in : { }
+     out: { }
+
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	:exit
+     tree: nullptr
+     in : { }
+     out: { }
+
+[1] 	return
+     tree: nullptr
+     in : { }
+     out: { }
+
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	:start
+     tree: nullptr
+     in : { %F }
+     out: { %F }
+
+[1] 	%cF <- call allocate(5, 1)
+     tree: %cF <- call allocate(5, 1)
+     in : { %F }
+     out: { %F %cF }
+
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	:start
+     tree: nullptr
+     in : { %F }
+     out: { %F }
+
+[1] 	%cF <- call allocate(5, 1)
+     tree: %cF <- call allocate(5, 1)
+     in : { %F }
+     out: { %F %cF }
+
+MUNCH tree[1] = %cF <- call allocate(5, 1)
+      EMIT: 	%cF <- call allocate(5, 1)
+=== Context Trees ===
+instructions: 9 trees: 9 liveness: 9
+
+[0] 	%newVar1 <- 0 * 8
+     tree: %newVar1 <- (0 op 8)
+     in : { %F %cF }
+     out: { %F %cF %newVar1 }
+
+[1] 	%newVar0 <- %newVar1 + 8
+     tree: %newVar0 <- (%newVar1 op 8)
+     in : { %F %cF %newVar1 }
+     out: { %F %cF %newVar0 }
+
+[2] 	%newVar2 <- %cF + %newVar0
+     tree: %newVar2 <- (%cF op %newVar0)
+     in : { %F %cF %newVar0 }
+     out: { %F %cF %newVar2 }
+
+[3] 	store %newVar2 <- @curry_arg1
+     tree: store(%newVar2) <- @curry_arg1
+     in : { %F %cF %newVar2 }
+     out: { %F %cF }
+
+[4] 	%newVar4 <- 1 * 8
+     tree: %newVar4 <- (1 op 8)
+     in : { %F %cF }
+     out: { %F %cF %newVar4 }
+
+[5] 	%newVar3 <- %newVar4 + 8
+     tree: %newVar3 <- (%newVar4 op 8)
+     in : { %F %cF %newVar4 }
+     out: { %F %cF %newVar3 }
+
+[6] 	%newVar5 <- %cF + %newVar3
+     tree: %newVar5 <- (%cF op %newVar3)
+     in : { %F %cF %newVar3 }
+     out: { %F %cF %newVar5 }
+
+[7] 	store %newVar5 <- %F
+     tree: store(%newVar5) <- %F
+     in : { %F %cF %newVar5 }
+     out: { %cF }
+
+[8] 	return %cF
+     tree: return %cF
+     in : { %cF }
      out: { }
 
 === Context Trees ===
 instructions: 3 trees: 3 liveness: 3
 
-[0] 	:entry
+[0] 	store %newVar2 <- @curry_arg1
+     tree: store((%cF op ((0 op 8) op 8))) <- @curry_arg1
+     in : { %F %cF }
+     out: { %F %cF }
+
+[1] 	store %newVar5 <- %F
+     tree: store((%cF op ((1 op 8) op 8))) <- %F
+     in : { %F %cF }
+     out: { %cF }
+
+[2] 	return %cF
+     tree: return %cF
+     in : { %cF }
+     out: { }
+
+FRESH: %__mt_munnching32
+FRESH: %__mt_munnching33
+FRESH: %__mt_munnching34
+FRESH: %__mt_munnching35
+MUNCH tree[0] = store((%cF op ((0 op 8) op 8))) <- @curry_arg1
+      EMIT: 	%__mt_munnching34 <- 0
+      EMIT: 	%__mt_munnching33 <- %__mt_munnching34
+      EMIT: 	%__mt_munnching33 <<= 3
+      EMIT: 	%__mt_munnching32 <- %__mt_munnching33 + 8
+      EMIT: 	%__mt_munnching35 <- %cF + %__mt_munnching32
+      EMIT: 	store %__mt_munnching35 <- @curry_arg1
+FRESH: %__mt_munnching36
+FRESH: %__mt_munnching37
+FRESH: %__mt_munnching38
+FRESH: %__mt_munnching39
+MUNCH tree[1] = store((%cF op ((1 op 8) op 8))) <- %F
+      EMIT: 	%__mt_munnching38 <- 1
+      EMIT: 	%__mt_munnching37 <- %__mt_munnching38
+      EMIT: 	%__mt_munnching37 <<= 3
+      EMIT: 	%__mt_munnching36 <- %__mt_munnching37 + 8
+      EMIT: 	%__mt_munnching39 <- %cF + %__mt_munnching36
+      EMIT: 	store %__mt_munnching39 <- %F
+MUNCH tree[2] = return %cF
+      EMIT: 	return %cF
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	:start
      tree: nullptr
-     in : { %p1 }
-     out: { %p1 }
+     in : { %self %x }
+     out: { %self %x }
 
-[1] 	%x2 <- 21
-     tree: %x2 <- 21
-     in : { %p1 }
-     out: { %p1 %x2 }
-
-[2] 	%p <- call allocate(9, 1)
-     tree: %p <- call allocate(9, 1)
-     in : { %p1 %x2 }
-     out: { %p %p1 %x2 }
+[1] 	%cF1 <- call allocate(7, 1)
+     tree: %cF1 <- call allocate(7, 1)
+     in : { %self %x }
+     out: { %cF1 %self %x }
 
 === Context Trees ===
-instructions: 3 trees: 3 liveness: 3
+instructions: 2 trees: 2 liveness: 2
 
-[0] 	:entry
+[0] 	:start
      tree: nullptr
-     in : { %p1 }
-     out: { %p1 }
+     in : { %self %x }
+     out: { %self %x }
 
-[1] 	%x2 <- 21
-     tree: %x2 <- 21
-     in : { %p1 }
-     out: { %p1 %x2 }
+[1] 	%cF1 <- call allocate(7, 1)
+     tree: %cF1 <- call allocate(7, 1)
+     in : { %self %x }
+     out: { %cF1 %self %x }
 
-[2] 	%p <- call allocate(9, 1)
-     tree: %p <- call allocate(9, 1)
-     in : { %p1 %x2 }
-     out: { %p %p1 %x2 }
+MUNCH tree[1] = %cF1 <- call allocate(7, 1)
+      EMIT: 	%cF1 <- call allocate(7, 1)
+=== Context Trees ===
+instructions: 17 trees: 17 liveness: 17
 
-[FAIL] context died with: operand alternative not valid in expression tree
-terminate called after throwing an instance of 'std::runtime_error'
-  what():  operand alternative not valid in expression tree
+[0] 	%newVar1 <- 1 * 8
+     tree: %newVar1 <- (1 op 8)
+     in : { %cF1 %self %x }
+     out: { %cF1 %newVar1 %self %x }
+
+[1] 	%newVar0 <- %newVar1 + 8
+     tree: %newVar0 <- (%newVar1 op 8)
+     in : { %cF1 %newVar1 %self %x }
+     out: { %cF1 %newVar0 %self %x }
+
+[2] 	%newVar2 <- %self + %newVar0
+     tree: %newVar2 <- (%self op %newVar0)
+     in : { %cF1 %newVar0 %self %x }
+     out: { %cF1 %newVar2 %x }
+
+[3] 	%F <- load %newVar2
+     tree: %F <- load(%newVar2)
+     in : { %cF1 %newVar2 %x }
+     out: { %F %cF1 %x }
+
+[4] 	%newVar4 <- 0 * 8
+     tree: %newVar4 <- (0 op 8)
+     in : { %F %cF1 %x }
+     out: { %F %cF1 %newVar4 %x }
+
+[5] 	%newVar3 <- %newVar4 + 8
+     tree: %newVar3 <- (%newVar4 op 8)
+     in : { %F %cF1 %newVar4 %x }
+     out: { %F %cF1 %newVar3 %x }
+
+[6] 	%newVar5 <- %cF1 + %newVar3
+     tree: %newVar5 <- (%cF1 op %newVar3)
+     in : { %F %cF1 %newVar3 %x }
+     out: { %F %cF1 %newVar5 %x }
+
+[7] 	store %newVar5 <- @curry_arg2
+     tree: store(%newVar5) <- @curry_arg2
+     in : { %F %cF1 %newVar5 %x }
+     out: { %F %cF1 %x }
+
+[8] 	%newVar7 <- 1 * 8
+     tree: %newVar7 <- (1 op 8)
+     in : { %F %cF1 %x }
+     out: { %F %cF1 %newVar7 %x }
+
+[9] 	%newVar6 <- %newVar7 + 8
+     tree: %newVar6 <- (%newVar7 op 8)
+     in : { %F %cF1 %newVar7 %x }
+     out: { %F %cF1 %newVar6 %x }
+
+[10] 	%newVar8 <- %cF1 + %newVar6
+     tree: %newVar8 <- (%cF1 op %newVar6)
+     in : { %F %cF1 %newVar6 %x }
+     out: { %F %cF1 %newVar8 %x }
+
+[11] 	store %newVar8 <- %F
+     tree: store(%newVar8) <- %F
+     in : { %F %cF1 %newVar8 %x }
+     out: { %cF1 %x }
+
+[12] 	%newVar10 <- 2 * 8
+     tree: %newVar10 <- (2 op 8)
+     in : { %cF1 %x }
+     out: { %cF1 %newVar10 %x }
+
+[13] 	%newVar9 <- %newVar10 + 8
+     tree: %newVar9 <- (%newVar10 op 8)
+     in : { %cF1 %newVar10 %x }
+     out: { %cF1 %newVar9 %x }
+
+[14] 	%newVar11 <- %cF1 + %newVar9
+     tree: %newVar11 <- (%cF1 op %newVar9)
+     in : { %cF1 %newVar9 %x }
+     out: { %cF1 %newVar11 %x }
+
+[15] 	store %newVar11 <- %x
+     tree: store(%newVar11) <- %x
+     in : { %cF1 %newVar11 %x }
+     out: { %cF1 }
+
+[16] 	return %cF1
+     tree: return %cF1
+     in : { %cF1 }
+     out: { }
+
+=== Context Trees ===
+instructions: 5 trees: 5 liveness: 5
+
+[0] 	%F <- load %newVar2
+     tree: %F <- load((%self op ((1 op 8) op 8)))
+     in : { %cF1 %self %x }
+     out: { %F %cF1 %x }
+
+[1] 	store %newVar5 <- @curry_arg2
+     tree: store((%cF1 op ((0 op 8) op 8))) <- @curry_arg2
+     in : { %F %cF1 %x }
+     out: { %F %cF1 %x }
+
+[2] 	store %newVar8 <- %F
+     tree: store((%cF1 op ((1 op 8) op 8))) <- %F
+     in : { %F %cF1 %x }
+     out: { %cF1 %x }
+
+[3] 	store %newVar11 <- %x
+     tree: store((%cF1 op ((2 op 8) op 8))) <- %x
+     in : { %cF1 %x }
+     out: { %cF1 }
+
+[4] 	return %cF1
+     tree: return %cF1
+     in : { %cF1 }
+     out: { }
+
+FRESH: %__mt_munnching40
+FRESH: %__mt_munnching41
+FRESH: %__mt_munnching42
+FRESH: %__mt_munnching43
+MUNCH tree[0] = %F <- load((%self op ((1 op 8) op 8)))
+      EMIT: 	%__mt_munnching42 <- 1
+      EMIT: 	%__mt_munnching41 <- %__mt_munnching42
+      EMIT: 	%__mt_munnching41 <<= 3
+      EMIT: 	%__mt_munnching40 <- %__mt_munnching41 + 8
+      EMIT: 	%__mt_munnching43 <- %self + %__mt_munnching40
+      EMIT: 	%F <- load %__mt_munnching43
+FRESH: %__mt_munnching44
+FRESH: %__mt_munnching45
+FRESH: %__mt_munnching46
+FRESH: %__mt_munnching47
+MUNCH tree[1] = store((%cF1 op ((0 op 8) op 8))) <- @curry_arg2
+      EMIT: 	%__mt_munnching46 <- 0
+      EMIT: 	%__mt_munnching45 <- %__mt_munnching46
+      EMIT: 	%__mt_munnching45 <<= 3
+      EMIT: 	%__mt_munnching44 <- %__mt_munnching45 + 8
+      EMIT: 	%__mt_munnching47 <- %cF1 + %__mt_munnching44
+      EMIT: 	store %__mt_munnching47 <- @curry_arg2
+FRESH: %__mt_munnching48
+FRESH: %__mt_munnching49
+FRESH: %__mt_munnching50
+FRESH: %__mt_munnching51
+MUNCH tree[2] = store((%cF1 op ((1 op 8) op 8))) <- %F
+      EMIT: 	%__mt_munnching50 <- 1
+      EMIT: 	%__mt_munnching49 <- %__mt_munnching50
+      EMIT: 	%__mt_munnching49 <<= 3
+      EMIT: 	%__mt_munnching48 <- %__mt_munnching49 + 8
+      EMIT: 	%__mt_munnching51 <- %cF1 + %__mt_munnching48
+      EMIT: 	store %__mt_munnching51 <- %F
+FRESH: %__mt_munnching52
+FRESH: %__mt_munnching53
+FRESH: %__mt_munnching54
+FRESH: %__mt_munnching55
+MUNCH tree[3] = store((%cF1 op ((2 op 8) op 8))) <- %x
+      EMIT: 	%__mt_munnching54 <- 2
+      EMIT: 	%__mt_munnching53 <- %__mt_munnching54
+      EMIT: 	%__mt_munnching53 <<= 3
+      EMIT: 	%__mt_munnching52 <- %__mt_munnching53 + 8
+      EMIT: 	%__mt_munnching55 <- %cF1 + %__mt_munnching52
+      EMIT: 	store %__mt_munnching55 <- %x
+MUNCH tree[4] = return %cF1
+      EMIT: 	return %cF1
+=== Context Trees ===
+instructions: 14 trees: 14 liveness: 14
+
+[0] 	:start
+     tree: nullptr
+     in : { %self %y }
+     out: { %self %y }
+
+[1] 	%newVar1 <- 1 * 8
+     tree: %newVar1 <- (1 op 8)
+     in : { %self %y }
+     out: { %newVar1 %self %y }
+
+[2] 	%newVar0 <- %newVar1 + 8
+     tree: %newVar0 <- (%newVar1 op 8)
+     in : { %newVar1 %self %y }
+     out: { %newVar0 %self %y }
+
+[3] 	%newVar2 <- %self + %newVar0
+     tree: %newVar2 <- (%self op %newVar0)
+     in : { %newVar0 %self %y }
+     out: { %newVar2 %self %y }
+
+[4] 	%F <- load %newVar2
+     tree: %F <- load(%newVar2)
+     in : { %newVar2 %self %y }
+     out: { %F %self %y }
+
+[5] 	%newVar4 <- 2 * 8
+     tree: %newVar4 <- (2 op 8)
+     in : { %F %self %y }
+     out: { %F %newVar4 %self %y }
+
+[6] 	%newVar3 <- %newVar4 + 8
+     tree: %newVar3 <- (%newVar4 op 8)
+     in : { %F %newVar4 %self %y }
+     out: { %F %newVar3 %self %y }
+
+[7] 	%newVar5 <- %self + %newVar3
+     tree: %newVar5 <- (%self op %newVar3)
+     in : { %F %newVar3 %self %y }
+     out: { %F %newVar5 %y }
+
+[8] 	%x <- load %newVar5
+     tree: %x <- load(%newVar5)
+     in : { %F %newVar5 %y }
+     out: { %F %x %y }
+
+[9] 	%newVar7 <- 0 * 8
+     tree: %newVar7 <- (0 op 8)
+     in : { %F %x %y }
+     out: { %F %newVar7 %x %y }
+
+[10] 	%newVar6 <- %newVar7 + 8
+     tree: %newVar6 <- (%newVar7 op 8)
+     in : { %F %newVar7 %x %y }
+     out: { %F %newVar6 %x %y }
+
+[11] 	%newVar8 <- %F + %newVar6
+     tree: %newVar8 <- (%F op %newVar6)
+     in : { %F %newVar6 %x %y }
+     out: { %F %newVar8 %x %y }
+
+[12] 	%func <- load %newVar8
+     tree: %func <- load(%newVar8)
+     in : { %F %newVar8 %x %y }
+     out: { %F %func %x %y }
+
+[13] 	%ans <- call %func(%F, %x, %y)
+     tree: %ans <- call %func(%F, %x, %y)
+     in : { %F %func %x %y }
+     out: { %ans }
+
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	:start
+     tree: nullptr
+     in : { %F %func %x %y }
+     out: { %F %func %x %y }
+
+[1] 	%ans <- call %func(%F, %x, %y)
+     tree: nullptr
+     in : { %F %func %x %y }
+     out: { %ans }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	return %ans
+     tree: return %ans
+     in : { %ans }
+     out: { }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	return %ans
+     tree: return %ans
+     in : { %ans }
+     out: { }
+
+MUNCH tree[0] = return %ans
+      EMIT: 	return %ans

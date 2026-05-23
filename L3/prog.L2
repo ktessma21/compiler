@@ -1,151 +1,249 @@
 (@main
+	(@plus
+	 3
+	%self <- rdi
+	%x <- rsi
+	%y <- rdx
+	:_plus__self
+	%__mt_munnching0 <- %x
+	%__mt_munnching0 += %y
+	rax <- %__mt_munnching0
+	return
+	)
+	(@minus
+	 3
+	%self <- rdi
+	%x <- rsi
+	%y <- rdx
+	:_minus__self
+	%__mt_munnching1 <- %x
+	%__mt_munnching1 -= %y
+	rax <- %__mt_munnching1
+	return
+	)
+	(@times
+	 3
+	%self <- rdi
+	%x <- rsi
+	%y <- rdx
+	:_times__self
+	%__mt_munnching2 <- %x
+	%__mt_munnching2 *= %y
+	rax <- %__mt_munnching2
+	return
+	)
 	(@main
 	 0
-	:_main_entry
-	rdi <- 3
-	mem rsp -8 <- :_main_ret_0
-	call @createMyClosure 1
-	:_main_ret_0
-	%t <- rax
-	rdi <- %t
-	rsi <- 4
-	mem rsp -8 <- :_main_ret_1
-	call @callMyClosure 2
-	:_main_ret_1
-	%v <- rax
-	rdi <- %v
-	mem rsp -8 <- :_main_ret_2
-	call @encodeValue 1
-	:_main_ret_2
-	%x <- rax
-	rdi <- %x
-	call print 1
-	return
-	)
-	(@createMyClosure
-	 1
-	%p1 <- rdi
-	:_createMyClosure_entry
-	%x2 <- 21
-	rdi <- 9
+	:_main__start
+	rdi <- 7
 	rsi <- 1
 	call allocate 2
-	%p <- rax
-	%newVar2 <- 0
-	%newVar1 <- %newVar2
-	%newVar1 <<= 3
-	%newVar0 <- %newVar1
-	%newVar0 += 8
-	%newVar3 <- %p
-	%newVar3 += %newVar0
-	mem %newVar3 0 <- @myF
-	%newVar6 <- 1
-	%newVar5 <- %newVar6
-	%newVar5 <<= 3
-	%newVar4 <- %newVar5
-	%newVar4 += 8
-	%newVar7 <- %p
-	%newVar7 += %newVar4
-	mem %newVar7 0 <- 1
-	%newVar10 <- 2
-	%newVar9 <- %newVar10
-	%newVar9 <<= 3
-	%newVar8 <- %newVar9
-	%newVar8 += 8
-	%newVar11 <- %p
-	%newVar11 += %newVar8
-	mem %newVar11 0 <- %p1
-	%newVar14 <- 3
-	%newVar13 <- %newVar14
-	%newVar13 <<= 3
-	%newVar12 <- %newVar13
-	%newVar12 += 8
-	%newVar15 <- %p
-	%newVar15 += %newVar12
-	mem %newVar15 0 <- %x2
-	rax <- %p
-	return
-	)
-	(@callMyClosure
-	 2
-	%c <- rdi
-	%argClosure <- rsi
-	:_callMyClosure_entry
-	%newVar18 <- 0
-	%newVar17 <- %newVar18
-	%newVar17 <<= 3
-	%newVar16 <- %newVar17
-	%newVar16 += 8
-	%newVar19 <- %c
-	%newVar19 += %newVar16
-	%fp <- mem %newVar19 0
-	%newVar24 <- 1
-	%newVar23 <- %newVar24
-	%newVar23 <<= 3
-	%newVar22 <- %newVar23
-	%newVar22 += 8
-	%newVar25 <- %c
-	%newVar25 += %newVar22
-	%newVar21 <- mem %newVar25 0
-	%newVar20 <- %newVar21 = 1
-	cjump %newVar20 = 1 :_callMyClosure_true
-	goto :_callMyClosure_false
-	:_callMyClosure_true
-	rdi <- %c
-	rsi <- %argClosure
-	mem rsp -8 <- :_callMyClosure_ret_3
-	call %fp 2
-	:_callMyClosure_ret_3
-	%finalResult <- rax
-	rdi <- %finalResult
-	mem rsp -8 <- :_callMyClosure_ret_4
-	call @encodeValue 1
-	:_callMyClosure_ret_4
-	%finalResultEncoded <- rax
-	rdi <- %finalResultEncoded
+	%ops <- rax
+	%plus <- @plus
+	%minus <- @minus
+	%times <- @times
+	%__mt_munnching5 <- 0
+	%__mt_munnching4 <- %__mt_munnching5
+	%__mt_munnching4 <<= 3
+	%__mt_munnching3 <- %__mt_munnching4
+	%__mt_munnching3 += 8
+	%__mt_munnching6 <- %ops
+	%__mt_munnching6 += %__mt_munnching3
+	mem %__mt_munnching6 0 <- %plus
+	%__mt_munnching9 <- 1
+	%__mt_munnching8 <- %__mt_munnching9
+	%__mt_munnching8 <<= 3
+	%__mt_munnching7 <- %__mt_munnching8
+	%__mt_munnching7 += 8
+	%__mt_munnching10 <- %ops
+	%__mt_munnching10 += %__mt_munnching7
+	mem %__mt_munnching10 0 <- %minus
+	%__mt_munnching13 <- 2
+	%__mt_munnching12 <- %__mt_munnching13
+	%__mt_munnching12 <<= 3
+	%__mt_munnching11 <- %__mt_munnching12
+	%__mt_munnching11 += 8
+	%__mt_munnching14 <- %ops
+	%__mt_munnching14 += %__mt_munnching11
+	mem %__mt_munnching14 0 <- %times
+	%X <- 7
+	%Y <- 2
+	%i <- 0
+	goto :_main_L1
+	:_main_L1
+	rdi <- %ops
+	rsi <- %X
+	rdx <- %Y
+	mem rsp -8 <- :_main_ret_0
+	call %f 3
+	:_main_ret_0
+	%ans <- rax
+	%__mt_munnching16 <- %ans
+	%__mt_munnching16 <<= 1
+	%__mt_munnching15 <- %__mt_munnching16
+	%__mt_munnching15 += 1
+	rdi <- %__mt_munnching15
 	call print 1
-	rax <- %finalResult
-	return
-	:_callMyClosure_false
-	rax <- 0
+	%i += 1
+	%__mt_munnching17 <- %i < 3
+	cjump %__mt_munnching17 = 1 :_main_L1
+	goto :_main_L2b
+	:_main_L2b
+	rdi <- 7
+	rsi <- 1
+	call allocate 2
+	%cGs <- rax
+	%i <- 0
+	goto :_main_L2
+	:_main_L2
+	%__mt_munnching19 <- %i
+	%__mt_munnching19 <<= 3
+	%__mt_munnching18 <- %__mt_munnching19
+	%__mt_munnching18 += 8
+	%__mt_munnching20 <- %ops
+	%__mt_munnching20 += %__mt_munnching18
+	%f <- mem %__mt_munnching20 0
+	rdi <- 3
+	rsi <- 1
+	call allocate 2
+	%cF <- rax
+	%__mt_munnching23 <- 0
+	%__mt_munnching22 <- %__mt_munnching23
+	%__mt_munnching22 <<= 3
+	%__mt_munnching21 <- %__mt_munnching22
+	%__mt_munnching21 += 8
+	%__mt_munnching24 <- %cF
+	%__mt_munnching24 += %__mt_munnching21
+	mem %__mt_munnching24 0 <- %f
+	rdi <- %cF
+	mem rsp -8 <- :_main_ret_1
+	call @curry 1
+	:_main_ret_1
+	%cG <- rax
+	%__mt_munnching26 <- %i
+	%__mt_munnching26 <<= 3
+	%__mt_munnching25 <- %__mt_munnching26
+	%__mt_munnching25 += 8
+	%__mt_munnching27 <- %cGs
+	%__mt_munnching27 += %__mt_munnching25
+	mem %__mt_munnching27 0 <- %cG
+	%i += 1
+	%__mt_munnching28 <- %i < 3
+	cjump %__mt_munnching28 = 1 :_main_L2
+	goto :_main_L3b
+	:_main_L3b
+	%i <- 0
+	goto :_main_L3
+	:_main_L3
+	rdi <- %cG
+	rsi <- %X
+	mem rsp -8 <- :_main_ret_2
+	call %g 2
+	:_main_ret_2
+	%cH <- rax
+	rdi <- %cH
+	rsi <- %Y
+	mem rsp -8 <- :_main_ret_3
+	call %h 2
+	:_main_ret_3
+	%ans <- rax
+	%__mt_munnching30 <- %ans
+	%__mt_munnching30 <<= 1
+	%__mt_munnching29 <- %__mt_munnching30
+	%__mt_munnching29 += 1
+	rdi <- %__mt_munnching29
+	call print 1
+	%i += 1
+	%__mt_munnching31 <- %i < 3
+	cjump %__mt_munnching31 = 1 :_main_L3
+	goto :_main_exit
+	:_main_exit
 	return
 	)
-	(@myF
-	 2
-	%c <- rdi
-	%p1 <- rsi
-	:_myF_entry
-	%newVar31 <- 2
-	%newVar30 <- %newVar31
-	%newVar30 <<= 3
-	%newVar29 <- %newVar30
-	%newVar29 += 8
-	%newVar32 <- %c
-	%newVar32 += %newVar29
-	%newVar28 <- mem %newVar32 0
-	%newVar36 <- 3
-	%newVar35 <- %newVar36
-	%newVar35 <<= 3
-	%newVar34 <- %newVar35
-	%newVar34 += 8
-	%newVar37 <- %c
-	%newVar37 += %newVar34
-	%newVar33 <- mem %newVar37 0
-	%newVar27 <- %newVar28
-	%newVar27 += %newVar33
-	%newVar26 <- %newVar27
-	%newVar26 += %p1
-	rax <- %newVar26
-	return
-	)
-	(@encodeValue
+	(@curry
 	 1
-	%v <- rdi
-	:_encodeValue_entry
-	%encodedV <- %v
-	%encodedV <<= 1
-	%encodedV += 1
-	rax <- %encodedV
+	%F <- rdi
+	:_curry_start
+	rdi <- 5
+	rsi <- 1
+	call allocate 2
+	%cF <- rax
+	%__mt_munnching34 <- 0
+	%__mt_munnching33 <- %__mt_munnching34
+	%__mt_munnching33 <<= 3
+	%__mt_munnching32 <- %__mt_munnching33
+	%__mt_munnching32 += 8
+	%__mt_munnching35 <- %cF
+	%__mt_munnching35 += %__mt_munnching32
+	mem %__mt_munnching35 0 <- @curry_arg1
+	%__mt_munnching38 <- 1
+	%__mt_munnching37 <- %__mt_munnching38
+	%__mt_munnching37 <<= 3
+	%__mt_munnching36 <- %__mt_munnching37
+	%__mt_munnching36 += 8
+	%__mt_munnching39 <- %cF
+	%__mt_munnching39 += %__mt_munnching36
+	mem %__mt_munnching39 0 <- %F
+	rax <- %cF
+	return
+	)
+	(@curry_arg1
+	 2
+	%self <- rdi
+	%x <- rsi
+	:_curry_arg1_start
+	rdi <- 7
+	rsi <- 1
+	call allocate 2
+	%cF1 <- rax
+	%__mt_munnching42 <- 1
+	%__mt_munnching41 <- %__mt_munnching42
+	%__mt_munnching41 <<= 3
+	%__mt_munnching40 <- %__mt_munnching41
+	%__mt_munnching40 += 8
+	%__mt_munnching43 <- %self
+	%__mt_munnching43 += %__mt_munnching40
+	%F <- mem %__mt_munnching43 0
+	%__mt_munnching46 <- 0
+	%__mt_munnching45 <- %__mt_munnching46
+	%__mt_munnching45 <<= 3
+	%__mt_munnching44 <- %__mt_munnching45
+	%__mt_munnching44 += 8
+	%__mt_munnching47 <- %cF1
+	%__mt_munnching47 += %__mt_munnching44
+	mem %__mt_munnching47 0 <- @curry_arg2
+	%__mt_munnching50 <- 1
+	%__mt_munnching49 <- %__mt_munnching50
+	%__mt_munnching49 <<= 3
+	%__mt_munnching48 <- %__mt_munnching49
+	%__mt_munnching48 += 8
+	%__mt_munnching51 <- %cF1
+	%__mt_munnching51 += %__mt_munnching48
+	mem %__mt_munnching51 0 <- %F
+	%__mt_munnching54 <- 2
+	%__mt_munnching53 <- %__mt_munnching54
+	%__mt_munnching53 <<= 3
+	%__mt_munnching52 <- %__mt_munnching53
+	%__mt_munnching52 += 8
+	%__mt_munnching55 <- %cF1
+	%__mt_munnching55 += %__mt_munnching52
+	mem %__mt_munnching55 0 <- %x
+	rax <- %cF1
+	return
+	)
+	(@curry_arg2
+	 2
+	%self <- rdi
+	%y <- rsi
+	:_curry_arg2_start
+	rdi <- %F
+	rsi <- %x
+	rdx <- %y
+	mem rsp -8 <- :_curry_arg2_ret_4
+	call %func 3
+	:_curry_arg2_ret_4
+	%ans <- rax
+	rax <- %ans
 	return
 	)
 )

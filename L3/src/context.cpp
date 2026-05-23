@@ -16,70 +16,7 @@ namespace L3 {
         return v;
     }
 
-    static bool isNestedBinop(const TreeNode& node) {
-        if (auto* binop = std::get_if<BinOpNode>(&node.data)){
-            return std::holds_alternative<BinOpNode>(binop->left->data) ||
-                    std::holds_alternative<BinOpNode>(binop->right->data);
-        }
-        return false;
-    }
-
-
-    static std::string leaqMatch(const Variable& dest, const TreeNode& node) {
-        // Expect node to be: Add(base, Mul(index, scale))  where scale ∈ {1,2,4,8}
-        //   or any commutation of the operands.
-        // Returns the L2 "w @ w w E" string on match, or "" on no match.
-
-        auto* add = std::get_if<BinOpNode>(&node.data);
-        if (!add || add->op != Op::Add) return "";
-
-        // Try to match: base_side is a Variable, mul_side is Mul(var, const-scale).
-        auto try_match = [](const TreeNode& base_side,
-                            const TreeNode& mul_side,
-                            std::string& base_out,
-                            std::string& index_out,
-                            long long& scale_out) -> bool {
-            auto* base_var = std::get_if<Variable>(&base_side.data);
-            if (!base_var) return false;
-
-            auto* mul = std::get_if<BinOpNode>(&mul_side.data);
-            if (!mul || mul->op != Op::Mul) return false;
-
-            // Mul children: one must be a Number ∈ {1,2,4,8}, the other a Variable.
-            auto extract = [](const TreeNode& a, const TreeNode& b,
-                            std::string& idx, long long& sc) -> bool {
-                auto* var = std::get_if<Variable>(&a.data);
-                auto* num = std::get_if<Number>(&b.data);
-                if (!var || !num) return false;
-                long long v = num->getValue();
-                if (v != 1 && v != 2 && v != 4 && v != 8) return false;
-                idx = var->to_string();
-                sc  = v;
-                return true;
-            };
-
-            if (!extract(*mul->left, *mul->right, index_out, scale_out) &&
-                !extract(*mul->right, *mul->left, index_out, scale_out)) {
-                return false;
-            }
-
-            base_out = base_var->to_string();
-            return true;
-        };
-
-        std::string base, index;
-        long long scale = 0;
-
-        if (!try_match(*add->left,  *add->right, base, index, scale) &&
-            !try_match(*add->right, *add->left,  base, index, scale)) {
-            return "";
-        }
-
-        // Full L2 leaq: w @ w w E
-        return dest.to_string() + " @ " + base + " " + index + " " + std::to_string(scale);
-    }
-
-   
+    
 
     /// Context function definitions. 
 
@@ -291,21 +228,11 @@ namespace L3 {
                     auto target_copy = trees[j] ? clone_tree(*trees[j]) : nullptr;
                     auto merged = L3::merge_tree(std::move(source_copy), std::move(target_copy));
 
-                    // // ---------- ORPHAN-LEAF DETECTOR ----------
-                    // // After merging, `defined` should NOT survive as a leaf in `merged`,
-                    // // because we are about to delete its sole definition (tree[i]).
-                    // int leaf_count_after = count_var_leaves(*merged, defined);
-                    // if (leaf_count_after > 0) {
-                    //     std::cerr << "  *** ORPHAN WARNING *** after merging def="
-                    //               << defined.toString()
-                    //               << " (i=" << i << " into j=" << j << "), the variable still "
-                    //               << "appears as " << leaf_count_after
-                    //               << " leaf(s) in the merged tree, but tree[" << i
-                    //               << "] (its definition) is about to be erased.\n";
-                    //     std::cerr << "      leaves before=" << leaf_count_before
-                    //               << " leaves after=" << leaf_count_after << "\n";
-                    //     std::cerr << "      merged = " << tree_to_string(*merged) << "\n";
-                    // }
+                    if (!merged) {
+                        // std::cerr << "  [i=" << i << " -> j=" << j
+                        //         << "] SKIP: merge failed (not a match)\n";
+                        continue;
+                    }
 
                     trees[j] = std::move(merged);
                     // std::cerr << "      MERGED -> tree[" << j << "] now = "
@@ -370,12 +297,19 @@ namespace L3 {
             }
 
             auto emitted = munch(*trees[i]);
+            if (debug_enabled()) {
+                std::cerr << "MUNCH tree[" << i << "] = " << tree_to_string(*trees[i]) << "\n";
+                for (auto& e : emitted) std::cerr << "      EMIT: " << e->to_string();
+            }
+
             new_instructions.insert(
                 new_instructions.end(),
                 std::make_move_iterator(emitted.begin()),
                 std::make_move_iterator(emitted.end()));
             }
 
+
+            
         instructions = std::move(new_instructions);
     }
 

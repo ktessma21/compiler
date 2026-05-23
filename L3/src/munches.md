@@ -36,3 +36,18 @@
 
 ## error:
 Merge T2 into T1 only when... no other uses of %v between T2 and T1, and no definitions of variables used by T2 between T2 and T1.
+
+2. :_main_entry
+	%newVar0 <- 5
+	%newVar0 >>= 1
+	%newVar0 <- 5
+	%newVar0 >>= 1
+	%newVar0 *= %newVar0
+	%newVar0 <<= 1
+	%newVar0 += 1
+	%newVar0 += 6
+	rdi <- %newVar0
+	rsi <- 1
+	call allocate 2
+
+repeatitive to do 2 * 2 

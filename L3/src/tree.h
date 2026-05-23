@@ -114,8 +114,15 @@ namespace L3 {
         }
 
         if (auto* callnode = std::get_if<CallNode>(&node->data)){
+            
+            if (auto* callee_var = std::get_if<Variable>(&callnode->callee)) {
+                if (callee_var->name == target.name) {
+                 
+                    return false;   // signal "found but not inlinable"
+                }
+            }
             for (auto& arg : callnode->args){
-               if (replace_leaf(arg,  target, replacement)) return true;
+            if (replace_leaf(arg, target, replacement)) return true;
             }
             return false;
         }

@@ -23,9 +23,12 @@
 
 namespace L3 {
 
+    // in freshVar(), temporarily:
     Variable freshVar() {
-        static int64_t counter = 0;       // persists across calls, fine
-        return Variable("newVar" + std::to_string(counter++));
+        static int64_t counter = 0;
+        Variable v("__mt_munnching" + std::to_string(counter++));
+        if (std::getenv("L3_DEBUG")) std::cerr << "FRESH: " << v.to_string() << "\n";
+        return v;
     }
 
     TreeNode make_assign_node(const Variable& dst, const TreeNode& src) {
