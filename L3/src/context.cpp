@@ -115,6 +115,12 @@ namespace L3 {
 
 
     void Context::merge_tree() {
+
+        if (std::getenv("L3_NO_MERGE")) {
+        // skip all merging; just build trees 1:1 and let munch lower them
+        print_trees(true);
+        return;
+    }
         print_trees(true);
  
         if (instructions.size() != trees.size()) {
@@ -182,6 +188,18 @@ namespace L3 {
                     if (!j_reads) continue;
 
 
+                    auto source_reads = tree_reads(*trees[i]);
+                    bool input_clobbered = false;
+                    for (size_t k = i + 1; k < j; k++) {
+                        std::set<Variable> k_writes = trees[k] ? tree_writes(*trees[k])
+                                                            : instructions[k]->writes();
+                        for (const auto& w : k_writes)
+                            if (source_reads.count(w)) { input_clobbered = true; break; }
+                        if (input_clobbered) break;
+                    }
+                    if (input_clobbered) continue;
+
+
 
                     // Alias-safety check: if either source or target touches memory,
                     // make sure nothing between them touches memory either.
@@ -215,8 +233,18 @@ namespace L3 {
                     if (!trees[t]) continue;
                     if (tree_reads(*trees[t]).count(defined)) { other_reader = true; break; }
                 }
-                if (!dead_after_j || other_reader) {
-                    continue;   // merge into j but do NOT delete the source
+
+
+                // A variable live at the block's exit escapes to a successor block.
+                // Deleting its definition orphans that cross-block use, so refuse.
+                bool live_out_of_block = false;
+                if (!liveAnalysisReport.empty()) {
+                    const std::set<Variable>& exit_live = liveAnalysisReport.back().out;
+                    live_out_of_block = (exit_live.count(defined) != 0);
+                }
+
+                if (!dead_after_j || other_reader || live_out_of_block) {
+                    continue;
                 }
 
                     // Try to merge tree[i] into tree[j]
@@ -229,12 +257,18 @@ namespace L3 {
                     auto merged = L3::merge_tree(std::move(source_copy), std::move(target_copy));
 
                     if (!merged) {
-                        // std::cerr << "  [i=" << i << " -> j=" << j
-                        //         << "] SKIP: merge failed (not a match)\n";
+                        continue;   // merge helper said "not a match" — leave both slots untouched
+                    }
+
+                    // Inspect the candidate WITHOUT committing it yet.
+                    if (tree_reads(*merged).count(defined)) {
+                        // The merge didn't fully consume `defined` — a leaf survived.
+                        // Do NOT commit and do NOT erase the source. Leave everything as-is.
                         continue;
                     }
 
                     trees[j] = std::move(merged);
+                    
                     // std::cerr << "      MERGED -> tree[" << j << "] now = "
                     //           << tree_to_string(*trees[j]) << "\n";
                 } catch (const std::exception& e) {
