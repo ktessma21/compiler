@@ -6,3 +6,7 @@
 
 - problem could be call instruction pure has call_node pure
 - not working with the already existing call. 
+
+
+# we only care about leaq for this case:
+- No constant-substitution because constant substitution will be handled by SSA. 

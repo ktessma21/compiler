@@ -122,7 +122,7 @@ namespace L3 {
 
                 case InstructionType::BrT:{
                     auto* c = dynamic_cast<BrTInstruction*>(f.instructions[i].get());
-                    successors[i] = { i+1, labelIndex.at(c->getTarget().value().name) };
+                    successors[i] = {labelIndex.at(c->getTarget().value().name) };
                     break;
                 }
 

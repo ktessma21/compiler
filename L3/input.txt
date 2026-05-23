@@ -1,22 +1,2327 @@
-==1662334== Memcheck, a memory error detector
-==1662334== Copyright (C) 2002-2022, and GNU GPL'd, by Julian Seward et al.
-==1662334== Using Valgrind-3.22.0 and LibVEX; rerun with -h for copyright info
-==1662334== Command: bin/L3 tests/test5.L3
-==1662334== 
+=== Context Trees ===
+instructions: 17 trees: 17 liveness: 17
+
+[0] 	:entry
+     tree: nullptr
+     in : { }
+     out: { }
+
+[1] 	%test1 <- 7
+     tree: %test1 <- 7
+     in : { }
+     out: { %test1 }
+
+[2] 	%test2 <- 11
+     tree: %test2 <- 11
+     in : { %test1 }
+     out: { %test1 %test2 }
+
+[3] 	%test3 <- 3
+     tree: %test3 <- 3
+     in : { %test1 %test2 }
+     out: { %test1 %test2 %test3 }
+
+[4] 	%test4 <- 9
+     tree: %test4 <- 9
+     in : { %test1 %test2 %test3 }
+     out: { %test1 %test2 %test3 %test4 }
+
+[5] 	%test5 <- 5
+     tree: %test5 <- 5
+     in : { %test1 %test2 %test3 %test4 }
+     out: { %test1 %test2 %test3 %test4 %test5 }
+
+[6] 	%test6 <- 1
+     tree: %test6 <- 1
+     in : { %test1 %test2 %test3 %test4 %test5 }
+     out: { %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[7] 	%newVar1 <- 11 >> 1
+     tree: %newVar1 <- (11 op 1)
+     in : { %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %newVar1 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[8] 	%newVar0 <- %newVar1
+     tree: %newVar0 <- %newVar1
+     in : { %newVar1 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %newVar0 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[9] 	%newVar2 <- 9 >> 1
+     tree: %newVar2 <- (9 op 1)
+     in : { %newVar0 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %newVar0 %newVar2 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[10] 	%newVar0 <- %newVar0 * %newVar2
+     tree: %newVar0 <- (%newVar0 op %newVar2)
+     in : { %newVar0 %newVar2 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %newVar0 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[11] 	%newVar3 <- 7 >> 1
+     tree: %newVar3 <- (7 op 1)
+     in : { %newVar0 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %newVar0 %newVar3 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[12] 	%newVar0 <- %newVar0 * %newVar3
+     tree: %newVar0 <- (%newVar0 op %newVar3)
+     in : { %newVar0 %newVar3 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %newVar0 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[13] 	%newVar0 <- %newVar0 << 1
+     tree: %newVar0 <- (%newVar0 op 1)
+     in : { %newVar0 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %newVar0 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[14] 	%newVar0 <- %newVar0 + 1
+     tree: %newVar0 <- (%newVar0 op 1)
+     in : { %newVar0 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %newVar0 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[15] 	%newVar0 <- %newVar0 + 8
+     tree: %newVar0 <- (%newVar0 op 8)
+     in : { %newVar0 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %newVar0 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[16] 	%A <- call allocate(%newVar0, 1)
+     tree: %A <- call allocate(%newVar0, 1)
+     in : { %newVar0 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+
+      MERGED -> tree[8] now = %newVar0 <- (11 op 1)
+  [i=7 def=%newVar0] STOP: redefined at j=9
+      MERGED -> tree[9] now = %newVar0 <- (%newVar0 op (9 op 1))
+  [i=8 def=%newVar0] STOP: redefined at j=10
+      MERGED -> tree[10] now = %newVar0 <- (%newVar0 op (7 op 1))
+  [i=9 def=%newVar0] STOP: redefined at j=10
+  [i=10 def=%newVar0] STOP: redefined at j=11
+  [i=11 def=%newVar0] STOP: redefined at j=12
+  [i=7 def=%newVar0] STOP: redefined at j=8
+  [i=8 def=%newVar0] STOP: redefined at j=9
+  [i=9 def=%newVar0] STOP: redefined at j=10
+  [i=10 def=%newVar0] STOP: redefined at j=11
+  [i=11 def=%newVar0] STOP: redefined at j=12
+=== Context Trees ===
+instructions: 14 trees: 14 liveness: 14
+
+[0] 	:entry
+     tree: nullptr
+     in : { }
+     out: { }
+
+[1] 	%test1 <- 7
+     tree: %test1 <- 7
+     in : { }
+     out: { %test1 }
+
+[2] 	%test2 <- 11
+     tree: %test2 <- 11
+     in : { %test1 }
+     out: { %test1 %test2 }
+
+[3] 	%test3 <- 3
+     tree: %test3 <- 3
+     in : { %test1 %test2 }
+     out: { %test1 %test2 %test3 }
+
+[4] 	%test4 <- 9
+     tree: %test4 <- 9
+     in : { %test1 %test2 %test3 }
+     out: { %test1 %test2 %test3 %test4 }
+
+[5] 	%test5 <- 5
+     tree: %test5 <- 5
+     in : { %test1 %test2 %test3 %test4 }
+     out: { %test1 %test2 %test3 %test4 %test5 }
+
+[6] 	%test6 <- 1
+     tree: %test6 <- 1
+     in : { %test1 %test2 %test3 %test4 %test5 }
+     out: { %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[7] 	%newVar0 <- %newVar1
+     tree: %newVar0 <- (11 op 1)
+     in : { %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %newVar0 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[8] 	%newVar0 <- %newVar0 * %newVar2
+     tree: %newVar0 <- (%newVar0 op (9 op 1))
+     in : { %newVar0 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %newVar0 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[9] 	%newVar0 <- %newVar0 * %newVar3
+     tree: %newVar0 <- (%newVar0 op (7 op 1))
+     in : { %newVar0 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %newVar0 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[10] 	%newVar0 <- %newVar0 << 1
+     tree: %newVar0 <- (%newVar0 op 1)
+     in : { %newVar0 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %newVar0 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[11] 	%newVar0 <- %newVar0 + 1
+     tree: %newVar0 <- (%newVar0 op 1)
+     in : { %newVar0 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %newVar0 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[12] 	%newVar0 <- %newVar0 + 8
+     tree: %newVar0 <- (%newVar0 op 8)
+     in : { %newVar0 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %newVar0 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[13] 	%A <- call allocate(%newVar0, 1)
+     tree: %A <- call allocate(%newVar0, 1)
+     in : { %newVar0 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+
+=== Context Trees ===
+instructions: 123 trees: 123 liveness: 123
+
+[0] 	%newVar4 <- %A + 8
+     tree: %newVar4 <- (%A op 8)
+     in : { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar4 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[1] 	store %newVar4 <- 7
+     tree: store(%newVar4) <- 7
+     in : { %A %newVar4 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[2] 	%newVar5 <- %A + 16
+     tree: %newVar5 <- (%A op 16)
+     in : { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar5 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[3] 	store %newVar5 <- 11
+     tree: store(%newVar5) <- 11
+     in : { %A %newVar5 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[4] 	%newVar6 <- %A + 24
+     tree: %newVar6 <- (%A op 24)
+     in : { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar6 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[5] 	store %newVar6 <- 9
+     tree: store(%newVar6) <- 9
+     in : { %A %newVar6 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[6] 	%newVar7 <- %A + 32
+     tree: %newVar7 <- (%A op 32)
+     in : { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar7 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[7] 	store %newVar7 <- 7
+     tree: store(%newVar7) <- 7
+     in : { %A %newVar7 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[8] 	%newVar9 <- 0
+     tree: %newVar9 <- 0
+     in : { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[9] 	%newVar10 <- %A + 24
+     tree: %newVar10 <- (%A op 24)
+     in : { %A %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar10 %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[10] 	%newVar11 <- load %newVar10
+     tree: %newVar11 <- load(%newVar10)
+     in : { %A %newVar10 %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar11 %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[11] 	%newVar12 <- %newVar11 >> 1
+     tree: %newVar12 <- (%newVar11 op 1)
+     in : { %A %newVar11 %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar12 %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[12] 	%newVar13 <- %A + 32
+     tree: %newVar13 <- (%A op 32)
+     in : { %A %newVar12 %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar12 %newVar13 %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[13] 	%newVar14 <- load %newVar13
+     tree: %newVar14 <- load(%newVar13)
+     in : { %A %newVar12 %newVar13 %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar12 %newVar14 %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[14] 	%newVar15 <- %newVar14 >> 1
+     tree: %newVar15 <- (%newVar14 op 1)
+     in : { %A %newVar12 %newVar14 %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar12 %newVar15 %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[15] 	%newVar16 <- 1
+     tree: %newVar16 <- 1
+     in : { %A %newVar12 %newVar15 %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar12 %newVar15 %newVar16 %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[16] 	%newVar16 <- %newVar15 * %newVar16
+     tree: %newVar16 <- (%newVar15 op %newVar16)
+     in : { %A %newVar12 %newVar15 %newVar16 %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar12 %newVar16 %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[17] 	%newVar17 <- 0 * %newVar16
+     tree: %newVar17 <- (0 op %newVar16)
+     in : { %A %newVar12 %newVar16 %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar12 %newVar16 %newVar17 %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[18] 	%newVar9 <- %newVar17 + %newVar9
+     tree: %newVar9 <- (%newVar17 op %newVar9)
+     in : { %A %newVar12 %newVar16 %newVar17 %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar12 %newVar16 %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[19] 	%newVar16 <- %newVar12 * %newVar16
+     tree: %newVar16 <- (%newVar12 op %newVar16)
+     in : { %A %newVar12 %newVar16 %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar16 %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[20] 	%newVar18 <- 0 * %newVar16
+     tree: %newVar18 <- (0 op %newVar16)
+     in : { %A %newVar16 %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar18 %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[21] 	%newVar9 <- %newVar18 + %newVar9
+     tree: %newVar9 <- (%newVar18 op %newVar9)
+     in : { %A %newVar18 %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[22] 	%newVar9 <- %newVar9 + 1
+     tree: %newVar9 <- (%newVar9 op 1)
+     in : { %A %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[23] 	%newVar8 <- %newVar9 * 8
+     tree: %newVar8 <- (%newVar9 op 8)
+     in : { %A %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar8 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[24] 	%newVar8 <- %newVar8 + 40
+     tree: %newVar8 <- (%newVar8 op 40)
+     in : { %A %newVar8 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar8 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[25] 	%newVar19 <- %A + %newVar8
+     tree: %newVar19 <- (%A op %newVar8)
+     in : { %A %newVar8 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar19 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[26] 	store %newVar19 <- %test1
+     tree: store(%newVar19) <- %test1
+     in : { %A %newVar19 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[27] 	%newVar21 <- 0
+     tree: %newVar21 <- 0
+     in : { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar21 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[28] 	%newVar22 <- %A + 24
+     tree: %newVar22 <- (%A op 24)
+     in : { %A %newVar21 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar21 %newVar22 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[29] 	%newVar23 <- load %newVar22
+     tree: %newVar23 <- load(%newVar22)
+     in : { %A %newVar21 %newVar22 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar21 %newVar23 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[30] 	%newVar24 <- %newVar23 >> 1
+     tree: %newVar24 <- (%newVar23 op 1)
+     in : { %A %newVar21 %newVar23 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar21 %newVar24 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[31] 	%newVar25 <- %A + 32
+     tree: %newVar25 <- (%A op 32)
+     in : { %A %newVar21 %newVar24 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar21 %newVar24 %newVar25 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[32] 	%newVar26 <- load %newVar25
+     tree: %newVar26 <- load(%newVar25)
+     in : { %A %newVar21 %newVar24 %newVar25 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar21 %newVar24 %newVar26 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[33] 	%newVar27 <- %newVar26 >> 1
+     tree: %newVar27 <- (%newVar26 op 1)
+     in : { %A %newVar21 %newVar24 %newVar26 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar21 %newVar24 %newVar27 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[34] 	%newVar28 <- 1
+     tree: %newVar28 <- 1
+     in : { %A %newVar21 %newVar24 %newVar27 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar21 %newVar24 %newVar27 %newVar28 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[35] 	%newVar28 <- %newVar27 * %newVar28
+     tree: %newVar28 <- (%newVar27 op %newVar28)
+     in : { %A %newVar21 %newVar24 %newVar27 %newVar28 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar21 %newVar24 %newVar28 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[36] 	%newVar29 <- 0 * %newVar28
+     tree: %newVar29 <- (0 op %newVar28)
+     in : { %A %newVar21 %newVar24 %newVar28 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar21 %newVar24 %newVar28 %newVar29 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[37] 	%newVar21 <- %newVar29 + %newVar21
+     tree: %newVar21 <- (%newVar29 op %newVar21)
+     in : { %A %newVar21 %newVar24 %newVar28 %newVar29 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar21 %newVar24 %newVar28 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[38] 	%newVar28 <- %newVar24 * %newVar28
+     tree: %newVar28 <- (%newVar24 op %newVar28)
+     in : { %A %newVar21 %newVar24 %newVar28 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar21 %newVar28 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[39] 	%newVar30 <- 0 * %newVar28
+     tree: %newVar30 <- (0 op %newVar28)
+     in : { %A %newVar21 %newVar28 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar21 %newVar30 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[40] 	%newVar21 <- %newVar30 + %newVar21
+     tree: %newVar21 <- (%newVar30 op %newVar21)
+     in : { %A %newVar21 %newVar30 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar21 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[41] 	%newVar21 <- %newVar21 + 2
+     tree: %newVar21 <- (%newVar21 op 2)
+     in : { %A %newVar21 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar21 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[42] 	%newVar20 <- %newVar21 * 8
+     tree: %newVar20 <- (%newVar21 op 8)
+     in : { %A %newVar21 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar20 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[43] 	%newVar20 <- %newVar20 + 40
+     tree: %newVar20 <- (%newVar20 op 40)
+     in : { %A %newVar20 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar20 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[44] 	%newVar31 <- %A + %newVar20
+     tree: %newVar31 <- (%A op %newVar20)
+     in : { %A %newVar20 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar31 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[45] 	store %newVar31 <- %test2
+     tree: store(%newVar31) <- %test2
+     in : { %A %newVar31 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[46] 	%newVar33 <- 0
+     tree: %newVar33 <- 0
+     in : { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar33 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[47] 	%newVar34 <- %A + 24
+     tree: %newVar34 <- (%A op 24)
+     in : { %A %newVar33 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar33 %newVar34 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[48] 	%newVar35 <- load %newVar34
+     tree: %newVar35 <- load(%newVar34)
+     in : { %A %newVar33 %newVar34 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar33 %newVar35 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[49] 	%newVar36 <- %newVar35 >> 1
+     tree: %newVar36 <- (%newVar35 op 1)
+     in : { %A %newVar33 %newVar35 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar33 %newVar36 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[50] 	%newVar37 <- %A + 32
+     tree: %newVar37 <- (%A op 32)
+     in : { %A %newVar33 %newVar36 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar33 %newVar36 %newVar37 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[51] 	%newVar38 <- load %newVar37
+     tree: %newVar38 <- load(%newVar37)
+     in : { %A %newVar33 %newVar36 %newVar37 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar33 %newVar36 %newVar38 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[52] 	%newVar39 <- %newVar38 >> 1
+     tree: %newVar39 <- (%newVar38 op 1)
+     in : { %A %newVar33 %newVar36 %newVar38 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar33 %newVar36 %newVar39 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[53] 	%newVar40 <- 1
+     tree: %newVar40 <- 1
+     in : { %A %newVar33 %newVar36 %newVar39 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar33 %newVar36 %newVar39 %newVar40 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[54] 	%newVar40 <- %newVar39 * %newVar40
+     tree: %newVar40 <- (%newVar39 op %newVar40)
+     in : { %A %newVar33 %newVar36 %newVar39 %newVar40 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar33 %newVar36 %newVar40 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[55] 	%newVar41 <- 1 * %newVar40
+     tree: %newVar41 <- (1 op %newVar40)
+     in : { %A %newVar33 %newVar36 %newVar40 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar33 %newVar36 %newVar40 %newVar41 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[56] 	%newVar33 <- %newVar41 + %newVar33
+     tree: %newVar33 <- (%newVar41 op %newVar33)
+     in : { %A %newVar33 %newVar36 %newVar40 %newVar41 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar33 %newVar36 %newVar40 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[57] 	%newVar40 <- %newVar36 * %newVar40
+     tree: %newVar40 <- (%newVar36 op %newVar40)
+     in : { %A %newVar33 %newVar36 %newVar40 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar33 %newVar40 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[58] 	%newVar42 <- 0 * %newVar40
+     tree: %newVar42 <- (0 op %newVar40)
+     in : { %A %newVar33 %newVar40 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar33 %newVar42 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[59] 	%newVar33 <- %newVar42 + %newVar33
+     tree: %newVar33 <- (%newVar42 op %newVar33)
+     in : { %A %newVar33 %newVar42 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar33 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[60] 	%newVar33 <- %newVar33 + 0
+     tree: %newVar33 <- (%newVar33 op 0)
+     in : { %A %newVar33 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar33 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[61] 	%newVar32 <- %newVar33 * 8
+     tree: %newVar32 <- (%newVar33 op 8)
+     in : { %A %newVar33 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar32 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[62] 	%newVar32 <- %newVar32 + 40
+     tree: %newVar32 <- (%newVar32 op 40)
+     in : { %A %newVar32 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar32 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[63] 	%newVar43 <- %A + %newVar32
+     tree: %newVar43 <- (%A op %newVar32)
+     in : { %A %newVar32 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar43 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[64] 	store %newVar43 <- %test3
+     tree: store(%newVar43) <- %test3
+     in : { %A %newVar43 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[65] 	%newVar45 <- 0
+     tree: %newVar45 <- 0
+     in : { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar45 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[66] 	%newVar46 <- %A + 24
+     tree: %newVar46 <- (%A op 24)
+     in : { %A %newVar45 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar45 %newVar46 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[67] 	%newVar47 <- load %newVar46
+     tree: %newVar47 <- load(%newVar46)
+     in : { %A %newVar45 %newVar46 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar45 %newVar47 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[68] 	%newVar48 <- %newVar47 >> 1
+     tree: %newVar48 <- (%newVar47 op 1)
+     in : { %A %newVar45 %newVar47 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar45 %newVar48 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[69] 	%newVar49 <- %A + 32
+     tree: %newVar49 <- (%A op 32)
+     in : { %A %newVar45 %newVar48 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar45 %newVar48 %newVar49 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[70] 	%newVar50 <- load %newVar49
+     tree: %newVar50 <- load(%newVar49)
+     in : { %A %newVar45 %newVar48 %newVar49 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar45 %newVar48 %newVar50 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[71] 	%newVar51 <- %newVar50 >> 1
+     tree: %newVar51 <- (%newVar50 op 1)
+     in : { %A %newVar45 %newVar48 %newVar50 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar45 %newVar48 %newVar51 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[72] 	%newVar52 <- 1
+     tree: %newVar52 <- 1
+     in : { %A %newVar45 %newVar48 %newVar51 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar45 %newVar48 %newVar51 %newVar52 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[73] 	%newVar52 <- %newVar51 * %newVar52
+     tree: %newVar52 <- (%newVar51 op %newVar52)
+     in : { %A %newVar45 %newVar48 %newVar51 %newVar52 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar45 %newVar48 %newVar52 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[74] 	%newVar53 <- 2 * %newVar52
+     tree: %newVar53 <- (2 op %newVar52)
+     in : { %A %newVar45 %newVar48 %newVar52 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar45 %newVar48 %newVar52 %newVar53 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[75] 	%newVar45 <- %newVar53 + %newVar45
+     tree: %newVar45 <- (%newVar53 op %newVar45)
+     in : { %A %newVar45 %newVar48 %newVar52 %newVar53 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar45 %newVar48 %newVar52 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[76] 	%newVar52 <- %newVar48 * %newVar52
+     tree: %newVar52 <- (%newVar48 op %newVar52)
+     in : { %A %newVar45 %newVar48 %newVar52 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar45 %newVar52 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[77] 	%newVar54 <- 0 * %newVar52
+     tree: %newVar54 <- (0 op %newVar52)
+     in : { %A %newVar45 %newVar52 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar45 %newVar54 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[78] 	%newVar45 <- %newVar54 + %newVar45
+     tree: %newVar45 <- (%newVar54 op %newVar45)
+     in : { %A %newVar45 %newVar54 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar45 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[79] 	%newVar45 <- %newVar45 + 2
+     tree: %newVar45 <- (%newVar45 op 2)
+     in : { %A %newVar45 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar45 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[80] 	%newVar44 <- %newVar45 * 8
+     tree: %newVar44 <- (%newVar45 op 8)
+     in : { %A %newVar45 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar44 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[81] 	%newVar44 <- %newVar44 + 40
+     tree: %newVar44 <- (%newVar44 op 40)
+     in : { %A %newVar44 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar44 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[82] 	%newVar55 <- %A + %newVar44
+     tree: %newVar55 <- (%A op %newVar44)
+     in : { %A %newVar44 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar55 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[83] 	store %newVar55 <- %test4
+     tree: store(%newVar55) <- %test4
+     in : { %A %newVar55 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[84] 	%newVar57 <- 0
+     tree: %newVar57 <- 0
+     in : { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar57 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[85] 	%newVar58 <- %A + 24
+     tree: %newVar58 <- (%A op 24)
+     in : { %A %newVar57 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar57 %newVar58 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[86] 	%newVar59 <- load %newVar58
+     tree: %newVar59 <- load(%newVar58)
+     in : { %A %newVar57 %newVar58 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar57 %newVar59 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[87] 	%newVar60 <- %newVar59 >> 1
+     tree: %newVar60 <- (%newVar59 op 1)
+     in : { %A %newVar57 %newVar59 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar57 %newVar60 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[88] 	%newVar61 <- %A + 32
+     tree: %newVar61 <- (%A op 32)
+     in : { %A %newVar57 %newVar60 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar57 %newVar60 %newVar61 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[89] 	%newVar62 <- load %newVar61
+     tree: %newVar62 <- load(%newVar61)
+     in : { %A %newVar57 %newVar60 %newVar61 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar57 %newVar60 %newVar62 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[90] 	%newVar63 <- %newVar62 >> 1
+     tree: %newVar63 <- (%newVar62 op 1)
+     in : { %A %newVar57 %newVar60 %newVar62 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar57 %newVar60 %newVar63 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[91] 	%newVar64 <- 1
+     tree: %newVar64 <- 1
+     in : { %A %newVar57 %newVar60 %newVar63 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar57 %newVar60 %newVar63 %newVar64 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[92] 	%newVar64 <- %newVar63 * %newVar64
+     tree: %newVar64 <- (%newVar63 op %newVar64)
+     in : { %A %newVar57 %newVar60 %newVar63 %newVar64 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar57 %newVar60 %newVar64 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[93] 	%newVar65 <- 0 * %newVar64
+     tree: %newVar65 <- (0 op %newVar64)
+     in : { %A %newVar57 %newVar60 %newVar64 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar57 %newVar60 %newVar64 %newVar65 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[94] 	%newVar57 <- %newVar65 + %newVar57
+     tree: %newVar57 <- (%newVar65 op %newVar57)
+     in : { %A %newVar57 %newVar60 %newVar64 %newVar65 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar57 %newVar60 %newVar64 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[95] 	%newVar64 <- %newVar60 * %newVar64
+     tree: %newVar64 <- (%newVar60 op %newVar64)
+     in : { %A %newVar57 %newVar60 %newVar64 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar57 %newVar64 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[96] 	%newVar66 <- 1 * %newVar64
+     tree: %newVar66 <- (1 op %newVar64)
+     in : { %A %newVar57 %newVar64 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar57 %newVar66 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[97] 	%newVar57 <- %newVar66 + %newVar57
+     tree: %newVar57 <- (%newVar66 op %newVar57)
+     in : { %A %newVar57 %newVar66 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar57 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[98] 	%newVar57 <- %newVar57 + 1
+     tree: %newVar57 <- (%newVar57 op 1)
+     in : { %A %newVar57 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar57 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[99] 	%newVar56 <- %newVar57 * 8
+     tree: %newVar56 <- (%newVar57 op 8)
+     in : { %A %newVar57 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar56 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[100] 	%newVar56 <- %newVar56 + 40
+     tree: %newVar56 <- (%newVar56 op 40)
+     in : { %A %newVar56 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar56 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[101] 	%newVar67 <- %A + %newVar56
+     tree: %newVar67 <- (%A op %newVar56)
+     in : { %A %newVar56 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar67 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[102] 	store %newVar67 <- %test5
+     tree: store(%newVar67) <- %test5
+     in : { %A %newVar67 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[103] 	%newVar69 <- 0
+     tree: %newVar69 <- 0
+     in : { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar69 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[104] 	%newVar70 <- %A + 24
+     tree: %newVar70 <- (%A op 24)
+     in : { %A %newVar69 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar69 %newVar70 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[105] 	%newVar71 <- load %newVar70
+     tree: %newVar71 <- load(%newVar70)
+     in : { %A %newVar69 %newVar70 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar69 %newVar71 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[106] 	%newVar72 <- %newVar71 >> 1
+     tree: %newVar72 <- (%newVar71 op 1)
+     in : { %A %newVar69 %newVar71 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar69 %newVar72 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[107] 	%newVar73 <- %A + 32
+     tree: %newVar73 <- (%A op 32)
+     in : { %A %newVar69 %newVar72 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar69 %newVar72 %newVar73 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[108] 	%newVar74 <- load %newVar73
+     tree: %newVar74 <- load(%newVar73)
+     in : { %A %newVar69 %newVar72 %newVar73 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar69 %newVar72 %newVar74 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[109] 	%newVar75 <- %newVar74 >> 1
+     tree: %newVar75 <- (%newVar74 op 1)
+     in : { %A %newVar69 %newVar72 %newVar74 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar69 %newVar72 %newVar75 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[110] 	%newVar76 <- 1
+     tree: %newVar76 <- 1
+     in : { %A %newVar69 %newVar72 %newVar75 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar69 %newVar72 %newVar75 %newVar76 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[111] 	%newVar76 <- %newVar75 * %newVar76
+     tree: %newVar76 <- (%newVar75 op %newVar76)
+     in : { %A %newVar69 %newVar72 %newVar75 %newVar76 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar69 %newVar72 %newVar76 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[112] 	%newVar77 <- 1 * %newVar76
+     tree: %newVar77 <- (1 op %newVar76)
+     in : { %A %newVar69 %newVar72 %newVar76 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar69 %newVar72 %newVar76 %newVar77 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[113] 	%newVar69 <- %newVar77 + %newVar69
+     tree: %newVar69 <- (%newVar77 op %newVar69)
+     in : { %A %newVar69 %newVar72 %newVar76 %newVar77 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar69 %newVar72 %newVar76 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[114] 	%newVar76 <- %newVar72 * %newVar76
+     tree: %newVar76 <- (%newVar72 op %newVar76)
+     in : { %A %newVar69 %newVar72 %newVar76 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar69 %newVar76 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[115] 	%newVar78 <- 2 * %newVar76
+     tree: %newVar78 <- (2 op %newVar76)
+     in : { %A %newVar69 %newVar76 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar69 %newVar78 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[116] 	%newVar69 <- %newVar78 + %newVar69
+     tree: %newVar69 <- (%newVar78 op %newVar69)
+     in : { %A %newVar69 %newVar78 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar69 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[117] 	%newVar69 <- %newVar69 + 0
+     tree: %newVar69 <- (%newVar69 op 0)
+     in : { %A %newVar69 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar69 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[118] 	%newVar68 <- %newVar69 * 8
+     tree: %newVar68 <- (%newVar69 op 8)
+     in : { %A %newVar69 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar68 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[119] 	%newVar68 <- %newVar68 + 40
+     tree: %newVar68 <- (%newVar68 op 40)
+     in : { %A %newVar68 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar68 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[120] 	%newVar79 <- %A + %newVar68
+     tree: %newVar79 <- (%A op %newVar68)
+     in : { %A %newVar68 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar79 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[121] 	store %newVar79 <- %test6
+     tree: store(%newVar79) <- %test6
+     in : { %A %newVar79 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[122] 	%test <- call findArrayValue(%A, %test1)
+     tree: %test <- call @findArrayValue(%A, %test1)
+     in : { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %test %test2 %test3 %test4 %test5 %test6 }
+
+      MERGED -> tree[1] now = store((%A op 8)) <- 7
+      MERGED -> tree[2] now = store((%A op 16)) <- 11
+      MERGED -> tree[3] now = store((%A op 24)) <- 9
+      MERGED -> tree[4] now = store((%A op 32)) <- 7
+  [i=4 def=%newVar9] STOP: redefined at j=14
+      MERGED -> tree[6] now = %newVar11 <- load((%A op 24))
+      MERGED -> tree[6] now = %newVar12 <- (load((%A op 24)) op 1)
+  [i=5 -> j=13] SKIP: memory op between
+      MERGED -> tree[7] now = %newVar14 <- load((%A op 32))
+      MERGED -> tree[7] now = %newVar15 <- (load((%A op 32)) op 1)
+      MERGED -> tree[8] now = %newVar16 <- ((load((%A op 32)) op 1) op %newVar16)
+  [i=6 def=%newVar16] STOP: redefined at j=7
+  [i=7 def=%newVar16] STOP: redefined at j=10
+      MERGED -> tree[9] now = %newVar9 <- ((0 op %newVar16) op %newVar9)
+  [i=8 def=%newVar9] STOP: redefined at j=11
+      MERGED -> tree[11] now = %newVar9 <- ((0 op %newVar16) op %newVar9)
+  [i=10 def=%newVar9] STOP: redefined at j=11
+  [i=12 def=%newVar8] STOP: redefined at j=13
+      MERGED -> tree[14] now = %newVar19 <- (%A op (%newVar8 op 40))
+      MERGED -> tree[14] now = store((%A op (%newVar8 op 40))) <- %test1
+  [i=14 def=%newVar21] STOP: redefined at j=24
+      MERGED -> tree[16] now = %newVar23 <- load((%A op 24))
+      MERGED -> tree[16] now = %newVar24 <- (load((%A op 24)) op 1)
+  [i=15 -> j=23] SKIP: memory op between
+      MERGED -> tree[17] now = %newVar26 <- load((%A op 32))
+      MERGED -> tree[17] now = %newVar27 <- (load((%A op 32)) op 1)
+      MERGED -> tree[18] now = %newVar28 <- ((load((%A op 32)) op 1) op %newVar28)
+  [i=16 def=%newVar28] STOP: redefined at j=17
+  [i=17 def=%newVar28] STOP: redefined at j=20
+      MERGED -> tree[19] now = %newVar21 <- ((0 op %newVar28) op %newVar21)
+  [i=18 def=%newVar21] STOP: redefined at j=21
+      MERGED -> tree[21] now = %newVar21 <- ((0 op %newVar28) op %newVar21)
+  [i=20 def=%newVar21] STOP: redefined at j=21
+  [i=22 def=%newVar20] STOP: redefined at j=23
+      MERGED -> tree[24] now = %newVar31 <- (%A op (%newVar20 op 40))
+      MERGED -> tree[24] now = store((%A op (%newVar20 op 40))) <- %test2
+  [i=24 def=%newVar33] STOP: redefined at j=34
+      MERGED -> tree[26] now = %newVar35 <- load((%A op 24))
+      MERGED -> tree[26] now = %newVar36 <- (load((%A op 24)) op 1)
+  [i=25 -> j=33] SKIP: memory op between
+      MERGED -> tree[27] now = %newVar38 <- load((%A op 32))
+      MERGED -> tree[27] now = %newVar39 <- (load((%A op 32)) op 1)
+      MERGED -> tree[28] now = %newVar40 <- ((load((%A op 32)) op 1) op %newVar40)
+  [i=26 def=%newVar40] STOP: redefined at j=27
+  [i=27 def=%newVar40] STOP: redefined at j=30
+      MERGED -> tree[29] now = %newVar33 <- ((1 op %newVar40) op %newVar33)
+  [i=28 def=%newVar33] STOP: redefined at j=31
+      MERGED -> tree[31] now = %newVar33 <- ((0 op %newVar40) op %newVar33)
+  [i=30 def=%newVar33] STOP: redefined at j=31
+  [i=32 def=%newVar32] STOP: redefined at j=33
+      MERGED -> tree[34] now = %newVar43 <- (%A op (%newVar32 op 40))
+      MERGED -> tree[34] now = store((%A op (%newVar32 op 40))) <- %test3
+  [i=34 def=%newVar45] STOP: redefined at j=44
+      MERGED -> tree[36] now = %newVar47 <- load((%A op 24))
+      MERGED -> tree[36] now = %newVar48 <- (load((%A op 24)) op 1)
+  [i=35 -> j=43] SKIP: memory op between
+      MERGED -> tree[37] now = %newVar50 <- load((%A op 32))
+      MERGED -> tree[37] now = %newVar51 <- (load((%A op 32)) op 1)
+      MERGED -> tree[38] now = %newVar52 <- ((load((%A op 32)) op 1) op %newVar52)
+  [i=36 def=%newVar52] STOP: redefined at j=37
+  [i=37 def=%newVar52] STOP: redefined at j=40
+      MERGED -> tree[39] now = %newVar45 <- ((2 op %newVar52) op %newVar45)
+  [i=38 def=%newVar45] STOP: redefined at j=41
+      MERGED -> tree[41] now = %newVar45 <- ((0 op %newVar52) op %newVar45)
+  [i=40 def=%newVar45] STOP: redefined at j=41
+  [i=42 def=%newVar44] STOP: redefined at j=43
+      MERGED -> tree[44] now = %newVar55 <- (%A op (%newVar44 op 40))
+      MERGED -> tree[44] now = store((%A op (%newVar44 op 40))) <- %test4
+  [i=44 def=%newVar57] STOP: redefined at j=54
+      MERGED -> tree[46] now = %newVar59 <- load((%A op 24))
+      MERGED -> tree[46] now = %newVar60 <- (load((%A op 24)) op 1)
+  [i=45 -> j=53] SKIP: memory op between
+      MERGED -> tree[47] now = %newVar62 <- load((%A op 32))
+      MERGED -> tree[47] now = %newVar63 <- (load((%A op 32)) op 1)
+      MERGED -> tree[48] now = %newVar64 <- ((load((%A op 32)) op 1) op %newVar64)
+  [i=46 def=%newVar64] STOP: redefined at j=47
+  [i=47 def=%newVar64] STOP: redefined at j=50
+      MERGED -> tree[49] now = %newVar57 <- ((0 op %newVar64) op %newVar57)
+  [i=48 def=%newVar57] STOP: redefined at j=51
+      MERGED -> tree[51] now = %newVar57 <- ((1 op %newVar64) op %newVar57)
+  [i=50 def=%newVar57] STOP: redefined at j=51
+  [i=52 def=%newVar56] STOP: redefined at j=53
+      MERGED -> tree[54] now = %newVar67 <- (%A op (%newVar56 op 40))
+      MERGED -> tree[54] now = store((%A op (%newVar56 op 40))) <- %test5
+  [i=54 def=%newVar69] STOP: redefined at j=64
+      MERGED -> tree[56] now = %newVar71 <- load((%A op 24))
+      MERGED -> tree[56] now = %newVar72 <- (load((%A op 24)) op 1)
+  [i=55 -> j=63] SKIP: memory op between
+      MERGED -> tree[57] now = %newVar74 <- load((%A op 32))
+      MERGED -> tree[57] now = %newVar75 <- (load((%A op 32)) op 1)
+      MERGED -> tree[58] now = %newVar76 <- ((load((%A op 32)) op 1) op %newVar76)
+  [i=56 def=%newVar76] STOP: redefined at j=57
+  [i=57 def=%newVar76] STOP: redefined at j=60
+      MERGED -> tree[59] now = %newVar69 <- ((1 op %newVar76) op %newVar69)
+  [i=58 def=%newVar69] STOP: redefined at j=61
+      MERGED -> tree[61] now = %newVar69 <- ((2 op %newVar76) op %newVar69)
+  [i=60 def=%newVar69] STOP: redefined at j=61
+  [i=62 def=%newVar68] STOP: redefined at j=63
+      MERGED -> tree[64] now = %newVar79 <- (%A op (%newVar68 op 40))
+      MERGED -> tree[64] now = store((%A op (%newVar68 op 40))) <- %test6
+  [i=4 def=%newVar9] STOP: redefined at j=8
+  [i=5 -> j=9] SKIP: memory op between
+  [i=6 def=%newVar16] STOP: redefined at j=7
+  [i=7 def=%newVar16] STOP: redefined at j=9
+  [i=8 def=%newVar9] STOP: redefined at j=10
+  [i=10 def=%newVar9] STOP: redefined at j=11
+      MERGED -> tree[13] now = store((%A op ((%newVar9 op 8) op 40))) <- %test1
+  [i=13 def=%newVar21] STOP: redefined at j=17
+  [i=14 -> j=18] SKIP: memory op between
+  [i=15 def=%newVar28] STOP: redefined at j=16
+  [i=16 def=%newVar28] STOP: redefined at j=18
+  [i=17 def=%newVar21] STOP: redefined at j=19
+  [i=19 def=%newVar21] STOP: redefined at j=20
+      MERGED -> tree[22] now = store((%A op ((%newVar21 op 8) op 40))) <- %test2
+  [i=22 def=%newVar33] STOP: redefined at j=26
+  [i=23 -> j=27] SKIP: memory op between
+  [i=24 def=%newVar40] STOP: redefined at j=25
+  [i=25 def=%newVar40] STOP: redefined at j=27
+  [i=26 def=%newVar33] STOP: redefined at j=28
+  [i=28 def=%newVar33] STOP: redefined at j=29
+      MERGED -> tree[31] now = store((%A op ((%newVar33 op 8) op 40))) <- %test3
+  [i=31 def=%newVar45] STOP: redefined at j=35
+  [i=32 -> j=36] SKIP: memory op between
+  [i=33 def=%newVar52] STOP: redefined at j=34
+  [i=34 def=%newVar52] STOP: redefined at j=36
+  [i=35 def=%newVar45] STOP: redefined at j=37
+  [i=37 def=%newVar45] STOP: redefined at j=38
+      MERGED -> tree[40] now = store((%A op ((%newVar45 op 8) op 40))) <- %test4
+  [i=40 def=%newVar57] STOP: redefined at j=44
+  [i=41 -> j=45] SKIP: memory op between
+  [i=42 def=%newVar64] STOP: redefined at j=43
+  [i=43 def=%newVar64] STOP: redefined at j=45
+  [i=44 def=%newVar57] STOP: redefined at j=46
+  [i=46 def=%newVar57] STOP: redefined at j=47
+      MERGED -> tree[49] now = store((%A op ((%newVar57 op 8) op 40))) <- %test5
+  [i=49 def=%newVar69] STOP: redefined at j=53
+  [i=50 -> j=54] SKIP: memory op between
+  [i=51 def=%newVar76] STOP: redefined at j=52
+  [i=52 def=%newVar76] STOP: redefined at j=54
+  [i=53 def=%newVar69] STOP: redefined at j=55
+  [i=55 def=%newVar69] STOP: redefined at j=56
+      MERGED -> tree[58] now = store((%A op ((%newVar69 op 8) op 40))) <- %test6
+  [i=4 def=%newVar9] STOP: redefined at j=8
+  [i=5 -> j=9] SKIP: memory op between
+  [i=6 def=%newVar16] STOP: redefined at j=7
+  [i=7 def=%newVar16] STOP: redefined at j=9
+  [i=8 def=%newVar9] STOP: redefined at j=10
+  [i=10 def=%newVar9] STOP: redefined at j=11
+  [i=13 def=%newVar21] STOP: redefined at j=17
+  [i=14 -> j=18] SKIP: memory op between
+  [i=15 def=%newVar28] STOP: redefined at j=16
+  [i=16 def=%newVar28] STOP: redefined at j=18
+  [i=17 def=%newVar21] STOP: redefined at j=19
+  [i=19 def=%newVar21] STOP: redefined at j=20
+  [i=22 def=%newVar33] STOP: redefined at j=26
+  [i=23 -> j=27] SKIP: memory op between
+  [i=24 def=%newVar40] STOP: redefined at j=25
+  [i=25 def=%newVar40] STOP: redefined at j=27
+  [i=26 def=%newVar33] STOP: redefined at j=28
+  [i=28 def=%newVar33] STOP: redefined at j=29
+  [i=31 def=%newVar45] STOP: redefined at j=35
+  [i=32 -> j=36] SKIP: memory op between
+  [i=33 def=%newVar52] STOP: redefined at j=34
+  [i=34 def=%newVar52] STOP: redefined at j=36
+  [i=35 def=%newVar45] STOP: redefined at j=37
+  [i=37 def=%newVar45] STOP: redefined at j=38
+  [i=40 def=%newVar57] STOP: redefined at j=44
+  [i=41 -> j=45] SKIP: memory op between
+  [i=42 def=%newVar64] STOP: redefined at j=43
+  [i=43 def=%newVar64] STOP: redefined at j=45
+  [i=44 def=%newVar57] STOP: redefined at j=46
+  [i=46 def=%newVar57] STOP: redefined at j=47
+  [i=49 def=%newVar69] STOP: redefined at j=53
+  [i=50 -> j=54] SKIP: memory op between
+  [i=51 def=%newVar76] STOP: redefined at j=52
+  [i=52 def=%newVar76] STOP: redefined at j=54
+  [i=53 def=%newVar69] STOP: redefined at j=55
+  [i=55 def=%newVar69] STOP: redefined at j=56
+=== Context Trees ===
+instructions: 59 trees: 59 liveness: 59
+
+[0] 	store %newVar4 <- 7
+     tree: store((%A op 8)) <- 7
+     in : { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[1] 	store %newVar5 <- 11
+     tree: store((%A op 16)) <- 11
+     in : { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[2] 	store %newVar6 <- 9
+     tree: store((%A op 24)) <- 9
+     in : { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[3] 	store %newVar7 <- 7
+     tree: store((%A op 32)) <- 7
+     in : { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[4] 	%newVar9 <- 0
+     tree: %newVar9 <- 0
+     in : { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[5] 	%newVar12 <- %newVar11 >> 1
+     tree: %newVar12 <- (load((%A op 24)) op 1)
+     in : { %A %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar12 %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[6] 	%newVar16 <- 1
+     tree: %newVar16 <- 1
+     in : { %A %newVar12 %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar12 %newVar16 %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[7] 	%newVar16 <- %newVar15 * %newVar16
+     tree: %newVar16 <- ((load((%A op 32)) op 1) op %newVar16)
+     in : { %A %newVar12 %newVar16 %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar12 %newVar16 %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[8] 	%newVar9 <- %newVar17 + %newVar9
+     tree: %newVar9 <- ((0 op %newVar16) op %newVar9)
+     in : { %A %newVar12 %newVar16 %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar12 %newVar16 %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[9] 	%newVar16 <- %newVar12 * %newVar16
+     tree: %newVar16 <- (%newVar12 op %newVar16)
+     in : { %A %newVar12 %newVar16 %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar16 %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[10] 	%newVar9 <- %newVar18 + %newVar9
+     tree: %newVar9 <- ((0 op %newVar16) op %newVar9)
+     in : { %A %newVar16 %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[11] 	%newVar9 <- %newVar9 + 1
+     tree: %newVar9 <- (%newVar9 op 1)
+     in : { %A %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[12] 	store %newVar19 <- %test1
+     tree: store((%A op ((%newVar9 op 8) op 40))) <- %test1
+     in : { %A %newVar9 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[13] 	%newVar21 <- 0
+     tree: %newVar21 <- 0
+     in : { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar21 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[14] 	%newVar24 <- %newVar23 >> 1
+     tree: %newVar24 <- (load((%A op 24)) op 1)
+     in : { %A %newVar21 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar21 %newVar24 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[15] 	%newVar28 <- 1
+     tree: %newVar28 <- 1
+     in : { %A %newVar21 %newVar24 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar21 %newVar24 %newVar28 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[16] 	%newVar28 <- %newVar27 * %newVar28
+     tree: %newVar28 <- ((load((%A op 32)) op 1) op %newVar28)
+     in : { %A %newVar21 %newVar24 %newVar28 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar21 %newVar24 %newVar28 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[17] 	%newVar21 <- %newVar29 + %newVar21
+     tree: %newVar21 <- ((0 op %newVar28) op %newVar21)
+     in : { %A %newVar21 %newVar24 %newVar28 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar21 %newVar24 %newVar28 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[18] 	%newVar28 <- %newVar24 * %newVar28
+     tree: %newVar28 <- (%newVar24 op %newVar28)
+     in : { %A %newVar21 %newVar24 %newVar28 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar21 %newVar28 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[19] 	%newVar21 <- %newVar30 + %newVar21
+     tree: %newVar21 <- ((0 op %newVar28) op %newVar21)
+     in : { %A %newVar21 %newVar28 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar21 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[20] 	%newVar21 <- %newVar21 + 2
+     tree: %newVar21 <- (%newVar21 op 2)
+     in : { %A %newVar21 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar21 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[21] 	store %newVar31 <- %test2
+     tree: store((%A op ((%newVar21 op 8) op 40))) <- %test2
+     in : { %A %newVar21 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[22] 	%newVar33 <- 0
+     tree: %newVar33 <- 0
+     in : { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar33 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[23] 	%newVar36 <- %newVar35 >> 1
+     tree: %newVar36 <- (load((%A op 24)) op 1)
+     in : { %A %newVar33 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar33 %newVar36 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[24] 	%newVar40 <- 1
+     tree: %newVar40 <- 1
+     in : { %A %newVar33 %newVar36 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar33 %newVar36 %newVar40 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[25] 	%newVar40 <- %newVar39 * %newVar40
+     tree: %newVar40 <- ((load((%A op 32)) op 1) op %newVar40)
+     in : { %A %newVar33 %newVar36 %newVar40 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar33 %newVar36 %newVar40 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[26] 	%newVar33 <- %newVar41 + %newVar33
+     tree: %newVar33 <- ((1 op %newVar40) op %newVar33)
+     in : { %A %newVar33 %newVar36 %newVar40 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar33 %newVar36 %newVar40 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[27] 	%newVar40 <- %newVar36 * %newVar40
+     tree: %newVar40 <- (%newVar36 op %newVar40)
+     in : { %A %newVar33 %newVar36 %newVar40 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar33 %newVar40 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[28] 	%newVar33 <- %newVar42 + %newVar33
+     tree: %newVar33 <- ((0 op %newVar40) op %newVar33)
+     in : { %A %newVar33 %newVar40 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar33 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[29] 	%newVar33 <- %newVar33 + 0
+     tree: %newVar33 <- (%newVar33 op 0)
+     in : { %A %newVar33 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar33 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[30] 	store %newVar43 <- %test3
+     tree: store((%A op ((%newVar33 op 8) op 40))) <- %test3
+     in : { %A %newVar33 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[31] 	%newVar45 <- 0
+     tree: %newVar45 <- 0
+     in : { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar45 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[32] 	%newVar48 <- %newVar47 >> 1
+     tree: %newVar48 <- (load((%A op 24)) op 1)
+     in : { %A %newVar45 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar45 %newVar48 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[33] 	%newVar52 <- 1
+     tree: %newVar52 <- 1
+     in : { %A %newVar45 %newVar48 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar45 %newVar48 %newVar52 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[34] 	%newVar52 <- %newVar51 * %newVar52
+     tree: %newVar52 <- ((load((%A op 32)) op 1) op %newVar52)
+     in : { %A %newVar45 %newVar48 %newVar52 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar45 %newVar48 %newVar52 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[35] 	%newVar45 <- %newVar53 + %newVar45
+     tree: %newVar45 <- ((2 op %newVar52) op %newVar45)
+     in : { %A %newVar45 %newVar48 %newVar52 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar45 %newVar48 %newVar52 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[36] 	%newVar52 <- %newVar48 * %newVar52
+     tree: %newVar52 <- (%newVar48 op %newVar52)
+     in : { %A %newVar45 %newVar48 %newVar52 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar45 %newVar52 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[37] 	%newVar45 <- %newVar54 + %newVar45
+     tree: %newVar45 <- ((0 op %newVar52) op %newVar45)
+     in : { %A %newVar45 %newVar52 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar45 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[38] 	%newVar45 <- %newVar45 + 2
+     tree: %newVar45 <- (%newVar45 op 2)
+     in : { %A %newVar45 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar45 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[39] 	store %newVar55 <- %test4
+     tree: store((%A op ((%newVar45 op 8) op 40))) <- %test4
+     in : { %A %newVar45 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[40] 	%newVar57 <- 0
+     tree: %newVar57 <- 0
+     in : { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar57 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[41] 	%newVar60 <- %newVar59 >> 1
+     tree: %newVar60 <- (load((%A op 24)) op 1)
+     in : { %A %newVar57 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar57 %newVar60 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[42] 	%newVar64 <- 1
+     tree: %newVar64 <- 1
+     in : { %A %newVar57 %newVar60 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar57 %newVar60 %newVar64 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[43] 	%newVar64 <- %newVar63 * %newVar64
+     tree: %newVar64 <- ((load((%A op 32)) op 1) op %newVar64)
+     in : { %A %newVar57 %newVar60 %newVar64 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar57 %newVar60 %newVar64 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[44] 	%newVar57 <- %newVar65 + %newVar57
+     tree: %newVar57 <- ((0 op %newVar64) op %newVar57)
+     in : { %A %newVar57 %newVar60 %newVar64 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar57 %newVar60 %newVar64 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[45] 	%newVar64 <- %newVar60 * %newVar64
+     tree: %newVar64 <- (%newVar60 op %newVar64)
+     in : { %A %newVar57 %newVar60 %newVar64 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar57 %newVar64 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[46] 	%newVar57 <- %newVar66 + %newVar57
+     tree: %newVar57 <- ((1 op %newVar64) op %newVar57)
+     in : { %A %newVar57 %newVar64 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar57 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[47] 	%newVar57 <- %newVar57 + 1
+     tree: %newVar57 <- (%newVar57 op 1)
+     in : { %A %newVar57 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar57 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[48] 	store %newVar67 <- %test5
+     tree: store((%A op ((%newVar57 op 8) op 40))) <- %test5
+     in : { %A %newVar57 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[49] 	%newVar69 <- 0
+     tree: %newVar69 <- 0
+     in : { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar69 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[50] 	%newVar72 <- %newVar71 >> 1
+     tree: %newVar72 <- (load((%A op 24)) op 1)
+     in : { %A %newVar69 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar69 %newVar72 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[51] 	%newVar76 <- 1
+     tree: %newVar76 <- 1
+     in : { %A %newVar69 %newVar72 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar69 %newVar72 %newVar76 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[52] 	%newVar76 <- %newVar75 * %newVar76
+     tree: %newVar76 <- ((load((%A op 32)) op 1) op %newVar76)
+     in : { %A %newVar69 %newVar72 %newVar76 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar69 %newVar72 %newVar76 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[53] 	%newVar69 <- %newVar77 + %newVar69
+     tree: %newVar69 <- ((1 op %newVar76) op %newVar69)
+     in : { %A %newVar69 %newVar72 %newVar76 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar69 %newVar72 %newVar76 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[54] 	%newVar76 <- %newVar72 * %newVar76
+     tree: %newVar76 <- (%newVar72 op %newVar76)
+     in : { %A %newVar69 %newVar72 %newVar76 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar69 %newVar76 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[55] 	%newVar69 <- %newVar78 + %newVar69
+     tree: %newVar69 <- ((2 op %newVar76) op %newVar69)
+     in : { %A %newVar69 %newVar76 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar69 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[56] 	%newVar69 <- %newVar69 + 0
+     tree: %newVar69 <- (%newVar69 op 0)
+     in : { %A %newVar69 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %newVar69 %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[57] 	store %newVar79 <- %test6
+     tree: store((%A op ((%newVar69 op 8) op 40))) <- %test6
+     in : { %A %newVar69 %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+
+[58] 	%test <- call findArrayValue(%A, %test1)
+     tree: %test <- call @findArrayValue(%A, %test1)
+     in : { %A %test1 %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %test %test2 %test3 %test4 %test5 %test6 }
+
 === Context Trees ===
 instructions: 1 trees: 1 liveness: 1
 
-[0] 	return %v3
-     tree: 5
-     in : { %v3 }
+[0] 	call print(%test)
+     tree: call print(%test)
+     in : { %A %test %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %test2 %test3 %test4 %test5 %test6 }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	call print(%test)
+     tree: call print(%test)
+     in : { %A %test %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %test2 %test3 %test4 %test5 %test6 }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	%test <- call findArrayValue(%A, %test2)
+     tree: %test <- call @findArrayValue(%A, %test2)
+     in : { %A %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %test %test3 %test4 %test5 %test6 }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	%test <- call findArrayValue(%A, %test2)
+     tree: %test <- call @findArrayValue(%A, %test2)
+     in : { %A %test2 %test3 %test4 %test5 %test6 }
+     out: { %A %test %test3 %test4 %test5 %test6 }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	call print(%test)
+     tree: call print(%test)
+     in : { %A %test %test3 %test4 %test5 %test6 }
+     out: { %A %test3 %test4 %test5 %test6 }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	call print(%test)
+     tree: call print(%test)
+     in : { %A %test %test3 %test4 %test5 %test6 }
+     out: { %A %test3 %test4 %test5 %test6 }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	%test <- call findArrayValue(%A, 13)
+     tree: %test <- call @findArrayValue(%A, 13)
+     in : { %A %test3 %test4 %test5 %test6 }
+     out: { %A %test %test3 %test4 %test5 %test6 }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	%test <- call findArrayValue(%A, 13)
+     tree: %test <- call @findArrayValue(%A, 13)
+     in : { %A %test3 %test4 %test5 %test6 }
+     out: { %A %test %test3 %test4 %test5 %test6 }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	call print(%test)
+     tree: call print(%test)
+     in : { %A %test %test3 %test4 %test5 %test6 }
+     out: { %A %test3 %test4 %test5 %test6 }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	call print(%test)
+     tree: call print(%test)
+     in : { %A %test %test3 %test4 %test5 %test6 }
+     out: { %A %test3 %test4 %test5 %test6 }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	%test <- call findArrayValue(%A, %test3)
+     tree: %test <- call @findArrayValue(%A, %test3)
+     in : { %A %test3 %test4 %test5 %test6 }
+     out: { %A %test %test4 %test5 %test6 }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	%test <- call findArrayValue(%A, %test3)
+     tree: %test <- call @findArrayValue(%A, %test3)
+     in : { %A %test3 %test4 %test5 %test6 }
+     out: { %A %test %test4 %test5 %test6 }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	call print(%test)
+     tree: call print(%test)
+     in : { %A %test %test4 %test5 %test6 }
+     out: { %A %test4 %test5 %test6 }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	call print(%test)
+     tree: call print(%test)
+     in : { %A %test %test4 %test5 %test6 }
+     out: { %A %test4 %test5 %test6 }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	%test <- call findArrayValue(%A, %test4)
+     tree: %test <- call @findArrayValue(%A, %test4)
+     in : { %A %test4 %test5 %test6 }
+     out: { %A %test %test5 %test6 }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	%test <- call findArrayValue(%A, %test4)
+     tree: %test <- call @findArrayValue(%A, %test4)
+     in : { %A %test4 %test5 %test6 }
+     out: { %A %test %test5 %test6 }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	call print(%test)
+     tree: call print(%test)
+     in : { %A %test %test5 %test6 }
+     out: { %A %test5 %test6 }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	call print(%test)
+     tree: call print(%test)
+     in : { %A %test %test5 %test6 }
+     out: { %A %test5 %test6 }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	%test <- call findArrayValue(%A, %test5)
+     tree: %test <- call @findArrayValue(%A, %test5)
+     in : { %A %test5 %test6 }
+     out: { %A %test %test6 }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	%test <- call findArrayValue(%A, %test5)
+     tree: %test <- call @findArrayValue(%A, %test5)
+     in : { %A %test5 %test6 }
+     out: { %A %test %test6 }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	call print(%test)
+     tree: call print(%test)
+     in : { %A %test %test6 }
+     out: { %A %test6 }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	call print(%test)
+     tree: call print(%test)
+     in : { %A %test %test6 }
+     out: { %A %test6 }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	%test <- call findArrayValue(%A, 17)
+     tree: %test <- call @findArrayValue(%A, 17)
+     in : { %A %test6 }
+     out: { %A %test %test6 }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	%test <- call findArrayValue(%A, 17)
+     tree: %test <- call @findArrayValue(%A, 17)
+     in : { %A %test6 }
+     out: { %A %test %test6 }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	call print(%test)
+     tree: call print(%test)
+     in : { %A %test %test6 }
+     out: { %A %test6 }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	call print(%test)
+     tree: call print(%test)
+     in : { %A %test %test6 }
+     out: { %A %test6 }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	%test <- call findArrayValue(%A, 21)
+     tree: %test <- call @findArrayValue(%A, 21)
+     in : { %A %test6 }
+     out: { %A %test %test6 }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	%test <- call findArrayValue(%A, 21)
+     tree: %test <- call @findArrayValue(%A, 21)
+     in : { %A %test6 }
+     out: { %A %test %test6 }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	call print(%test)
+     tree: call print(%test)
+     in : { %A %test %test6 }
+     out: { %A %test6 }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	call print(%test)
+     tree: call print(%test)
+     in : { %A %test %test6 }
+     out: { %A %test6 }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	%test <- call findArrayValue(%A, %test6)
+     tree: %test <- call @findArrayValue(%A, %test6)
+     in : { %A %test6 }
+     out: { %test }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	%test <- call findArrayValue(%A, %test6)
+     tree: %test <- call @findArrayValue(%A, %test6)
+     in : { %A %test6 }
+     out: { %test }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	call print(%test)
+     tree: call print(%test)
+     in : { %test }
      out: { }
 
-==1662334== 
-==1662334== HEAP SUMMARY:
-==1662334==     in use at exit: 0 bytes in 0 blocks
-==1662334==   total heap usage: 317 allocs, 317 frees, 115,104 bytes allocated
-==1662334== 
-==1662334== All heap blocks were freed -- no leaks are possible
-==1662334== 
-==1662334== For lists of detected and suppressed errors, rerun with: -s
-==1662334== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	call print(%test)
+     tree: call print(%test)
+     in : { %test }
+     out: { }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	return
+     tree: nullptr
+     in : { }
+     out: { }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	return
+     tree: nullptr
+     in : { }
+     out: { }
+
+=== Context Trees ===
+instructions: 17 trees: 17 liveness: 17
+
+[0] 	:get_dimension_length
+     tree: nullptr
+     in : { %A %v }
+     out: { %A %v }
+
+[1] 	%newVar0 <- 0 * 8
+     tree: %newVar0 <- (0 op 8)
+     in : { %A %v }
+     out: { %A %newVar0 %v }
+
+[2] 	%newVar1 <- %newVar0 + 16
+     tree: %newVar1 <- (%newVar0 op 16)
+     in : { %A %newVar0 %v }
+     out: { %A %newVar1 %v }
+
+[3] 	%newVar2 <- %A + %newVar1
+     tree: %newVar2 <- (%A op %newVar1)
+     in : { %A %newVar1 %v }
+     out: { %A %newVar2 %v }
+
+[4] 	%first_dimension_length <- load %newVar2
+     tree: %first_dimension_length <- load(%newVar2)
+     in : { %A %newVar2 %v }
+     out: { %A %first_dimension_length %v }
+
+[5] 	%newVar3 <- 1 * 8
+     tree: %newVar3 <- (1 op 8)
+     in : { %A %first_dimension_length %v }
+     out: { %A %first_dimension_length %newVar3 %v }
+
+[6] 	%newVar4 <- %newVar3 + 16
+     tree: %newVar4 <- (%newVar3 op 16)
+     in : { %A %first_dimension_length %newVar3 %v }
+     out: { %A %first_dimension_length %newVar4 %v }
+
+[7] 	%newVar5 <- %A + %newVar4
+     tree: %newVar5 <- (%A op %newVar4)
+     in : { %A %first_dimension_length %newVar4 %v }
+     out: { %A %first_dimension_length %newVar5 %v }
+
+[8] 	%second_dimension_length <- load %newVar5
+     tree: %second_dimension_length <- load(%newVar5)
+     in : { %A %first_dimension_length %newVar5 %v }
+     out: { %A %first_dimension_length %second_dimension_length %v }
+
+[9] 	%newVar6 <- 2 * 8
+     tree: %newVar6 <- (2 op 8)
+     in : { %A %first_dimension_length %second_dimension_length %v }
+     out: { %A %first_dimension_length %newVar6 %second_dimension_length %v }
+
+[10] 	%newVar7 <- %newVar6 + 16
+     tree: %newVar7 <- (%newVar6 op 16)
+     in : { %A %first_dimension_length %newVar6 %second_dimension_length %v }
+     out: { %A %first_dimension_length %newVar7 %second_dimension_length %v }
+
+[11] 	%newVar8 <- %A + %newVar7
+     tree: %newVar8 <- (%A op %newVar7)
+     in : { %A %first_dimension_length %newVar7 %second_dimension_length %v }
+     out: { %A %first_dimension_length %newVar8 %second_dimension_length %v }
+
+[12] 	%third_dimension_length <- load %newVar8
+     tree: %third_dimension_length <- load(%newVar8)
+     in : { %A %first_dimension_length %newVar8 %second_dimension_length %v }
+     out: { %A %first_dimension_length %second_dimension_length %third_dimension_length %v }
+
+[13] 	%first_dimension_length <- %first_dimension_length >> 1
+     tree: %first_dimension_length <- (%first_dimension_length op 1)
+     in : { %A %first_dimension_length %second_dimension_length %third_dimension_length %v }
+     out: { %A %first_dimension_length %second_dimension_length %third_dimension_length %v }
+
+[14] 	%second_dimension_length <- %second_dimension_length >> 1
+     tree: %second_dimension_length <- (%second_dimension_length op 1)
+     in : { %A %first_dimension_length %second_dimension_length %third_dimension_length %v }
+     out: { %A %first_dimension_length %second_dimension_length %third_dimension_length %v }
+
+[15] 	%third_dimension_length <- %third_dimension_length >> 1
+     tree: %third_dimension_length <- (%third_dimension_length op 1)
+     in : { %A %first_dimension_length %second_dimension_length %third_dimension_length %v }
+     out: { %A %first_dimension_length %second_dimension_length %third_dimension_length %v }
+
+[16] 	br :nested_for_loops
+     tree: nullptr
+     in : { %A %first_dimension_length %second_dimension_length %third_dimension_length %v }
+     out: { %A %first_dimension_length %second_dimension_length %third_dimension_length %v }
+
+      MERGED -> tree[2] now = %newVar1 <- ((0 op 8) op 16)
+      MERGED -> tree[2] now = %newVar2 <- (%A op ((0 op 8) op 16))
+      MERGED -> tree[2] now = %first_dimension_length <- load((%A op ((0 op 8) op 16)))
+  [i=1 def=%first_dimension_length] STOP: redefined at j=10
+      MERGED -> tree[3] now = %newVar4 <- ((1 op 8) op 16)
+      MERGED -> tree[3] now = %newVar5 <- (%A op ((1 op 8) op 16))
+      MERGED -> tree[3] now = %second_dimension_length <- load((%A op ((1 op 8) op 16)))
+  [i=2 def=%second_dimension_length] STOP: redefined at j=8
+      MERGED -> tree[4] now = %newVar7 <- ((2 op 8) op 16)
+      MERGED -> tree[4] now = %newVar8 <- (%A op ((2 op 8) op 16))
+      MERGED -> tree[4] now = %third_dimension_length <- load((%A op ((2 op 8) op 16)))
+  [i=3 def=%third_dimension_length] STOP: redefined at j=6
+  [i=1 def=%first_dimension_length] STOP: redefined at j=4
+  [i=2 def=%second_dimension_length] STOP: redefined at j=5
+  [i=3 def=%third_dimension_length] STOP: redefined at j=6
+=== Context Trees ===
+instructions: 8 trees: 8 liveness: 8
+
+[0] 	:get_dimension_length
+     tree: nullptr
+     in : { %A %v }
+     out: { %A %v }
+
+[1] 	%first_dimension_length <- load %newVar2
+     tree: %first_dimension_length <- load((%A op ((0 op 8) op 16)))
+     in : { %A %v }
+     out: { %A %first_dimension_length %v }
+
+[2] 	%second_dimension_length <- load %newVar5
+     tree: %second_dimension_length <- load((%A op ((1 op 8) op 16)))
+     in : { %A %first_dimension_length %v }
+     out: { %A %first_dimension_length %second_dimension_length %v }
+
+[3] 	%third_dimension_length <- load %newVar8
+     tree: %third_dimension_length <- load((%A op ((2 op 8) op 16)))
+     in : { %A %first_dimension_length %second_dimension_length %v }
+     out: { %A %first_dimension_length %second_dimension_length %third_dimension_length %v }
+
+[4] 	%first_dimension_length <- %first_dimension_length >> 1
+     tree: %first_dimension_length <- (%first_dimension_length op 1)
+     in : { %A %first_dimension_length %second_dimension_length %third_dimension_length %v }
+     out: { %A %first_dimension_length %second_dimension_length %third_dimension_length %v }
+
+[5] 	%second_dimension_length <- %second_dimension_length >> 1
+     tree: %second_dimension_length <- (%second_dimension_length op 1)
+     in : { %A %first_dimension_length %second_dimension_length %third_dimension_length %v }
+     out: { %A %first_dimension_length %second_dimension_length %third_dimension_length %v }
+
+[6] 	%third_dimension_length <- %third_dimension_length >> 1
+     tree: %third_dimension_length <- (%third_dimension_length op 1)
+     in : { %A %first_dimension_length %second_dimension_length %third_dimension_length %v }
+     out: { %A %first_dimension_length %second_dimension_length %third_dimension_length %v }
+
+[7] 	br :nested_for_loops
+     tree: nullptr
+     in : { %A %first_dimension_length %second_dimension_length %third_dimension_length %v }
+     out: { %A %first_dimension_length %second_dimension_length %third_dimension_length %v }
+
+=== Context Trees ===
+instructions: 3 trees: 3 liveness: 3
+
+[0] 	:nested_for_loops
+     tree: nullptr
+     in : { %A %first_dimension_length %second_dimension_length %third_dimension_length %v }
+     out: { %A %first_dimension_length %second_dimension_length %third_dimension_length %v }
+
+[1] 	%i <- 0
+     tree: %i <- 0
+     in : { %A %first_dimension_length %second_dimension_length %third_dimension_length %v }
+     out: { %A %first_dimension_length %i %second_dimension_length %third_dimension_length %v }
+
+[2] 	br :check_loop_1
+     tree: nullptr
+     in : { %A %first_dimension_length %i %second_dimension_length %third_dimension_length %v }
+     out: { %A %first_dimension_length %i %second_dimension_length %third_dimension_length %v }
+
+=== Context Trees ===
+instructions: 3 trees: 3 liveness: 3
+
+[0] 	:nested_for_loops
+     tree: nullptr
+     in : { %A %first_dimension_length %second_dimension_length %third_dimension_length %v }
+     out: { %A %first_dimension_length %second_dimension_length %third_dimension_length %v }
+
+[1] 	%i <- 0
+     tree: %i <- 0
+     in : { %A %first_dimension_length %second_dimension_length %third_dimension_length %v }
+     out: { %A %first_dimension_length %i %second_dimension_length %third_dimension_length %v }
+
+[2] 	br :check_loop_1
+     tree: nullptr
+     in : { %A %first_dimension_length %i %second_dimension_length %third_dimension_length %v }
+     out: { %A %first_dimension_length %i %second_dimension_length %third_dimension_length %v }
+
+=== Context Trees ===
+instructions: 3 trees: 3 liveness: 3
+
+[0] 	:check_loop_1
+     tree: nullptr
+     in : { %A %first_dimension_length %i %second_dimension_length %third_dimension_length %v }
+     out: { %A %first_dimension_length %i %second_dimension_length %third_dimension_length %v }
+
+[1] 	%check_loop_1 <- %i < %first_dimension_length
+     tree: %check_loop_1 <- (%i cmp %first_dimension_length)
+     in : { %A %first_dimension_length %i %second_dimension_length %third_dimension_length %v }
+     out: { %A %check_loop_1 %i %second_dimension_length %third_dimension_length %v }
+
+[2] 	br %check_loop_1 :loop_1_body
+     tree: br %check_loop_1 :loop_1_body
+     in : { %A %check_loop_1 %i %second_dimension_length %third_dimension_length %v }
+     out: { %A %i %second_dimension_length %third_dimension_length %v }
+
+      MERGED -> tree[2] now = br (%i cmp %first_dimension_length) :loop_1_body
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	:check_loop_1
+     tree: nullptr
+     in : { %A %first_dimension_length %i %second_dimension_length %third_dimension_length %v }
+     out: { %A %first_dimension_length %i %second_dimension_length %third_dimension_length %v }
+
+[1] 	br %check_loop_1 :loop_1_body
+     tree: br (%i cmp %first_dimension_length) :loop_1_body
+     in : { %A %first_dimension_length %i %second_dimension_length %third_dimension_length %v }
+     out: { %A %i %second_dimension_length %third_dimension_length %v }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	br :exit_loop1
+     tree: nullptr
+     in : { }
+     out: { }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	br :exit_loop1
+     tree: nullptr
+     in : { }
+     out: { }
+
+=== Context Trees ===
+instructions: 3 trees: 3 liveness: 3
+
+[0] 	:loop_1_body
+     tree: nullptr
+     in : { %A %i %second_dimension_length %third_dimension_length %v }
+     out: { %A %i %second_dimension_length %third_dimension_length %v }
+
+[1] 	%j <- 0
+     tree: %j <- 0
+     in : { %A %i %second_dimension_length %third_dimension_length %v }
+     out: { %A %i %j %second_dimension_length %third_dimension_length %v }
+
+[2] 	br :check_loop_2
+     tree: nullptr
+     in : { %A %i %j %second_dimension_length %third_dimension_length %v }
+     out: { %A %i %j %second_dimension_length %third_dimension_length %v }
+
+=== Context Trees ===
+instructions: 3 trees: 3 liveness: 3
+
+[0] 	:loop_1_body
+     tree: nullptr
+     in : { %A %i %second_dimension_length %third_dimension_length %v }
+     out: { %A %i %second_dimension_length %third_dimension_length %v }
+
+[1] 	%j <- 0
+     tree: %j <- 0
+     in : { %A %i %second_dimension_length %third_dimension_length %v }
+     out: { %A %i %j %second_dimension_length %third_dimension_length %v }
+
+[2] 	br :check_loop_2
+     tree: nullptr
+     in : { %A %i %j %second_dimension_length %third_dimension_length %v }
+     out: { %A %i %j %second_dimension_length %third_dimension_length %v }
+
+=== Context Trees ===
+instructions: 3 trees: 3 liveness: 3
+
+[0] 	:check_loop_2
+     tree: nullptr
+     in : { %A %i %j %second_dimension_length %third_dimension_length %v }
+     out: { %A %i %j %second_dimension_length %third_dimension_length %v }
+
+[1] 	%check_loop_2 <- %j < %second_dimension_length
+     tree: %check_loop_2 <- (%j cmp %second_dimension_length)
+     in : { %A %i %j %second_dimension_length %third_dimension_length %v }
+     out: { %A %check_loop_2 %i %j %third_dimension_length %v }
+
+[2] 	br %check_loop_2 :loop_2_body
+     tree: br %check_loop_2 :loop_2_body
+     in : { %A %check_loop_2 %i %j %third_dimension_length %v }
+     out: { %A %i %j %third_dimension_length %v }
+
+      MERGED -> tree[2] now = br (%j cmp %second_dimension_length) :loop_2_body
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	:check_loop_2
+     tree: nullptr
+     in : { %A %i %j %second_dimension_length %third_dimension_length %v }
+     out: { %A %i %j %second_dimension_length %third_dimension_length %v }
+
+[1] 	br %check_loop_2 :loop_2_body
+     tree: br (%j cmp %second_dimension_length) :loop_2_body
+     in : { %A %i %j %second_dimension_length %third_dimension_length %v }
+     out: { %A %i %j %third_dimension_length %v }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	br :exit_loop2
+     tree: nullptr
+     in : { %A %first_dimension_length %i %second_dimension_length %third_dimension_length %v }
+     out: { %A %first_dimension_length %i %second_dimension_length %third_dimension_length %v }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	br :exit_loop2
+     tree: nullptr
+     in : { %A %first_dimension_length %i %second_dimension_length %third_dimension_length %v }
+     out: { %A %first_dimension_length %i %second_dimension_length %third_dimension_length %v }
+
+=== Context Trees ===
+instructions: 3 trees: 3 liveness: 3
+
+[0] 	:loop_2_body
+     tree: nullptr
+     in : { %A %i %j %third_dimension_length %v }
+     out: { %A %i %j %third_dimension_length %v }
+
+[1] 	%k <- 0
+     tree: %k <- 0
+     in : { %A %i %j %third_dimension_length %v }
+     out: { %A %i %j %k %third_dimension_length %v }
+
+[2] 	br :check_loop_3
+     tree: nullptr
+     in : { %A %i %j %k %third_dimension_length %v }
+     out: { %A %i %j %k %third_dimension_length %v }
+
+=== Context Trees ===
+instructions: 3 trees: 3 liveness: 3
+
+[0] 	:loop_2_body
+     tree: nullptr
+     in : { %A %i %j %third_dimension_length %v }
+     out: { %A %i %j %third_dimension_length %v }
+
+[1] 	%k <- 0
+     tree: %k <- 0
+     in : { %A %i %j %third_dimension_length %v }
+     out: { %A %i %j %k %third_dimension_length %v }
+
+[2] 	br :check_loop_3
+     tree: nullptr
+     in : { %A %i %j %k %third_dimension_length %v }
+     out: { %A %i %j %k %third_dimension_length %v }
+
+=== Context Trees ===
+instructions: 3 trees: 3 liveness: 3
+
+[0] 	:check_loop_3
+     tree: nullptr
+     in : { %A %i %j %k %third_dimension_length %v }
+     out: { %A %i %j %k %third_dimension_length %v }
+
+[1] 	%check_loop_3 <- %k < %third_dimension_length
+     tree: %check_loop_3 <- (%k cmp %third_dimension_length)
+     in : { %A %i %j %k %third_dimension_length %v }
+     out: { %A %check_loop_3 %i %j %k %v }
+
+[2] 	br %check_loop_3 :loop_3_body
+     tree: br %check_loop_3 :loop_3_body
+     in : { %A %check_loop_3 %i %j %k %v }
+     out: { %A %i %j %k %v }
+
+      MERGED -> tree[2] now = br (%k cmp %third_dimension_length) :loop_3_body
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	:check_loop_3
+     tree: nullptr
+     in : { %A %i %j %k %third_dimension_length %v }
+     out: { %A %i %j %k %third_dimension_length %v }
+
+[1] 	br %check_loop_3 :loop_3_body
+     tree: br (%k cmp %third_dimension_length) :loop_3_body
+     in : { %A %i %j %k %third_dimension_length %v }
+     out: { %A %i %j %k %v }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	br :exit_loop3
+     tree: nullptr
+     in : { %A %i %j %second_dimension_length %third_dimension_length %v }
+     out: { %A %i %j %second_dimension_length %third_dimension_length %v }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	br :exit_loop3
+     tree: nullptr
+     in : { %A %i %j %second_dimension_length %third_dimension_length %v }
+     out: { %A %i %j %second_dimension_length %third_dimension_length %v }
+
+=== Context Trees ===
+instructions: 22 trees: 22 liveness: 22
+
+[0] 	:loop_3_body
+     tree: nullptr
+     in : { %A %i %j %k %v }
+     out: { %A %i %j %k %v }
+
+[1] 	%newVar10 <- 0
+     tree: %newVar10 <- 0
+     in : { %A %i %j %k %v }
+     out: { %A %i %j %k %newVar10 %v }
+
+[2] 	%newVar11 <- %A + 24
+     tree: %newVar11 <- (%A op 24)
+     in : { %A %i %j %k %newVar10 %v }
+     out: { %A %i %j %k %newVar10 %newVar11 %v }
+
+[3] 	%newVar12 <- load %newVar11
+     tree: %newVar12 <- load(%newVar11)
+     in : { %A %i %j %k %newVar10 %newVar11 %v }
+     out: { %A %i %j %k %newVar10 %newVar12 %v }
+
+[4] 	%newVar13 <- %newVar12 >> 1
+     tree: %newVar13 <- (%newVar12 op 1)
+     in : { %A %i %j %k %newVar10 %newVar12 %v }
+     out: { %A %i %j %k %newVar10 %newVar13 %v }
+
+[5] 	%newVar14 <- %A + 32
+     tree: %newVar14 <- (%A op 32)
+     in : { %A %i %j %k %newVar10 %newVar13 %v }
+     out: { %A %i %j %k %newVar10 %newVar13 %newVar14 %v }
+
+[6] 	%newVar15 <- load %newVar14
+     tree: %newVar15 <- load(%newVar14)
+     in : { %A %i %j %k %newVar10 %newVar13 %newVar14 %v }
+     out: { %A %i %j %k %newVar10 %newVar13 %newVar15 %v }
+
+[7] 	%newVar16 <- %newVar15 >> 1
+     tree: %newVar16 <- (%newVar15 op 1)
+     in : { %A %i %j %k %newVar10 %newVar13 %newVar15 %v }
+     out: { %A %i %j %k %newVar10 %newVar13 %newVar16 %v }
+
+[8] 	%newVar17 <- 1
+     tree: %newVar17 <- 1
+     in : { %A %i %j %k %newVar10 %newVar13 %newVar16 %v }
+     out: { %A %i %j %k %newVar10 %newVar13 %newVar16 %newVar17 %v }
+
+[9] 	%newVar17 <- %newVar16 * %newVar17
+     tree: %newVar17 <- (%newVar16 op %newVar17)
+     in : { %A %i %j %k %newVar10 %newVar13 %newVar16 %newVar17 %v }
+     out: { %A %i %j %k %newVar10 %newVar13 %newVar17 %v }
+
+[10] 	%newVar18 <- %j * %newVar17
+     tree: %newVar18 <- (%j op %newVar17)
+     in : { %A %i %j %k %newVar10 %newVar13 %newVar17 %v }
+     out: { %A %i %k %newVar10 %newVar13 %newVar17 %newVar18 %v }
+
+[11] 	%newVar10 <- %newVar18 + %newVar10
+     tree: %newVar10 <- (%newVar18 op %newVar10)
+     in : { %A %i %k %newVar10 %newVar13 %newVar17 %newVar18 %v }
+     out: { %A %i %k %newVar10 %newVar13 %newVar17 %v }
+
+[12] 	%newVar17 <- %newVar13 * %newVar17
+     tree: %newVar17 <- (%newVar13 op %newVar17)
+     in : { %A %i %k %newVar10 %newVar13 %newVar17 %v }
+     out: { %A %i %k %newVar10 %newVar17 %v }
+
+[13] 	%newVar19 <- %i * %newVar17
+     tree: %newVar19 <- (%i op %newVar17)
+     in : { %A %i %k %newVar10 %newVar17 %v }
+     out: { %A %k %newVar10 %newVar19 %v }
+
+[14] 	%newVar10 <- %newVar19 + %newVar10
+     tree: %newVar10 <- (%newVar19 op %newVar10)
+     in : { %A %k %newVar10 %newVar19 %v }
+     out: { %A %k %newVar10 %v }
+
+[15] 	%newVar10 <- %newVar10 + %k
+     tree: %newVar10 <- (%newVar10 op %k)
+     in : { %A %k %newVar10 %v }
+     out: { %A %newVar10 %v }
+
+[16] 	%newVar9 <- %newVar10 * 8
+     tree: %newVar9 <- (%newVar10 op 8)
+     in : { %A %newVar10 %v }
+     out: { %A %newVar9 %v }
+
+[17] 	%newVar9 <- %newVar9 + 40
+     tree: %newVar9 <- (%newVar9 op 40)
+     in : { %A %newVar9 %v }
+     out: { %A %newVar9 %v }
+
+[18] 	%newVar20 <- %A + %newVar9
+     tree: %newVar20 <- (%A op %newVar9)
+     in : { %A %newVar9 %v }
+     out: { %newVar20 %v }
+
+[19] 	%current_value <- load %newVar20
+     tree: %current_value <- load(%newVar20)
+     in : { %newVar20 %v }
+     out: { %current_value %v }
+
+[20] 	%check_value_equality <- %current_value = %v
+     tree: %check_value_equality <- (%current_value cmp %v)
+     in : { %current_value %v }
+     out: { %check_value_equality }
+
+[21] 	br %check_value_equality :return_true
+     tree: br %check_value_equality :return_true
+     in : { %check_value_equality }
+     out: { }
+
+  [i=1 def=%newVar10] STOP: redefined at j=11
+      MERGED -> tree[3] now = %newVar12 <- load((%A op 24))
+      MERGED -> tree[3] now = %newVar13 <- (load((%A op 24)) op 1)
+  [i=2 -> j=10] SKIP: memory op between
+      MERGED -> tree[4] now = %newVar15 <- load((%A op 32))
+      MERGED -> tree[4] now = %newVar16 <- (load((%A op 32)) op 1)
+      MERGED -> tree[5] now = %newVar17 <- ((load((%A op 32)) op 1) op %newVar17)
+  [i=3 def=%newVar17] STOP: redefined at j=4
+  [i=4 def=%newVar17] STOP: redefined at j=7
+      MERGED -> tree[6] now = %newVar10 <- ((%j op %newVar17) op %newVar10)
+  [i=5 def=%newVar10] STOP: redefined at j=8
+      MERGED -> tree[8] now = %newVar10 <- ((%i op %newVar17) op %newVar10)
+  [i=7 def=%newVar10] STOP: redefined at j=8
+  [i=9 def=%newVar9] STOP: redefined at j=10
+      MERGED -> tree[11] now = %newVar20 <- (%A op (%newVar9 op 40))
+      MERGED -> tree[11] now = %current_value <- load((%A op (%newVar9 op 40)))
+      MERGED -> tree[11] now = %check_value_equality <- (load((%A op (%newVar9 op 40))) cmp %v)
+      MERGED -> tree[11] now = br (load((%A op (%newVar9 op 40))) cmp %v) :return_true
+  [i=1 def=%newVar10] STOP: redefined at j=5
+  [i=2 -> j=6] SKIP: memory op between
+  [i=3 def=%newVar17] STOP: redefined at j=4
+  [i=4 def=%newVar17] STOP: redefined at j=6
+  [i=5 def=%newVar10] STOP: redefined at j=7
+  [i=7 def=%newVar10] STOP: redefined at j=8
+      MERGED -> tree[10] now = br (load((%A op ((%newVar10 op 8) op 40))) cmp %v) :return_true
+  [i=1 def=%newVar10] STOP: redefined at j=5
+  [i=2 -> j=6] SKIP: memory op between
+  [i=3 def=%newVar17] STOP: redefined at j=4
+  [i=4 def=%newVar17] STOP: redefined at j=6
+  [i=5 def=%newVar10] STOP: redefined at j=7
+  [i=7 def=%newVar10] STOP: redefined at j=8
+=== Context Trees ===
+instructions: 10 trees: 10 liveness: 10
+
+[0] 	:loop_3_body
+     tree: nullptr
+     in : { %A %i %j %k %v }
+     out: { %A %i %j %k %v }
+
+[1] 	%newVar10 <- 0
+     tree: %newVar10 <- 0
+     in : { %A %i %j %k %v }
+     out: { %A %i %j %k %newVar10 %v }
+
+[2] 	%newVar13 <- %newVar12 >> 1
+     tree: %newVar13 <- (load((%A op 24)) op 1)
+     in : { %A %i %j %k %newVar10 %v }
+     out: { %A %i %j %k %newVar10 %newVar13 %v }
+
+[3] 	%newVar17 <- 1
+     tree: %newVar17 <- 1
+     in : { %A %i %j %k %newVar10 %newVar13 %v }
+     out: { %A %i %j %k %newVar10 %newVar13 %newVar17 %v }
+
+[4] 	%newVar17 <- %newVar16 * %newVar17
+     tree: %newVar17 <- ((load((%A op 32)) op 1) op %newVar17)
+     in : { %A %i %j %k %newVar10 %newVar13 %newVar17 %v }
+     out: { %A %i %j %k %newVar10 %newVar13 %newVar17 %v }
+
+[5] 	%newVar10 <- %newVar18 + %newVar10
+     tree: %newVar10 <- ((%j op %newVar17) op %newVar10)
+     in : { %A %i %j %k %newVar10 %newVar13 %newVar17 %v }
+     out: { %A %i %k %newVar10 %newVar13 %newVar17 %v }
+
+[6] 	%newVar17 <- %newVar13 * %newVar17
+     tree: %newVar17 <- (%newVar13 op %newVar17)
+     in : { %A %i %k %newVar10 %newVar13 %newVar17 %v }
+     out: { %A %i %k %newVar10 %newVar17 %v }
+
+[7] 	%newVar10 <- %newVar19 + %newVar10
+     tree: %newVar10 <- ((%i op %newVar17) op %newVar10)
+     in : { %A %i %k %newVar10 %newVar17 %v }
+     out: { %A %k %newVar10 %v }
+
+[8] 	%newVar10 <- %newVar10 + %k
+     tree: %newVar10 <- (%newVar10 op %k)
+     in : { %A %k %newVar10 %v }
+     out: { %A %newVar10 %v }
+
+[9] 	br %check_value_equality :return_true
+     tree: br (load((%A op ((%newVar10 op 8) op 40))) cmp %v) :return_true
+     in : { %A %newVar10 %v }
+     out: { }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	br :continue
+     tree: nullptr
+     in : { %A %i %j %k %third_dimension_length %v }
+     out: { %A %i %j %k %third_dimension_length %v }
+
+=== Context Trees ===
+instructions: 1 trees: 1 liveness: 1
+
+[0] 	br :continue
+     tree: nullptr
+     in : { %A %i %j %k %third_dimension_length %v }
+     out: { %A %i %j %k %third_dimension_length %v }
+
+=== Context Trees ===
+instructions: 3 trees: 3 liveness: 3
+
+[0] 	:continue
+     tree: nullptr
+     in : { %A %i %j %k %third_dimension_length %v }
+     out: { %A %i %j %k %third_dimension_length %v }
+
+[1] 	%k <- %k + 1
+     tree: %k <- (%k op 1)
+     in : { %A %i %j %k %third_dimension_length %v }
+     out: { %A %i %j %k %third_dimension_length %v }
+
+[2] 	br :check_loop_3
+     tree: nullptr
+     in : { %A %i %j %k %third_dimension_length %v }
+     out: { %A %i %j %k %third_dimension_length %v }
+
+=== Context Trees ===
+instructions: 3 trees: 3 liveness: 3
+
+[0] 	:continue
+     tree: nullptr
+     in : { %A %i %j %k %third_dimension_length %v }
+     out: { %A %i %j %k %third_dimension_length %v }
+
+[1] 	%k <- %k + 1
+     tree: %k <- (%k op 1)
+     in : { %A %i %j %k %third_dimension_length %v }
+     out: { %A %i %j %k %third_dimension_length %v }
+
+[2] 	br :check_loop_3
+     tree: nullptr
+     in : { %A %i %j %k %third_dimension_length %v }
+     out: { %A %i %j %k %third_dimension_length %v }
+
+=== Context Trees ===
+instructions: 3 trees: 3 liveness: 3
+
+[0] 	:exit_loop3
+     tree: nullptr
+     in : { %A %i %j %second_dimension_length %third_dimension_length %v }
+     out: { %A %i %j %second_dimension_length %third_dimension_length %v }
+
+[1] 	%j <- %j + 1
+     tree: %j <- (%j op 1)
+     in : { %A %i %j %second_dimension_length %third_dimension_length %v }
+     out: { %A %i %j %second_dimension_length %third_dimension_length %v }
+
+[2] 	br :check_loop_2
+     tree: nullptr
+     in : { %A %i %j %second_dimension_length %third_dimension_length %v }
+     out: { %A %i %j %second_dimension_length %third_dimension_length %v }
+
+=== Context Trees ===
+instructions: 3 trees: 3 liveness: 3
+
+[0] 	:exit_loop3
+     tree: nullptr
+     in : { %A %i %j %second_dimension_length %third_dimension_length %v }
+     out: { %A %i %j %second_dimension_length %third_dimension_length %v }
+
+[1] 	%j <- %j + 1
+     tree: %j <- (%j op 1)
+     in : { %A %i %j %second_dimension_length %third_dimension_length %v }
+     out: { %A %i %j %second_dimension_length %third_dimension_length %v }
+
+[2] 	br :check_loop_2
+     tree: nullptr
+     in : { %A %i %j %second_dimension_length %third_dimension_length %v }
+     out: { %A %i %j %second_dimension_length %third_dimension_length %v }
+
+=== Context Trees ===
+instructions: 3 trees: 3 liveness: 3
+
+[0] 	:exit_loop2
+     tree: nullptr
+     in : { %A %first_dimension_length %i %second_dimension_length %third_dimension_length %v }
+     out: { %A %first_dimension_length %i %second_dimension_length %third_dimension_length %v }
+
+[1] 	%i <- %i + 1
+     tree: %i <- (%i op 1)
+     in : { %A %first_dimension_length %i %second_dimension_length %third_dimension_length %v }
+     out: { %A %first_dimension_length %i %second_dimension_length %third_dimension_length %v }
+
+[2] 	br :check_loop_1
+     tree: nullptr
+     in : { %A %first_dimension_length %i %second_dimension_length %third_dimension_length %v }
+     out: { %A %first_dimension_length %i %second_dimension_length %third_dimension_length %v }
+
+=== Context Trees ===
+instructions: 3 trees: 3 liveness: 3
+
+[0] 	:exit_loop2
+     tree: nullptr
+     in : { %A %first_dimension_length %i %second_dimension_length %third_dimension_length %v }
+     out: { %A %first_dimension_length %i %second_dimension_length %third_dimension_length %v }
+
+[1] 	%i <- %i + 1
+     tree: %i <- (%i op 1)
+     in : { %A %first_dimension_length %i %second_dimension_length %third_dimension_length %v }
+     out: { %A %first_dimension_length %i %second_dimension_length %third_dimension_length %v }
+
+[2] 	br :check_loop_1
+     tree: nullptr
+     in : { %A %first_dimension_length %i %second_dimension_length %third_dimension_length %v }
+     out: { %A %first_dimension_length %i %second_dimension_length %third_dimension_length %v }
+
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	:exit_loop1
+     tree: nullptr
+     in : { }
+     out: { }
+
+[1] 	return 1
+     tree: return 1
+     in : { }
+     out: { }
+
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	:exit_loop1
+     tree: nullptr
+     in : { }
+     out: { }
+
+[1] 	return 1
+     tree: return 1
+     in : { }
+     out: { }
+
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	:return_true
+     tree: nullptr
+     in : { }
+     out: { }
+
+[1] 	return 3
+     tree: return 3
+     in : { }
+     out: { }
+
+=== Context Trees ===
+instructions: 2 trees: 2 liveness: 2
+
+[0] 	:return_true
+     tree: nullptr
+     in : { }
+     out: { }
+
+[1] 	return 3
+     tree: return 3
+     in : { }
+     out: { }
+

@@ -23,25 +23,16 @@
 
 ## store is always a root node 
 
-#id store (%a op Number) <- Number/Variable
-#id store (%a) <- Number/Variable
 
- %newVar2 <- %ar + 8
- store %newVar2 <- 3
 
-     store 
-       +
-    ar   8
-       |
-       3
 
- %newVar3 <- %ar + 16
- store %newVar3 <- 3
- %newVar5 <- 0
- %newVar6 <- 1
- %newVar5 <- %newVar5 + 1
- %newVar4 <- %newVar5 * 8
- %newVar4 <- %newVar4 + 24
- %newVar7 <- %ar + %newVar4
- store %newVar7 <- 5
- return 
+
+## stretch feature :
+
+- in shifting process it copies before shifting it this can be optimized. 
+- is %v3 dead after this instruction?" If yes, skip the copy and emit %v3 <<= 3, then use %v3 directly. If no, keep the copy. 
+
+
+
+## error:
+Merge T2 into T1 only when... no other uses of %v between T2 and T1, and no definitions of variables used by T2 between T2 and T1.

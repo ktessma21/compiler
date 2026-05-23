@@ -28,6 +28,12 @@ namespace L3 {
         std::unique_ptr<TreeNode> right;
     };
 
+    struct BrNode {
+        std::unique_ptr<TreeNode> cond;
+        Label true_label;
+    };
+
+
     struct LoadNode {
         std::unique_ptr<TreeNode> addr;
     };
@@ -53,7 +59,7 @@ namespace L3 {
     struct TreeNode {
         std::variant<Variable, Number,
                      BinOpNode, CompareNode,
-                     LoadNode, StoreNode, AssignNode, CallNode, ReturnNode> data;
+                     LoadNode, StoreNode, AssignNode, CallNode, ReturnNode, BrNode> data;
 
         template <typename T, typename = std::enable_if_t<!std::is_same_v<std::decay_t<T>, TreeNode>>>
         TreeNode(T&& v) : data(std::forward<T>(v)) {}
@@ -100,6 +106,11 @@ namespace L3 {
                     return true;
                 }
                 return false;   // wrong variable
+        }
+
+        if (auto* br = std::get_if<BrNode>(&node->data)) {
+            if (br->cond) return replace_leaf(br->cond, target, replacement);
+            return false;
         }
 
         if (auto* callnode = std::get_if<CallNode>(&node->data)){
@@ -180,7 +191,11 @@ namespace L3 {
                     clone_tree(*data.left),
                     clone_tree(*data.right)
                 });
-
+            } else if constexpr (std::is_same_v<T, BrNode>) {
+                return std::make_unique<TreeNode>(BrNode{
+                    data.cond ? clone_tree(*data.cond) : nullptr,
+                    data.true_label
+                });
             } else if constexpr (std::is_same_v<T, ReturnNode>) {
                 return std::make_unique<TreeNode>(ReturnNode{
                     data.value ? clone_tree(*data.value) : nullptr
@@ -232,7 +247,10 @@ namespace L3 {
                 return data.to_string();
             } else if constexpr (std::is_same_v<T, Number>) {
                 return data.to_string();
-
+            } else if constexpr (std::is_same_v<T, BrNode>) {
+                std::string s = data.cond ? "br " + tree_to_string(*data.cond) : "br";
+                s += " " + data.true_label.to_string();
+                return s;
             } else if constexpr (std::is_same_v<T, ReturnNode>) {
                 return data.value ? "return " + tree_to_string(*data.value) : "return";
             } else if constexpr (std::is_same_v<T, CallNode>) {
@@ -279,7 +297,8 @@ namespace L3 {
 
             if constexpr (std::is_same_v<T, Variable>) {
                 return {data};
-
+            } else if constexpr (std::is_same_v<T, BrNode>) {
+                return data.cond ? tree_reads(*data.cond) : std::set<Variable>{};
             } else if constexpr (std::is_same_v<T, Number>) {
                 return {};
 

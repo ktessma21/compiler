@@ -645,6 +645,14 @@ public:
         return r;
     }
 
+    std::unique_ptr<TreeNode> to_tree() const override {
+        if (!cond.has_value() || !target.has_value()) return nullptr;
+        return std::make_unique<TreeNode>(BrNode{
+            std::make_unique<TreeNode>(*cond), 
+            target.value()
+        });
+    }
+
 };
 
 

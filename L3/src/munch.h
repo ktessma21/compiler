@@ -25,7 +25,7 @@ namespace L3 {
 
     Variable freshVar() {
         static int64_t counter = 0;       // persists across calls, fine
-        return Variable("munch_tmp_" + std::to_string(counter++));
+        return Variable("newVar" + std::to_string(counter++));
     }
 
     TreeNode make_assign_node(const Variable& dst, const TreeNode& src) {
@@ -132,6 +132,44 @@ namespace L3 {
     };
 
 
+    // 	%addr <- %base  or 
+    // 	%addr <- 9
+    class CopyTile : public Tile {
+    public:
+        std::vector<std::unique_ptr<Instruction>> emit(const TreeNode& node) override {
+            std::vector<std::unique_ptr<Instruction>> result;
+
+            assert(std::holds_alternative<AssignNode>(node.data));
+            const AssignNode& assign = std::get<AssignNode>(node.data);
+            assert(std::holds_alternative<Variable>(assign.dest->data));
+            const Variable& dest = std::get<Variable>(assign.dest->data);
+
+            auto mov = std::make_unique<AssignInstruction>();
+            mov->setDst(dest);
+            // src is a leaf: Variable or Number (extend with label/@func if your s allows)
+            if (std::holds_alternative<Variable>(assign.src->data)) {
+                mov->setSrc(std::get<Variable>(assign.src->data));
+            } else if (std::holds_alternative<Number>(assign.src->data)) {
+                mov->setSrc(std::get<Number>(assign.src->data));
+            } else {
+                throw std::runtime_error("CopyTile: src not a leaf");
+            }
+            result.push_back(std::move(mov));
+            return result;
+        }
+
+        bool matches(const TreeNode& node) const override {
+            if (!std::holds_alternative<AssignNode>(node.data)) return false;
+            const AssignNode& assign = std::get<AssignNode>(node.data);
+            if (!assign.dest || !std::holds_alternative<Variable>(assign.dest->data)) return false;
+            if (!assign.src) return false;
+            // leaf src only — Variable or Number
+            return std::holds_alternative<Variable>(assign.src->data)
+                || std::holds_alternative<Number>(assign.src->data);
+        }
+
+            int64_t cost() const override { return 1; }
+    };
 
 
     class ShiftTile : public Tile {
@@ -461,7 +499,7 @@ namespace L3 {
                         // store (%a op Number) <- Number/Variable
                         if (std::holds_alternative<Variable>(left.data) && std::holds_alternative<Number>(right.data)){
                             if (std::get<Number>(right.data).getValue() % 8 == 0){
-                                std::string instr_str = "\tstore " + std::get<Variable>(left.data).to_string() + " " + std::to_string(std::get<Number>(right.data).getValue());
+                                std::string instr_str = "\tmem " + std::get<Variable>(left.data).to_string() + " " + std::to_string(std::get<Number>(right.data).getValue());
                                 instr_str += " <- ";
                                 instr_str += std::visit([](auto&& node) -> std::string {
                                     using T = std::decay_t<decltype(node)>;
@@ -478,7 +516,7 @@ namespace L3 {
                         // store (Number op %a) <- Number/Variable - unlikely but handle it anyway
                         if (std::holds_alternative<Number>(left.data) && std::holds_alternative<Variable>(right.data)){
                             if (std::get<Number>(left.data).getValue() % 8 == 0){
-                                std::string instr_str = "\tstore " + std::get<Variable>(right.data).to_string() + " " + std::to_string(std::get<Number>(left.data).getValue());
+                                std::string instr_str = "\tmem " + std::get<Variable>(right.data).to_string() + " " + std::to_string(std::get<Number>(left.data).getValue());
                                 instr_str += " <- ";
                                 instr_str += std::visit([](auto&& node) -> std::string {
                                     using T = std::decay_t<decltype(node)>;
@@ -582,6 +620,202 @@ namespace L3 {
 
     };
 
+    class CompareTile : public Tile {
+        public:
+        std::vector<std::unique_ptr<Instruction>> emit(const TreeNode& node) override {
+            std::vector<std::unique_ptr<Instruction>> result;
+
+                assert(std::holds_alternative<AssignNode>(node.data));
+                const AssignNode& assign = std::get<AssignNode>(node.data);
+
+                assert(std::holds_alternative<Variable>(assign.dest->data));
+                const Variable& dest = std::get<Variable>(assign.dest->data);
+
+                assert(std::holds_alternative<CompareNode>(assign.src->data));
+                const CompareNode& cmp = std::get<CompareNode>(assign.src->data);
+
+
+                auto handle_operand = [&](const TreeNode& operand) -> T {
+                    if (std::holds_alternative<Variable>(operand.data)) {
+                        return T{std::get<Variable>(operand.data)};
+                    } else if (std::holds_alternative<Number>(operand.data)){
+                        return T{std::get<Number>(operand.data)};
+                    } else {
+                        Variable tmp = freshVar();
+                        TreeNode synthetic_assign = make_assign_node(tmp, operand);
+                        auto inner_instrs = munch(synthetic_assign);
+                        for (auto& ins : inner_instrs) result.push_back(std::move(ins));
+                        return T{tmp};
+                    }
+
+                    };
+
+
+
+                T left_operand = handle_operand(*cmp.left);
+                T right_operand = handle_operand(*cmp.right);
+
+                auto cmp_instr = std::make_unique<CmpInstruction>();
+                cmp_instr->setDst(dest);
+                cmp_instr->setLhs(left_operand);
+                cmp_instr->setCmp(cmp.op);
+                cmp_instr->setRhs(right_operand);
+                result.push_back(std::move(cmp_instr));
+                return result;
+                }
+            
+            bool matches(const TreeNode& node) const override {
+                if (!std::holds_alternative<AssignNode>(node.data)) return false;
+                const AssignNode& assign = std::get<AssignNode>(node.data);
+
+                if (!assign.dest || !std::holds_alternative<Variable>(assign.dest->data)) return false;
+                if (!assign.src  || !std::holds_alternative<CompareNode>(assign.src->data))  return false;
+
+
+                const CompareNode& cmp = std::get<CompareNode>(assign.src->data);
+                if (!cmp.left || !cmp.right) return false;
+                return true;
+       
+            }
+
+            int64_t cost() const override {return 2;}
+
+
+    };
+    
+
+
+    class LoadTile : public Tile {
+        public:
+            std::vector<std::unique_ptr<Instruction>> emit(const TreeNode& node) override {
+                std::vector<std::unique_ptr<Instruction>> result;
+
+                assert(std::holds_alternative<AssignNode>(node.data));
+                const AssignNode& assign = std::get<AssignNode>(node.data);
+
+                assert(std::holds_alternative<Variable>(assign.dest->data));
+                const Variable& dest = std::get<Variable>(assign.dest->data);
+
+                assert(std::holds_alternative<LoadNode>(assign.src->data));
+                const LoadNode& load = std::get<LoadNode>(assign.src->data);
+                const TreeNode& addr = *load.addr;
+
+                // case 1: bare Variable address -> dst <- load var  (offset 0)
+                if (auto* var = std::get_if<Variable>(&addr.data)) {
+                    auto load_instr = std::make_unique<LoadInstruction>();
+                    load_instr->setDst(dest);
+                    load_instr->setSrc(*var);
+                    result.push_back(std::move(load_instr));
+                    return result;
+                }
+
+                if (auto* binop = std::get_if<BinOpNode>(&addr.data)) {
+                    if (binop->op == Op::Add) {
+                        const TreeNode& left  = *binop->left;
+                        const TreeNode& right = *binop->right;
+
+                        // case 2: (Variable + Number), Number % 8 == 0  ->  dst <- mem var const
+                        if (std::holds_alternative<Variable>(left.data) &&
+                            std::holds_alternative<Number>(right.data)) {
+                            if (std::get<Number>(right.data).getValue() % 8 == 0) {
+                                std::string instr_str = "\t" + dest.to_string() + " <- mem "
+                                    + std::get<Variable>(left.data).to_string() + " "
+                                    + std::to_string(std::get<Number>(right.data).getValue())
+                                    + "\n";
+                                result.push_back(std::make_unique<RawL2Instruction>(instr_str));
+                                return result;
+                            }
+                        }
+
+                        // case 3: (Number + Variable), Number % 8 == 0  ->  dst <- mem var const
+                        if (std::holds_alternative<Number>(left.data) &&
+                            std::holds_alternative<Variable>(right.data)) {
+                            if (std::get<Number>(left.data).getValue() % 8 == 0) {
+                                std::string instr_str = "\t" + dest.to_string() + " <- mem "
+                                    + std::get<Variable>(right.data).to_string() + " "
+                                    + std::to_string(std::get<Number>(left.data).getValue())
+                                    + "\n";
+                                result.push_back(std::make_unique<RawL2Instruction>(instr_str));
+                                return result;
+                            }
+                        }
+
+                        // case 4: (Variable + BinOp) -> collapse the inner binop, add to base, load offset 0
+                        if (std::holds_alternative<Variable>(left.data) &&
+                            std::holds_alternative<BinOpNode>(right.data)) {
+                            Variable inner_temp = freshVar();
+                            TreeNode synthetic_assign = make_assign_node(inner_temp, right);
+                            auto inner_instrs = munch(synthetic_assign);
+                            for (auto& ins : inner_instrs) result.push_back(std::move(ins));
+
+                            Variable base = freshVar();
+                            auto add_instr = std::make_unique<OpInstruction>();
+                            add_instr->setDst(base);
+                            add_instr->setLhs(std::get<Variable>(left.data));
+                            add_instr->setOp(Op::Add);
+                            add_instr->setRhs(inner_temp);
+                            result.push_back(std::move(add_instr));
+
+                            auto load_instr = std::make_unique<LoadInstruction>();
+                            load_instr->setDst(dest);
+                            load_instr->setSrc(base);
+                            result.push_back(std::move(load_instr));
+                            return result;
+                        }
+                    }
+                }
+
+                std::cerr << tree_to_string(node) << "\n";
+                throw std::runtime_error("LoadTile failed to match the node structure in emit");
+            }
+
+            bool matches(const TreeNode& node) const override {
+                if (!std::holds_alternative<AssignNode>(node.data)) return false;
+                const AssignNode& assign = std::get<AssignNode>(node.data);
+
+                if (!assign.dest || !std::holds_alternative<Variable>(assign.dest->data)) return false;
+                if (!assign.src  || !std::holds_alternative<LoadNode>(assign.src->data))  return false;
+
+                const LoadNode& load = std::get<LoadNode>(assign.src->data);
+                if (!load.addr) return false;
+                const TreeNode& addr = *load.addr;
+
+                // case 1: bare Variable
+                if (std::holds_alternative<Variable>(addr.data)) return true;
+
+                // remaining cases require Add
+                if (!std::holds_alternative<BinOpNode>(addr.data)) return false;
+                const BinOpNode& binop = std::get<BinOpNode>(addr.data);
+                if (binop.op != Op::Add) return false;
+                if (!binop.left || !binop.right) return false;
+
+                const TreeNode& left  = *binop.left;
+                const TreeNode& right = *binop.right;
+
+                // case 2: (Variable + Number), Number % 8 == 0
+                if (std::holds_alternative<Variable>(left.data) &&
+                    std::holds_alternative<Number>(right.data)) {
+                    return std::get<Number>(right.data).getValue() % 8 == 0;
+                }
+
+                // case 3: (Number + Variable), Number % 8 == 0
+                if (std::holds_alternative<Number>(left.data) &&
+                    std::holds_alternative<Variable>(right.data)) {
+                    return std::get<Number>(left.data).getValue() % 8 == 0;
+                }
+
+                // case 4: (Variable + BinOp)
+                if (std::holds_alternative<Variable>(left.data) &&
+                    std::holds_alternative<BinOpNode>(right.data)) {
+                    return true;
+                }
+
+                return false;
+            }
+
+            int64_t cost() const override { return 1; }
+    };
+
 
     class CallTile : public Tile {
         public:
@@ -631,6 +865,123 @@ namespace L3 {
             int64_t cost() const override { return 1; }
     };
 
+    class VoidCallTile : public Tile {
+        public:
+            std::vector<std::unique_ptr<Instruction>> emit(const TreeNode& node) override {
+                std::vector<std::unique_ptr<Instruction>> result;
+
+                assert(std::holds_alternative<CallNode>(node.data));
+                const CallNode& call = std::get<CallNode>(node.data);
+
+        
+                auto call_instr = std::make_unique<CallInstruction>();
+                call_instr->setCallee(call.callee);
+
+                for (auto& arg : call.args) {
+                    if (std::holds_alternative<Variable>(arg->data)) {
+                        call_instr->addArg(T{std::get<Variable>(arg->data)});
+                    } else if (std::holds_alternative<Number>(arg->data)) {
+                        call_instr->addArg(T{std::get<Number>(arg->data)});
+                    } else {
+                        Variable arg_tmp = freshVar();
+                        TreeNode synthetic_assign = make_assign_node(arg_tmp, *arg);
+                        auto inner_instrs = munch(synthetic_assign);
+                        for (auto& ins : inner_instrs) result.push_back(std::move(ins));
+                        call_instr->addArg(T{arg_tmp});
+                    }
+                }
+
+                result.push_back(std::move(call_instr));
+                return result;
+            }
+
+            bool matches(const TreeNode& node) const override {
+                if (!std::holds_alternative<CallNode>(node.data)) return false;
+                
+                return true;
+            }
+
+            int64_t cost() const override { return 1; }
+    };
+
+
+     class ReturnTile : public Tile {
+        public:
+            std::vector<std::unique_ptr<Instruction>> emit(const TreeNode& node) override {
+                std::vector<std::unique_ptr<Instruction>> result;
+
+                assert(std::holds_alternative<ReturnNode>(node.data));
+                const ReturnNode& ret = std::get<ReturnNode>(node.data);
+
+                auto return_instr = std::make_unique<ReturnTInstruction>();
+
+                const TreeNode& val = *ret.value;
+
+                if (std::holds_alternative<Variable>(val.data)) {
+                    return_instr->setValue(T{std::get<Variable>(val.data)});
+                }else if (std::holds_alternative<Number>(val.data)) {
+                    return_instr->setValue(T{std::get<Number>(val.data)});
+                } else {
+                    Variable ret_tmp = freshVar();
+                    TreeNode synthetic_assign = make_assign_node(ret_tmp, val);
+                    auto inner_instrs = munch(synthetic_assign);
+                    for (auto& ins : inner_instrs) result.push_back(std::move(ins));
+                    return_instr->setValue(T{ret_tmp});
+                }
+                result.push_back(std::move(return_instr));
+                return result;
+            }
+
+                bool matches(const TreeNode& node) const override {
+                    if (!std::holds_alternative<ReturnNode>(node.data)) return false;
+                    return true;
+                }
+
+                int64_t cost() const override { return 1; }
+        };
+
+        class BrTile : public Tile {
+            public:
+                std::vector<std::unique_ptr<Instruction>> emit(const TreeNode& node) override {
+                    std::vector<std::unique_ptr<Instruction>> result;
+
+                    assert(std::holds_alternative<BrNode>(node.data));
+                    const BrNode& br = std::get<BrNode>(node.data);
+
+                    auto br_instr = std::make_unique<BrTInstruction>();
+                    br_instr->setTarget(Label(br.true_label));
+
+                    const TreeNode& cond = *br.cond;
+
+                    if (std::holds_alternative<Variable>(cond.data)) {
+                        br_instr->setCond(T{std::get<Variable>(cond.data)});
+                    } else if (std::holds_alternative<Number>(cond.data)) {
+                        br_instr->setCond(T{std::get<Number>(cond.data)});
+                    } else {
+                        Variable cond_tmp = freshVar();
+                        TreeNode synthetic_assign = make_assign_node(cond_tmp, cond);
+                        auto inner_instrs = munch(synthetic_assign);
+                        for (auto& ins : inner_instrs) result.push_back(std::move(ins));
+                        br_instr->setCond(T{cond_tmp});
+                    }
+                    result.push_back(std::move(br_instr));
+                    return result;
+                }
+
+                bool matches(const TreeNode& node) const override {
+                    if (!std::holds_alternative<BrNode>(node.data)) return false;
+                    return true;
+                }
+
+                int64_t cost() const override { return 1; }
+        };
+
+
+
+
+
+
+
     std::vector<std::unique_ptr<Instruction>> munch(const TreeNode& node) {
         // Build the tile set. For now, the specialized tiles you have.
         // (Eventually add the fallback/atomic tile as the guaranteed floor.)
@@ -640,6 +991,12 @@ namespace L3 {
         tiles.push_back(std::make_unique<StoreTile>());
         tiles.push_back(std::make_unique<CallTile>());
         tiles.push_back(std::make_unique<FallbackBinOpTile>());
+        tiles.push_back(std::make_unique<CopyTile>());
+        tiles.push_back(std::make_unique<LoadTile>());
+        tiles.push_back(std::make_unique<VoidCallTile>());
+        tiles.push_back(std::make_unique<ReturnTile>());
+        tiles.push_back(std::make_unique<BrTile>());
+        tiles.push_back(std::make_unique<CompareTile>());
         // tiles.push_back(std::make_unique<FallbackTile>());  // add when ready
 
         Tile* best = nullptr;
