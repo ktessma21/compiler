@@ -480,6 +480,7 @@ namespace L3 {
                         using T = std::decay_t<decltype(node)>;
                         if constexpr (std::is_same_v<T, Variable>) return S{node};
                         else if constexpr (std::is_same_v<T, Number>) return S{node};
+                        else if constexpr (std::is_same_v<T, FunctionName>) return S{node};
                         else throw std::runtime_error("store src must be Variable or Number after munching");
                     }, val.data);
 
@@ -505,6 +506,7 @@ namespace L3 {
                                     using T = std::decay_t<decltype(node)>;
                                     if constexpr (std::is_same_v<T, Variable>) return node.to_string();
                                     else if constexpr (std::is_same_v<T, Number>) return node.to_string();
+                                     else if constexpr (std::is_same_v<T, FunctionName>) return node.to_string();
                                     else throw std::runtime_error("store src must be Variable or Number after munching");
                                 }, val.data);
                                 instr_str += "\n";
@@ -522,6 +524,7 @@ namespace L3 {
                                     using T = std::decay_t<decltype(node)>;
                                     if constexpr (std::is_same_v<T, Variable>) return node.to_string();
                                     else if constexpr (std::is_same_v<T, Number>) return node.to_string();
+                                    else if constexpr (std::is_same_v<T, FunctionName>) return node.to_string();
                                     else throw std::runtime_error("store src must be Variable or Number after munching");
                                 }, val.data);
                                 instr_str += "\n";
@@ -553,6 +556,7 @@ namespace L3 {
                                 using T = std::decay_t<decltype(node)>;
                                 if constexpr (std::is_same_v<T, Variable>) return S{node};
                                 else if constexpr (std::is_same_v<T, Number>) return S{node};
+                                else if constexpr (std::is_same_v<T, FunctionName>) return S{node};
                                 else throw std::runtime_error("store src must be Variable or Number after munching");
                             }, val.data);
 

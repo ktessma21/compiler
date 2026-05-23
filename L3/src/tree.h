@@ -57,7 +57,7 @@ namespace L3 {
     };
 
     struct TreeNode {
-        std::variant<Variable, Number,
+        std::variant<Variable, Number, FunctionName,
                      BinOpNode, CompareNode,
                      LoadNode, StoreNode, AssignNode, CallNode, ReturnNode, BrNode> data;
 
@@ -181,7 +181,7 @@ namespace L3 {
         return std::visit([](const auto& data) -> std::unique_ptr<TreeNode> {
             using T = std::decay_t<decltype(data)>;
 
-            if constexpr (std::is_same_v<T, Variable> || std::is_same_v<T, Number>) {
+            if constexpr (std::is_same_v<T, Variable> || std::is_same_v<T, Number> ||std::is_same_v<T, FunctionName>) {
                 // leaf nodes — just copy the value
                 return std::make_unique<TreeNode>(data);
 
@@ -243,9 +243,7 @@ namespace L3 {
         return std::visit([](const auto& data) -> std::string {
             using T = std::decay_t<decltype(data)>;
 
-            if constexpr (std::is_same_v<T, Variable>) {
-                return data.to_string();
-            } else if constexpr (std::is_same_v<T, Number>) {
+            if constexpr (std::is_same_v<T, Variable> || std::is_same_v<T, Number> || std::is_same_v<T, FunctionName>) {
                 return data.to_string();
             } else if constexpr (std::is_same_v<T, BrNode>) {
                 std::string s = data.cond ? "br " + tree_to_string(*data.cond) : "br";
@@ -300,6 +298,9 @@ namespace L3 {
             } else if constexpr (std::is_same_v<T, BrNode>) {
                 return data.cond ? tree_reads(*data.cond) : std::set<Variable>{};
             } else if constexpr (std::is_same_v<T, Number>) {
+                return {};
+
+            } else if constexpr (std::is_same_v<T, FunctionName>) {
                 return {};
 
             } else if constexpr (std::is_same_v<T, ReturnNode>) {
