@@ -161,7 +161,7 @@ namespace LA {
     }
 
     // Step 1 entry point: encode all eligible constants across the program.
-    void encode_constants(Program& p) {
+    void encode_program(Program& p) {
         for (auto& f : p.functions) {
             for (auto& ins : f.instructions) {
                 encodeConstantsIn(ins.get());
@@ -214,6 +214,7 @@ namespace LA {
                         decodeInstr->setLhs(original);
                         decodeInstr->setOp(Op::Shr);
                         decodeInstr->setRhs(Number(1));
+                        decodeInstr->just_decoded = true;
 
                         newInstructions.push_back(std::move(decodeInstr));
                         continue;
@@ -265,6 +266,7 @@ namespace LA {
 
                         neo->setDst(*old->getDst());
                         neo->setOp(*old->getOp());
+                    
 
                         auto rewriteT = [&](const T& t) -> T {
 
@@ -498,7 +500,7 @@ namespace LA {
 
 
 
-
+          
             /// encoding step
             // For every variable v in toEncode(i), encode v just after i:
             //     v <- v << 1
@@ -513,6 +515,13 @@ namespace LA {
 
                 InstructionType insType = ins->type;
 
+                auto* opIns = dynamic_cast<OpInstruction*>(ins.get());
+
+                bool skipEncoding =
+                    (insType == InstructionType::AssignFromOp &&
+                    opIns &&
+                    opIns->just_decoded);
+
                 encodedInstructions.push_back(std::move(ins));
 
                 if (insType != InstructionType::AssignFromOp) {
@@ -520,6 +529,10 @@ namespace LA {
                     continue;
                 }
 
+                if (skipEncoding)
+                    continue;
+
+                
                 for (const auto& v : encodeVars) {
 
                     // toEncode() yields Variables directly (the dst of "var <- t op t")

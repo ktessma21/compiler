@@ -100,6 +100,8 @@ class OpInstruction : public Instruction {
     std::optional<Op>       op;
     std::optional<T>        rhs;
 public:
+
+    bool just_decoded = false;
     OpInstruction() : Instruction(InstructionType::AssignFromOp) {}
 
     void setDst(Variable v) { dst = std::move(v); }

@@ -213,7 +213,7 @@ namespace LA {
     };
 
     // Compiler pass entry points.
-    void encode_constants(Program& p);   // encode.cpp
+    void encode_program(Program& p);   // encode.cpp
     void check_accesses(Program& p);     // check.cpp
     void generate_code(Program& p);      // generate.cpp
     void organize_functions(Program& p);

@@ -1,9 +1,31 @@
 define void @main() {
 	:label_never_used_please_0
-	br :myLabel1
-	:myLabel1
-	br :true
+	int64 %v1
+	int64 %v2
+	int64 %check
+	int64 %v3
+	int64 %decodeVar_0
+	int64 %decodeVar_1
+	int64 %decodeVar_2
+	int64 %decodeVar_3
+	int64 %decodeVar_4
+	%v1 <- 3
+	%v2 <- 5
+	%decodeVar_0 <- %v1 >> 1
+	%decodeVar_1 <- %v2 >> 1
+	%v3 <- %decodeVar_0 + %decodeVar_1
+	%v3 <- %v3 << 1
+	%v3 <- %v3 + 1
+	%decodeVar_2 <- %v3 >> 1
+	%decodeVar_3 <- 1
+	%check <- %decodeVar_2 > %decodeVar_3
+	%check <- %check << 1
+	%check <- %check + 1
+	%decodeVar_4 <- %check >> 1
+	br %decodeVar_4 :true :false
 	:true
-	call print(1)
+	call print(%v3)
+	br :false
+	:false
 	return
 }
