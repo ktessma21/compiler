@@ -139,6 +139,18 @@ namespace LA {
                 break;
             }
 
+            case InstructionType::NewArray: {
+                auto* n = static_cast<NewArrayInstruction*>(ins);
+                std::vector<T> args;
+                for (const auto& arg : n->getArgs()) {
+                    T v = arg;
+                    encodeSlot(v);
+                    args.push_back(std::move(v));
+                }
+                n->getArgs() = std::move(args); 
+                break;
+            }
+
             // ----- slots intentionally left RAW (no encoding) -----
             // ArrayLoad : indices are array/tuple indices
             // Length    : 2nd parameter (the dimension) stays raw
@@ -147,7 +159,6 @@ namespace LA {
             // Decl / Label / Br / Return / Raw : no constant operands to encode
             case InstructionType::ArrayLoad:
             case InstructionType::Length:
-            case InstructionType::NewArray:
             case InstructionType::NewTuple:
             case InstructionType::Decl:
             case InstructionType::Label:
@@ -161,7 +172,7 @@ namespace LA {
     }
 
     // Step 1 entry point: encode all eligible constants across the program.
-    void encode_program(Program& p) {
+    void encode_decode_program(Program& p) {
         for (auto& f : p.functions) {
             for (auto& ins : f.instructions) {
                 encodeConstantsIn(ins.get());
@@ -381,7 +392,9 @@ namespace LA {
                         neo->setDst(*old->getDst());
                         neo->setSrc(*old->getSrc());
 
-                        for (const auto& idx : old->getIndices()) {
+                        for (const auto& idx : old->getIndices()){
+                    
+                            T rewritten = idx;
 
                             if (isVariable(idx)) {
 
@@ -389,23 +402,11 @@ namespace LA {
 
                                 auto it = decodedMap.find(v.name);
 
-                                if (it != decodedMap.end()) {
-                                    neo->addIndex(it->second);
-                                    continue;
-                                }
-                            } else if (std::holds_alternative<Number>(idx)) {
-
-                                int64_t encVal = std::get<Number>(idx).getValue();
-
-                                auto it = decodedNumMap.find(encVal);
-
-                                if (it != decodedNumMap.end()) {
-                                    neo->addIndex(it->second);
-                                    continue;
-                                }
+                                if (it != decodedMap.end())
+                                    rewritten = it->second;
                             }
 
-                            neo->addIndex(idx);
+                            neo->addIndex(rewritten);
                         }
 
                         newInstructions.push_back(std::move(neo));

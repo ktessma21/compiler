@@ -281,6 +281,7 @@ public:
 
     const std::optional<Variable>& getDst()  const { return dst; }
     const std::vector<T>&          getArgs() const { return args; }
+    std::vector<T>&          getArgs()  { return args; }
 
     bool verify() const override { return dst.has_value(); }
 

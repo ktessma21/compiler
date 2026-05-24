@@ -68,7 +68,7 @@ int main(int argc, char **argv) {
    */
   if (enable_code_generator) {
     
-    LA::encode_program(program);
+    LA::encode_decode_program(program);
     LA::check_accesses(program);
     LA::organize_functions(program);
     LA::generate_code(program);

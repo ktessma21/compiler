@@ -46,7 +46,15 @@ namespace LA {
 
     // Pretty-print a T (Variable or Number) for use inside a RawInstruction.
     static std::string tToStr(const T& t) {
-        return std::visit([](const auto& x) { return x.to_string(); }, t);
+        return std::visit([](const auto& x) -> std::string {
+            using U = std::decay_t<decltype(x)>;
+
+            if constexpr (std::is_same_v<U, Variable>) {
+                return "%" + x.to_string();
+            } else {
+                return x.to_string();
+            }
+        }, t);
     }
 
 
@@ -106,8 +114,11 @@ namespace LA {
         out.push_back(std::move(errLabel));
 
         // tensor-error(line)   -- raw IR (not a native LA instruction)
+        // encode the line number as an argument for better error messages;
+        // auto assign = std::make_unique<AssignInstruction>()
+        // TODO - MUST BE TYPE VAR NOT NUMBER. 
         out.push_back(std::make_unique<RawInstruction>(
-            "\tcall @tensor-error(" + std::to_string(lineNumber) + ")\n"));
+            "\tcall tensor-error(" + std::to_string(lineNumber) + ")\n"));
 
         // :OK
         auto okLabel = std::make_unique<LabelInstruction>();
@@ -161,10 +172,10 @@ namespace LA {
         auto errorCall = [&]() -> std::unique_ptr<Instruction> {
             std::string args = std::to_string(lineNumber);
             if (isTensor) args += ", " + std::to_string(dim);
-            args += ", " + lenVar.to_string();
+            args += ", " + tToStr(lenVar);
             args += ", " + tToStr(idx);
             return std::make_unique<RawInstruction>(
-                "\tcall @tensor-error(" + args + ")\n");
+                "\tcall tensor-error(" + args + ")\n");
         };
 
         // ---------- A. Check i is not negative (i >= 0) ----------
@@ -294,6 +305,7 @@ namespace LA {
                                          lineNumber);
 
                         // the access itself follows the checks unchanged
+                        // for (const auto& indice : a )
                         newInstructions.push_back(std::move(ins));
                         break;
                     }
@@ -308,6 +320,8 @@ namespace LA {
                                          *a->getDst(),
                                          a->getIndices(),
                                          lineNumber);
+
+                       
 
                         newInstructions.push_back(std::move(ins));
                         break;
