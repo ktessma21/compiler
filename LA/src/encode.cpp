@@ -11,6 +11,14 @@
 
 namespace LA {
 
+    static bool debug(){
+    if (std::getenv("LA_DEBUG") != nullptr) {
+        return true;
+    }
+    return false;
+}
+
+
 
     static int64_t freshCounter = 0;
  
@@ -31,7 +39,14 @@ namespace LA {
     // Variables are left untouched (they are handled at runtime in Step 2).
     static void encodeSlot(T& slot) {
         if (auto* n = std::get_if<Number>(&slot)) {
-            slot = Number(encodeConst(n->getValue()));
+            assert(std::get<Number>(slot).getValue() != encodeConst(n->getValue()));
+            // if (debug){
+            //     std::cerr << "Encoding constant: " << n->getValue() << " -> " << encodeConst(n->getValue()) << std::endl;
+            // }
+            slot = T(Number(encodeConst(n->getValue())));
+            // if (debug){
+            //     std::cerr << "Encoded constant: " << std::get<Number>(slot).getValue() << std::endl;
+            // }
         }
     }
 
@@ -94,15 +109,33 @@ namespace LA {
 
             // name ( args )      : every argument is encoded
             case InstructionType::Call: {
+
+                if (debug()){
+                    std::cerr << "Encoding CallInstruction: " << ins->to_string() << std::endl;
+                }
+
+                std::vector<T> args;
                 auto* c = static_cast<CallInstruction*>(ins);
-                for (auto arg : c->getArgs()) encodeSlot(arg);
+
+                for (const auto& arg : c->getArgs()) {
+                    T v = arg;
+                    encodeSlot(v);
+                    args.push_back(std::move(v));
+                }
+                c->getArgs() = std::move(args); 
                 break;
             }
 
             // name <- name(args) : every argument is encoded
             case InstructionType::AssignFromCall: {
                 auto* c = static_cast<VarCallInstruction*>(ins);
-                for (auto arg : c->getArgs()) encodeSlot(arg);
+                std::vector<T> args;
+                for (const auto& arg : c->getArgs()) {
+                T v = arg;
+                encodeSlot(v);
+                args.push_back(std::move(v));
+            }
+                c->getArgs() = std::move(args); 
                 break;
             }
 
@@ -134,9 +167,10 @@ namespace LA {
                 encodeConstantsIn(ins.get());
             }
 
+
             std::vector<std::unique_ptr<Instruction>> newInstructions;
             std::vector<std::unique_ptr<Instruction>> firstBlockInstructions;
-            std::vector<std::unique_ptr<Instruction>> initializationInstructions;
+            // std::vector<std::unique_ptr<Instruction>> initializationInstructions;
 
             for (auto& ins : f.instructions) {
 
@@ -181,7 +215,7 @@ namespace LA {
                         decodeInstr->setOp(Op::Shr);
                         decodeInstr->setRhs(Number(1));
 
-                        initializationInstructions.push_back(std::move(decodeInstr));
+                        newInstructions.push_back(std::move(decodeInstr));
                         continue;
                     }
 
@@ -213,7 +247,7 @@ namespace LA {
                         auto init = std::make_unique<AssignInstruction>();
                         init->setDst(fresh);
                         init->setSrc(Number(encVal >> 1));
-                        initializationInstructions.push_back(std::move(init));
+                        newInstructions.push_back(std::move(init));
                     }
                 }
 
@@ -531,8 +565,7 @@ namespace LA {
             for (auto& d : firstBlockInstructions)
                 finalInstructions.push_back(std::move(d));
 
-            for (auto& init : initializationInstructions)
-                finalInstructions.push_back(std::move(init));
+       
 
             for (auto it = bodyBegin; it != encodedInstructions.end(); ++it)
                 finalInstructions.push_back(std::move(*it));

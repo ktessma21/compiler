@@ -31,6 +31,7 @@ namespace LA {
             virtual std::string to_string() const = 0;
             virtual std::vector<T> toDecode() const { return {}; }
             virtual std::vector<Variable> toEncode() const { return {}; }
+            
 
 
     };
@@ -330,6 +331,7 @@ public:
     const std::optional<Variable>&     getDst()    const { return dst; }
     const std::optional<FunctionName>& getCallee() const { return callee; }
     const std::vector<T>&              getArgs()   const { return args; }
+    std::vector<T>& getArgs() { return args; }
 
     bool verify() const override { return dst.has_value() && callee.has_value(); }
 
@@ -363,7 +365,9 @@ public:
     void addArg(T t)               { args.push_back(std::move(t)); }
 
     const std::optional<FunctionName>& getCallee() const { return callee; }
-    const std::vector<T>&              getArgs()   const { return args; }
+    const std::vector<T>&     getArgs() const  { return args; }
+    std::vector<T>& getArgs() { return args; }
+
 
     bool verify() const override { return callee.has_value(); }
 
