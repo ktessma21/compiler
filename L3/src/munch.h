@@ -404,7 +404,15 @@ namespace L3 {
                 Variable index_var;
                 if (std::holds_alternative<Variable>(index_node->data)) {
                     index_var = std::get<Variable>(index_node->data);
-                } else if (std::holds_alternative<BinOpNode>(index_node->data)) {
+                } else if (std::holds_alternative<Number>(index_node->data)){
+                    Variable fresh = freshVar();
+                    TreeNode synthetic_assign = make_assign_node(fresh, *index_node);
+                    auto inner_instrs = munch(synthetic_assign);
+                    for (auto& ins : inner_instrs) result.push_back(std::move(ins));
+                    index_var = fresh;
+                }
+                
+                else if (std::holds_alternative<BinOpNode>(index_node->data)) {
                     // Build a synthetic AssignNode: index_tmp <- <inner binop>
                     // and munch it, appending its emitted instructions to result.
                     Variable index_tmp = freshVar();
