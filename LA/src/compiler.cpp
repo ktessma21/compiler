@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <assert.h>
 #include <cctype>
 #include <cstdlib>
 #include <cstring>
@@ -10,19 +11,19 @@
 #include <unistd.h>
 #include <utility>
 #include <vector>
+#include <parser.h>
 
 #include <utils.h>
+#include "generate.h"   // declares LA::encode_constants, LA::check_accesses, LA::generate_code
 
 void print_help(char *progName) {
   std::cerr << "Usage: " << progName << " [-v] [-g 0|1] [-O 0|1|2] SOURCE"
             << std::endl;
   return;
 }
-
 int main(int argc, char **argv) {
   auto enable_code_generator = true;
   int32_t optLevel = 3;
-
   /*
    * Check the compiler arguments.
    */
@@ -37,25 +38,24 @@ int main(int argc, char **argv) {
     case 'O':
       optLevel = strtoul(optarg, NULL, 0);
       break;
-
     case 'g':
       enable_code_generator = (strtoul(optarg, NULL, 0) == 0) ? false : true;
       break;
-
     case 'v':
       Utils::verbose = true;
       break;
-
     default:
       print_help(argv[0]);
       return 1;
     }
   }
-
   /*
    * Parse the input file.
    */
   // TODO
+  char *fileName = argv[optind];
+  auto program = LA::parse_file(fileName);
+  // std::cout << program.to_string() << std::endl;
 
   /*
    * Print the program.
@@ -63,13 +63,15 @@ int main(int argc, char **argv) {
   if (Utils::verbose) {
     // TODO
   }
-
   /*
    * Generate the code.
    */
   if (enable_code_generator) {
-    // TODO
+    
+    LA::encode_constants(program);
+    LA::check_accesses(program);
+    LA::organize_functions(program);
+    LA::generate_code(program);
   }
-
   return 0;
 }

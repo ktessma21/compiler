@@ -1,0 +1,9 @@
+define void @main() {
+	:label_never_used_please_0
+	br :myLabel1
+	:myLabel1
+	br :true
+	:true
+	call print(1)
+	return
+}
