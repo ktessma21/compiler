@@ -136,7 +136,7 @@ namespace LA {
     static void emitAllocationCheck(std::vector<std::unique_ptr<Instruction>>& out,
                                     std::vector<std::unique_ptr<Instruction>>& decls,
                                     const Variable& arr,
-                                    int64_t lineNumber, Function& fn) {
+                                    int64_t lineNumber) {
 
         Variable cond = checkFreshVar();
         declareInt64(decls, cond);
@@ -167,13 +167,8 @@ namespace LA {
         // tensor-error(encoded line)
         Variable lineVar = emitEncodedConst(out, decls, lineNumber);
 
-        bool isTuple = false;
-        auto it = fn.declTypes.find(arr.name);
-        if (it != fn.declTypes.end() && it->second == VarType::Tuple)
-            isTuple = true;
-
         auto call = std::make_unique<CallInstruction>();
-        call->setCallee(FunctionName(isTuple ? "tuple-error" : "tensor-error"));
+        call->setCallee(FunctionName("tensor-error"));
         call->addArg(lineVar);
         out.push_back(std::move(call));
 
@@ -340,7 +335,7 @@ namespace LA {
                                  int64_t lineNumber, Function& fn) {
 
         // 1. allocation check
-        emitAllocationCheck(out, decls, arr, lineNumber, fn);
+        emitAllocationCheck(out, decls, arr, lineNumber);
 
         bool isTensor = indices.size() > 1;
         for (int64_t d = 0; d < static_cast<int64_t>(indices.size()); ++d) {

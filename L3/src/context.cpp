@@ -166,6 +166,13 @@ namespace L3 {
                     //   - ReturnNode / void CallNode: no dest at all  → skipped (diff empty)
                 const Variable& defined = *written.begin();
 
+
+                /*
+                - If tree j redefines defined, it stops — you can't merge across a redefinition (the value would be stale).
+                - If tree j doesn't read defined, it keeps scanning.
+                - If tree j reads defined, it becomes the merge target candidate, subject to safety checks.
+                */
+
                 for (size_t j = i + 1; j < trees.size(); j++) {
                     // if j redefines, stop looking further - cannot merge past a redefinition 
                     bool j_redefs = trees[j]
@@ -188,6 +195,7 @@ namespace L3 {
                     if (!j_reads) continue;
 
 
+                    // the reads from i should stay not overwritten before j. 
                     auto source_reads = tree_reads(*trees[i]);
                     bool input_clobbered = false;
                     for (size_t k = i + 1; k < j; k++) {
@@ -226,7 +234,7 @@ namespace L3 {
                     && (liveAnalysisReport[j].out.count(defined) == 0);
 
                     
-                    // ---------- KEY DIAGNOSTIC ----------
+                    //
                 bool other_reader = false;
                 for (size_t t = 0; t < trees.size(); t++) {
                     if (t == i || t == j) continue;

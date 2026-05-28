@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <utility>
 #include <vector>
+#include <parser.h>
 
 #include <utils.h>
 
@@ -55,15 +56,17 @@ int main(int argc, char **argv) {
   /*
    * Parse the input file.
    */
-  // TODO
+
+  char *fileName = argv[optind];
+  auto program = LB::parse_file(fileName);
 
   /*
    * Print the program.
    */
   if (Utils::verbose) {
-    // TODO
+    std::cerr << program.to_string() << std::endl;
   }
-
+  std::cerr << program.to_string() << std::endl;
   /*
    * Generate the code.
    */
