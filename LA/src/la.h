@@ -23,10 +23,13 @@ namespace LA {
     class Instruction : public ASTNode {
         public:
             InstructionType type;
+            int64_t lineNumber = 0;
             Instruction() = delete;
-            Instruction(InstructionType t) : type(t) {}
+            Instruction(InstructionType t, int64_t line) : type(t), lineNumber(line) {}
             virtual ~Instruction() = default;
 
+            void setLineNumber(int64_t line) { lineNumber = line; }
+            int64_t getLineNumber() const { return lineNumber; }
             bool verify() const override { return true; }
             virtual std::string to_string() const = 0;
             virtual std::vector<T> toDecode() const { return {}; }
@@ -48,7 +51,7 @@ class DeclInstruction : public Instruction {
     std::optional<Type>     varType;
     std::optional<Variable> var;
 public:
-    DeclInstruction() : Instruction(InstructionType::Decl) {}
+    DeclInstruction() : Instruction(InstructionType::Decl, 0) {}
 
     void setType(Type t)    { varType = std::move(t); }
     void setVar(Variable v) { var = std::move(v); }
@@ -72,7 +75,7 @@ class AssignInstruction : public Instruction {
     std::optional<Variable> dst;
     std::optional<T>        src;
 public:
-    AssignInstruction() : Instruction(InstructionType::AssignFromT) {}
+    AssignInstruction(int64_t lineNumber = 0) : Instruction(InstructionType::AssignFromT, lineNumber) {}
 
     void setDst(Variable v) { dst = std::move(v); }
     void setSrc(T t)        { src = std::move(t); }
@@ -102,7 +105,7 @@ class OpInstruction : public Instruction {
 public:
 
     bool just_decoded = false;
-    OpInstruction() : Instruction(InstructionType::AssignFromOp) {}
+    OpInstruction(int64_t lineNumber = 0) : Instruction(InstructionType::AssignFromOp, lineNumber) {}
 
     void setDst(Variable v) { dst = std::move(v); }
     void setLhs(T t)        { lhs = std::move(t); }
@@ -152,7 +155,7 @@ class ArrayLoadInstruction : public Instruction {
     std::optional<Variable> src;
     std::vector<T>          indices;
 public:
-    ArrayLoadInstruction() : Instruction(InstructionType::ArrayLoad) {}
+    ArrayLoadInstruction(int64_t lineNumber) : Instruction(InstructionType::ArrayLoad, lineNumber) {}
 
     void setDst(Variable v)  { dst = std::move(v); }
     void setSrc(Variable v)  { src = std::move(v); }
@@ -173,6 +176,13 @@ public:
             subs += "[" + std::visit([](const auto& x) { return x.to_string(); }, ix) + "]";
         return "\t" + dst->to_string() + " <- " + src->to_string() + subs + "\n";
     }
+
+    std::vector<T> toDecode() const override {
+         std::vector<T> vars;
+        for (const auto& ix : indices)
+            vars.push_back(ix);
+        return vars;
+    }
 };
 
 
@@ -183,19 +193,21 @@ class ArrayStoreInstruction : public Instruction {
     std::optional<Variable> dst;
     std::vector<T>          indices;
     std::optional<T>        src;
+    std::optional<Callee>   src_c;
 public:
-    ArrayStoreInstruction() : Instruction(InstructionType::ArrayStore) {}
-
+    ArrayStoreInstruction(int64_t lineNumber) : Instruction(InstructionType::ArrayStore, lineNumber) {}
     void setDst(Variable v) { dst = std::move(v); }
     void addIndex(T t)      { indices.push_back(std::move(t)); }
     void setSrc(T t)        { src = std::move(t); }
+    void setSrcCallee(Callee c) { src_c = std::move(c); }
 
+    const std::optional<Callee>& getSrcCallee() const { return src_c; }
     const std::optional<Variable>& getDst()     const { return dst; }
     const std::vector<T>&          getIndices() const { return indices; }
     const std::optional<T>&        getSrc()     const { return src; }
 
     bool verify() const override {
-        return dst.has_value() && !indices.empty() && src.has_value();
+        return dst.has_value() && !indices.empty() && (src.has_value() || src_c.has_value());
     }
 
     std::string to_string() const override {
@@ -226,7 +238,7 @@ class LengthInstruction : public Instruction {
     std::optional<Variable> array;
     std::optional<T>        dim;     // optional dimension
 public:
-    LengthInstruction() : Instruction(InstructionType::Length) {}
+    LengthInstruction(int64_t lineNumber = 0) : Instruction(InstructionType::Length, lineNumber) {}
 
     void setDst(Variable v)   { dst = std::move(v); }
     void setArray(Variable v) { array = std::move(v); }
@@ -274,7 +286,7 @@ class NewArrayInstruction : public Instruction {
     std::optional<Variable> dst;
     std::vector<T>          args;
 public:
-    NewArrayInstruction() : Instruction(InstructionType::NewArray) {}
+    NewArrayInstruction(int64_t lineNumber = 0) : Instruction(InstructionType::NewArray, lineNumber) {}
 
     void setDst(Variable v) { dst = std::move(v); }
     void addArg(T t)        { args.push_back(std::move(t)); }
@@ -299,7 +311,7 @@ class NewTupleInstruction : public Instruction {
     std::optional<Variable> dst;
     std::optional<T>        size;
 public:
-    NewTupleInstruction() : Instruction(InstructionType::NewTuple) {}
+    NewTupleInstruction(int64_t lineNumber = 0) : Instruction(InstructionType::NewTuple, lineNumber) {}
 
     void setDst(Variable v) { dst = std::move(v); }
     void setSize(T t)       { size = std::move(t); }
@@ -322,17 +334,17 @@ public:
  * ============================================================ */
 class VarCallInstruction : public Instruction {
     std::optional<Variable>     dst;
-    std::optional<FunctionName> callee;
+    std::optional<Callee> callee;
     std::vector<T>              args;
 public:
-    VarCallInstruction() : Instruction(InstructionType::AssignFromCall) {}
+    VarCallInstruction(int64_t lineNumber = 0) : Instruction(InstructionType::AssignFromCall, lineNumber) {}
 
     void setDst(Variable v)        { dst = std::move(v); }
-    void setCallee(FunctionName c) { callee = std::move(c); }
+    void setCallee(Callee c) { callee = std::move(c); }
     void addArg(T t)               { args.push_back(std::move(t)); }
 
     const std::optional<Variable>&     getDst()    const { return dst; }
-    const std::optional<FunctionName>& getCallee() const { return callee; }
+    const std::optional<Callee>& getCallee() const { return callee; }
     const std::vector<T>&              getArgs()   const { return args; }
     std::vector<T>& getArgs() { return args; }
 
@@ -340,15 +352,9 @@ public:
 
     std::string to_string() const override {
         assert(verify());
+        std::string c = std::visit([](const auto& x) { return x.to_string(); }, *callee);
         return "\t" + dst->to_string() + " <- " +
-               callee->to_string() + "(" + argsToString(args) + ")\n";
-    }
-
-    std::vector<T> toDecode() const override {
-        std::vector<T> vars;
-        for (const auto& arg : args)
-            vars.push_back(arg);
-        return vars;
+               c + "(" + argsToString(args) + ")\n";
     }
 
 
@@ -359,15 +365,15 @@ public:
  * CallInstruction  —  name ( args )
  * ============================================================ */
 class CallInstruction : public Instruction {
-    std::optional<FunctionName> callee;
+    std::optional<Callee> callee;
     std::vector<T>              args;
 public:
-    CallInstruction() : Instruction(InstructionType::Call) {}
+    CallInstruction(int64_t lineNumber = 0) : Instruction(InstructionType::Call, lineNumber) {}
 
-    void setCallee(FunctionName c) { callee = std::move(c); }
+    void setCallee(Callee c) { callee = std::move(c); }
     void addArg(T t)               { args.push_back(std::move(t)); }
 
-    const std::optional<FunctionName>& getCallee() const { return callee; }
+    const std::optional<Callee>& getCallee() const { return callee; }
     const std::vector<T>&     getArgs() const  { return args; }
     std::vector<T>& getArgs() { return args; }
 
@@ -376,8 +382,8 @@ public:
 
     std::string to_string() const override {
         assert(verify());
-        return "\t" + callee->to_string() +
-               "(" + argsToString(args) + ")\n";
+        std::string c = std::visit([](const auto& x) { return x.to_string(); }, *callee);
+        return "\t" + c + "(" + argsToString(args) + ")\n";
     }
 };
 
@@ -387,7 +393,7 @@ public:
  * ============================================================ */
 class ReturnInstruction : public Instruction {
 public:
-    ReturnInstruction() : Instruction(InstructionType::Return) {}
+    ReturnInstruction(int64_t lineNumber = 0) : Instruction(InstructionType::Return, lineNumber) {}
 
     bool verify() const override { return true; }
 
@@ -403,7 +409,7 @@ public:
 class ReturnTInstruction : public Instruction {
     std::optional<T> value;
 public:
-    ReturnTInstruction() : Instruction(InstructionType::ReturnT) {}
+    ReturnTInstruction(int64_t lineNumber = 0) : Instruction(InstructionType::ReturnT, lineNumber) {}
 
     void setValue(T t) { value = std::move(t); }
     const std::optional<T>& getValue() const { return value; }
@@ -424,7 +430,7 @@ public:
 class BrInstruction : public Instruction {
     std::optional<Label> target;
 public:
-    BrInstruction() : Instruction(InstructionType::Br) {}
+    BrInstruction(int64_t lineNumber = 0) : Instruction(InstructionType::Br, lineNumber) {}
 
     void setTarget(Label l) { target = std::move(l); }
     const std::optional<Label>& getTarget() const { return target; }
@@ -447,7 +453,7 @@ class BrTInstruction : public Instruction {
     std::optional<Label> falseTarget;
 
 public:
-    BrTInstruction() : Instruction(InstructionType::BrT) {}
+    BrTInstruction(int64_t lineNumber = 0) : Instruction(InstructionType::BrT, lineNumber){}
 
     void setCond(T t)       { cond = std::move(t); }
     void setTrueTarget(Label l) { trueTarget = std::move(l); }
@@ -479,7 +485,7 @@ public:
 class LabelInstruction : public Instruction {
     std::optional<Label> label;
 public:
-    LabelInstruction() : Instruction(InstructionType::Label) {}
+    LabelInstruction() : Instruction(InstructionType::Label, 0) {}
  
     void setLabel(Label l) { label = std::move(l); }
     const std::optional<Label>& getLabel() const { return label; }
@@ -504,8 +510,8 @@ public:
 class RawInstruction : public Instruction {
     std::string text;
 public:
-    explicit RawInstruction(std::string s)
-        : Instruction(InstructionType::Raw), text(std::move(s)) {}
+    explicit RawInstruction(std::string s, int64_t lineNumber = 0)
+        : Instruction(InstructionType::Raw, lineNumber), text(std::move(s)) {}
  
     const std::string& getText() const { return text; }
     void setText(std::string s) { text = std::move(s); }
@@ -533,6 +539,7 @@ public:
         public:
             
             std::vector<std::unique_ptr<Instruction>> instructions;
+            std::map<std::string, VarType> declTypes;
 
             Function() = default;
 
@@ -571,6 +578,7 @@ public:
     class Program : public ASTNode {
         public:
         std::vector<Function> functions;
+        std::map<std::string, VarType> declTypes;
 
         Program() = default;
 

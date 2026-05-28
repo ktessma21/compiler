@@ -39,7 +39,6 @@ namespace LA {
     // Variables are left untouched (they are handled at runtime in Step 2).
     static void encodeSlot(T& slot) {
         if (auto* n = std::get_if<Number>(&slot)) {
-            assert(std::get<Number>(slot).getValue() != encodeConst(n->getValue()));
             // if (debug){
             //     std::cerr << "Encoding constant: " << n->getValue() << " -> " << encodeConst(n->getValue()) << std::endl;
             // }
@@ -84,6 +83,7 @@ namespace LA {
                 // indices: intentionally left raw
                 break;
             }
+
 
             // return t           : the returned value is encoded
             case InstructionType::ReturnT: {
@@ -151,6 +151,17 @@ namespace LA {
                 break;
             }
 
+            case InstructionType::NewTuple: {
+                auto* n = static_cast<NewTupleInstruction*>(ins);
+                T size = n ->getSize().value();
+                T v = size;
+                encodeSlot(v);
+                n->setSize(std::move(v));
+                break;
+            }
+
+            
+
             // ----- slots intentionally left RAW (no encoding) -----
             // ArrayLoad : indices are array/tuple indices
             // Length    : 2nd parameter (the dimension) stays raw
@@ -159,7 +170,6 @@ namespace LA {
             // Decl / Label / Br / Return / Raw : no constant operands to encode
             case InstructionType::ArrayLoad:
             case InstructionType::Length:
-            case InstructionType::NewTuple:
             case InstructionType::Decl:
             case InstructionType::Label:
             case InstructionType::Br:
@@ -181,7 +191,7 @@ namespace LA {
 
             std::vector<std::unique_ptr<Instruction>> newInstructions;
             std::vector<std::unique_ptr<Instruction>> firstBlockInstructions;
-            // std::vector<std::unique_ptr<Instruction>> initializationInstructions;
+            std::vector<std::unique_ptr<Instruction>> initInstructions;
 
             for (auto& ins : f.instructions) {
 
@@ -273,7 +283,7 @@ namespace LA {
                         auto* old = dynamic_cast<OpInstruction*>(ins.get());
                         assert(old);
 
-                        auto neo = std::make_unique<OpInstruction>();
+                        auto neo = std::make_unique<OpInstruction>(old->getLineNumber());
 
                         neo->setDst(*old->getDst());
                         neo->setOp(*old->getOp());
@@ -311,7 +321,7 @@ namespace LA {
                         auto* old = dynamic_cast<BrTInstruction*>(ins.get());
                         assert(old);
 
-                        auto neo = std::make_unique<BrTInstruction>();
+                        auto neo = std::make_unique<BrTInstruction>(old->getLineNumber());
 
                         T cond = *old->getCond();
 
@@ -346,7 +356,7 @@ namespace LA {
                         auto* old = dynamic_cast<ArrayLoadInstruction*>(ins.get());
                         assert(old);
 
-                        auto neo = std::make_unique<ArrayLoadInstruction>();
+                        auto neo = std::make_unique<ArrayLoadInstruction>(old->getLineNumber());
 
                         neo->setDst(*old->getDst());
                         neo->setSrc(*old->getSrc());
@@ -363,17 +373,7 @@ namespace LA {
                                     neo->addIndex(it->second);
                                     continue;
                                 }
-                            } else if (std::holds_alternative<Number>(idx)) {
-
-                                int64_t encVal = std::get<Number>(idx).getValue();
-
-                                auto it = decodedNumMap.find(encVal);
-
-                                if (it != decodedNumMap.end()) {
-                                    neo->addIndex(it->second);
-                                    continue;
-                                }
-                            }
+                            } 
 
                             neo->addIndex(idx);
                         }
@@ -387,7 +387,7 @@ namespace LA {
                         auto* old = dynamic_cast<ArrayStoreInstruction*>(ins.get());
                         assert(old);
 
-                        auto neo = std::make_unique<ArrayStoreInstruction>();
+                        auto neo = std::make_unique<ArrayStoreInstruction>(old->getLineNumber());
 
                         neo->setDst(*old->getDst());
                         neo->setSrc(*old->getSrc());
@@ -418,7 +418,7 @@ namespace LA {
                         auto* old = dynamic_cast<LengthInstruction*>(ins.get());
                         assert(old);
 
-                        auto neo = std::make_unique<LengthInstruction>();
+                        auto neo = std::make_unique<LengthInstruction>(old->getLineNumber());
 
                         neo->setDst(*old->getDst());
                         neo->setArray(*old->getArray());
@@ -435,15 +435,7 @@ namespace LA {
 
                                 if (it != decodedMap.end())
                                     dim = it->second;
-                            } else if (std::holds_alternative<Number>(dim)) {
-
-                                int64_t encVal = std::get<Number>(dim).getValue();
-
-                                auto it = decodedNumMap.find(encVal);
-
-                                if (it != decodedNumMap.end())
-                                    dim = it->second;
-                            }
+                            } 
 
                             neo->setDim(dim);
                         }
@@ -457,7 +449,7 @@ namespace LA {
                         auto* old = dynamic_cast<VarCallInstruction*>(ins.get());
                         assert(old);
 
-                        auto neo = std::make_unique<VarCallInstruction>();
+                        auto neo = std::make_unique<VarCallInstruction>(old->getLineNumber());
 
                         neo->setDst(*old->getDst());
                         neo->setCallee(*old->getCallee());
@@ -487,6 +479,28 @@ namespace LA {
                     // (per slide: collect all LA decls and emit them at the start
                     //  of the first basic block, in any order)
                     case InstructionType::Decl: {
+                        auto* d = dynamic_cast<DeclInstruction*>(ins.get());
+                        assert(d);
+
+                        // Emit initialization based on type:
+                        //   int64        -> encoded 0 = 1
+                        //   int64[]+, tuple, code -> raw 0 (null pointer / uninit sentinel)
+                        Type ty = *d->getType();
+                        Variable v = *d->getVar();
+
+                        auto init = std::make_unique<AssignInstruction>();
+                        init->setDst(v);
+
+                        if (ty.base == VarType::Int64 && ty.dims == 0) {
+                            // plain int64: encoded zero
+                            init->setSrc(Number(1));
+                        } else {
+                            // arrays, tuples, code: null
+                            init->setSrc(Number(0));
+                        }
+
+                        initInstructions.push_back(std::move(init));
+
                         firstBlockInstructions.push_back(std::move(ins));
                         break;
                     }
@@ -579,7 +593,8 @@ namespace LA {
             for (auto& d : firstBlockInstructions)
                 finalInstructions.push_back(std::move(d));
 
-       
+            for (auto& i : initInstructions)           
+                finalInstructions.push_back(std::move(i));
 
             for (auto it = bodyBegin; it != encodedInstructions.end(); ++it)
                 finalInstructions.push_back(std::move(*it));

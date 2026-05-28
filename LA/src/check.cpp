@@ -57,8 +57,7 @@ namespace LA {
         }, t);
     }
 
-
-    // ------------------------------------------------------------
+     // ------------------------------------------------------------
     // Emit a "fresh declaration" into the declaration bucket and a
     // typed int64 declaration for a freshly created temp.
     // ------------------------------------------------------------
@@ -69,6 +68,58 @@ namespace LA {
         d->setType(Type(VarType::Int64));
         decls.push_back(std::move(d));
     }
+
+
+    // (x << 1) | 1  — same encoding used by encode_decode_program
+    static inline int64_t checkEncodeConst(int64_t x) {
+        return (x << 1) | 1;
+    }
+
+   
+    static Variable emitEncodedConst(std::vector<std::unique_ptr<Instruction>>& out,
+                                    std::vector<std::unique_ptr<Instruction>>& decls,
+                                    int64_t rawValue) {
+        Variable v = checkFreshVar();
+        declareInt64(decls, v);
+
+        auto a = std::make_unique<AssignInstruction>();
+        a->setDst(v);
+        a->setSrc(Number(checkEncodeConst(rawValue)));
+        out.push_back(std::move(a));
+
+        return v;
+    }
+
+    static Variable emitEncodedVar(std::vector<std::unique_ptr<Instruction>>& out,
+                                std::vector<std::unique_ptr<Instruction>>& decls,
+                                const Variable& src) {
+        Variable v = checkFreshVar();
+        declareInt64(decls, v);
+
+        auto cp = std::make_unique<AssignInstruction>();
+        cp->setDst(v);
+        cp->setSrc(src);
+        out.push_back(std::move(cp));
+
+        auto shl = std::make_unique<OpInstruction>();
+        shl->setDst(v);
+        shl->setLhs(v);
+        shl->setOp(Op::Shl);
+        shl->setRhs(Number(1));
+        out.push_back(std::move(shl));
+
+        auto add = std::make_unique<OpInstruction>();
+        add->setDst(v);
+        add->setLhs(v);
+        add->setOp(Op::Add);
+        add->setRhs(Number(1));
+        out.push_back(std::move(add));
+
+        return v;
+    }
+
+
+   
 
 
     // ------------------------------------------------------------
@@ -85,7 +136,7 @@ namespace LA {
     static void emitAllocationCheck(std::vector<std::unique_ptr<Instruction>>& out,
                                     std::vector<std::unique_ptr<Instruction>>& decls,
                                     const Variable& arr,
-                                    int64_t lineNumber) {
+                                    int64_t lineNumber, Function& fn) {
 
         Variable cond = checkFreshVar();
         declareInt64(decls, cond);
@@ -94,7 +145,7 @@ namespace LA {
         Label okL  = checkFreshLabel("alloc_ok");
 
         // %cond <- arr = 0
-        auto cmp = std::make_unique<OpInstruction>();
+        auto cmp = std::make_unique<OpInstruction>(lineNumber);
         cmp->setDst(cond);
         cmp->setLhs(arr);
         cmp->setOp(Op::Eq);
@@ -113,12 +164,18 @@ namespace LA {
         errLabel->setLabel(errL);
         out.push_back(std::move(errLabel));
 
-        // tensor-error(line)   -- raw IR (not a native LA instruction)
-        // encode the line number as an argument for better error messages;
-        // auto assign = std::make_unique<AssignInstruction>()
-        // TODO - MUST BE TYPE VAR NOT NUMBER. 
-        out.push_back(std::make_unique<RawInstruction>(
-            "\tcall tensor-error(" + std::to_string(lineNumber) + ")\n"));
+        // tensor-error(encoded line)
+        Variable lineVar = emitEncodedConst(out, decls, lineNumber);
+
+        bool isTuple = false;
+        auto it = fn.declTypes.find(arr.name);
+        if (it != fn.declTypes.end() && it->second == VarType::Tuple)
+            isTuple = true;
+
+        auto call = std::make_unique<CallInstruction>();
+        call->setCallee(FunctionName(isTuple ? "tuple-error" : "tensor-error"));
+        call->addArg(lineVar);
+        out.push_back(std::move(call));
 
         // :OK
         auto okLabel = std::make_unique<LabelInstruction>();
@@ -127,55 +184,77 @@ namespace LA {
     }
 
 
-    // ------------------------------------------------------------
-    // Bounds check for a single index `idx` at dimension `dim` of `arr`.
-    //
-    //     l_d  <- length arr <dim>          ; length of this dimension
-    //
-    //     ; A. i >= 0
-    //     %negCond <- idx < 0
-    //     br %negCond :NEG_ERR :NEG_OK
-    //   :NEG_ERR
-    //     tensor-error(line[, dim], l_d, idx)
-    //   :NEG_OK
-    //
-    //     ; B. i < length
-    //     %ltCond <- idx < l_d
-    //     br %ltCond :LT_OK :LT_ERR        ; in-range when idx < l_d
-    //   :LT_ERR
-    //     tensor-error(line[, dim], l_d, idx)
-    //   :LT_OK
-    //
-    // `isTensor` selects the 3-arg vs 4-arg tensor-error signature.
-    // ------------------------------------------------------------
     static void emitBoundsCheck(std::vector<std::unique_ptr<Instruction>>& out,
                                 std::vector<std::unique_ptr<Instruction>>& decls,
                                 const Variable& arr,
                                 const T& idx,
                                 int64_t dim,
                                 bool isTensor,
-                                int64_t lineNumber) {
+                                int64_t lineNumber, 
+                                Function& fn) {
 
         // l_d <- length arr <dim>
+        
         Variable lenVar = checkFreshVar();
         declareInt64(decls, lenVar);
 
         auto lenIns = std::make_unique<LengthInstruction>();
         lenIns->setDst(lenVar);
         lenIns->setArray(arr);
-        lenIns->setDim(Number(dim));     // 2nd parameter of length stays RAW (a dimension)
+        bool isTuple = false;
+        auto it = fn.declTypes.find(arr.name);
+        if (it != fn.declTypes.end() && it->second == VarType::Tuple)
+            isTuple = true;
+        if (!isTuple) lenIns->setDim(Number(dim));
         out.push_back(std::move(lenIns));
 
-        // The tensor-error argument list, shared by both failure paths.
+        // (mirror of instructor's %newVar5 <- %newVar9)
+        Variable lenForError = checkFreshVar();
+        declareInt64(decls, lenForError);
+        {
+            auto cp = std::make_unique<AssignInstruction>();
+            cp->setDst(lenForError);
+            cp->setSrc(lenVar);
+            out.push_back(std::move(cp));
+
+            // if ()
+            // // %newVar9 <- %newVar9 >> 1
+            auto decodeLenVar = std::make_unique<OpInstruction>();
+            decodeLenVar->setDst(lenVar);
+            decodeLenVar->setLhs(lenVar);
+            decodeLenVar->setOp(Op::Shr);
+            decodeLenVar->setRhs(Number(1));
+            out.push_back(std::move(decodeLenVar));
+
+        }
+
+        // ----- Pre-encode the remaining tensor-error arguments once -----
+        Variable encLine = emitEncodedConst(out, decls, lineNumber);          // step 2
+        Variable encDim;
+        if (isTensor) encDim = emitEncodedConst(out, decls, dim);             // step 2
+
+        // index: Number -> encoded const; Variable -> copy+encode at runtime  (step 3)
+        Variable encIdx = std::visit([&](const auto& x) -> Variable {
+            using U = std::decay_t<decltype(x)>;
+            if constexpr (std::is_same_v<U, Number>)
+                return emitEncodedConst(out, decls, x.getValue());
+            else
+                return emitEncodedVar(out, decls, x);
+        }, idx);
+
+   
+        // Step 5: build tensor-error as a real CallInstruction with encoded temps.
         // single-dim : tensor-error(line, length, index)
         // tensor     : tensor-error(line, dim, length, index)
         auto errorCall = [&]() -> std::unique_ptr<Instruction> {
-            std::string args = std::to_string(lineNumber);
-            if (isTensor) args += ", " + std::to_string(dim);
-            args += ", " + tToStr(lenVar);
-            args += ", " + tToStr(idx);
-            return std::make_unique<RawInstruction>(
-                "\tcall tensor-error(" + args + ")\n");
+            auto c = std::make_unique<CallInstruction>();
+            const char* errName = isTuple ? "tuple-error" : "tensor-error";
+            c->setCallee(FunctionName(errName));
+            c->addArg(encLine);
+            if (isTensor) c->addArg(encDim);
+            c->addArg(lenForError);
+            c->addArg(encIdx);
+            return c;
         };
 
         // ---------- A. Check i is not negative (i >= 0) ----------
@@ -186,10 +265,10 @@ namespace LA {
             Label errL = checkFreshLabel("neg_err");
             Label okL  = checkFreshLabel("neg_ok");
 
-            // %negCond <- idx < 0
+            // %ltCond <- idx < l_d
             auto cmp = std::make_unique<OpInstruction>();
             cmp->setDst(negCond);
-            cmp->setLhs(idx);
+            cmp->setLhs(idx);           
             cmp->setOp(Op::Lt);
             cmp->setRhs(Number(0));
             out.push_back(std::move(cmp));
@@ -223,9 +302,9 @@ namespace LA {
             // %ltCond <- idx < l_d
             auto cmp = std::make_unique<OpInstruction>();
             cmp->setDst(ltCond);
-            cmp->setLhs(idx);
+            cmp->setLhs(idx);             // was: idx
             cmp->setOp(Op::Lt);
-            cmp->setRhs(lenVar);
+            cmp->setRhs(lenVar);             // lenVar is the raw native length — correct
             out.push_back(std::move(cmp));
 
             // br %ltCond :OK :ERR   (in range when idx < length)
@@ -258,15 +337,14 @@ namespace LA {
                                  std::vector<std::unique_ptr<Instruction>>& decls,
                                  const Variable& arr,
                                  const std::vector<T>& indices,
-                                 int64_t lineNumber) {
+                                 int64_t lineNumber, Function& fn) {
 
         // 1. allocation check
-        emitAllocationCheck(out, decls, arr, lineNumber);
+        emitAllocationCheck(out, decls, arr, lineNumber, fn);
 
-        // 2. per-index bounds checks
         bool isTensor = indices.size() > 1;
         for (int64_t d = 0; d < static_cast<int64_t>(indices.size()); ++d) {
-            emitBoundsCheck(out, decls, arr, indices[d], d, isTensor, lineNumber);
+            emitBoundsCheck(out, decls, arr, indices[d], d, isTensor, lineNumber, fn);
         }
     }
 
@@ -286,10 +364,8 @@ namespace LA {
 
             for (auto& ins : f.instructions) {
 
-                // NOTE: the real line number comes from the parser
-                // (in.position().line, see slides). Plumb it onto the
-                // instruction and read it here. Placeholder for now:
-                int64_t lineNumber = 0;
+                int64_t lineNumber = ins->getLineNumber();
+
 
                 switch (ins->type) {
 
@@ -302,7 +378,7 @@ namespace LA {
                                          firstBlockInstructions,
                                          *a->getSrc(),
                                          a->getIndices(),
-                                         lineNumber);
+                                         lineNumber, f);
 
                         // the access itself follows the checks unchanged
                         // for (const auto& indice : a )
@@ -312,6 +388,7 @@ namespace LA {
 
                     // name([t])+ <- t      : the accessed destination array is `dst`
                     case InstructionType::ArrayStore: {
+
                         auto* a = dynamic_cast<ArrayStoreInstruction*>(ins.get());
                         assert(a);
 
@@ -319,7 +396,7 @@ namespace LA {
                                          firstBlockInstructions,
                                          *a->getDst(),
                                          a->getIndices(),
-                                         lineNumber);
+                                         lineNumber, f);
 
                        
 

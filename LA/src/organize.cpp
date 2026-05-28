@@ -38,6 +38,7 @@ namespace LA {
 
             bool startBB = true;
             std::vector<std::unique_ptr<Instruction>> newInstructions;
+
             // ----- function entry needed first ----
             auto Inst = f.instructions.begin();
 
@@ -83,9 +84,15 @@ namespace LA {
 
 
             }
-            if (!startBB){
+            if (!startBB || f.instructions.empty()){
+                if (f.instructions.empty()){
+                    std::unique_ptr<LabelInstruction> label = std::make_unique<LabelInstruction>();
+                    label->setLabel(Label("entry"));
+                    newInstructions.push_back(std::move(label));
+
+                }
                 if (f.getReturnType() == Type(VarType::Void)){
-                            std::unique_ptr<ReturnTInstruction> retVoid = std::make_unique<ReturnTInstruction>();
+                            std::unique_ptr<ReturnInstruction> retVoid = std::make_unique<ReturnInstruction>();
                             newInstructions.push_back(std::move(retVoid));
                         }
                 else {

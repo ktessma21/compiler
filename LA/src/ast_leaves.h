@@ -166,6 +166,8 @@ namespace LA {
         // t ::= name | N
         using T = std::variant<Variable, Number>;
 
+        // Callee ::= Variable | FunctionName 
+        using Callee = std::variant<FunctionName, Variable>;
 
 
     // ---------- Shared helpers ----------

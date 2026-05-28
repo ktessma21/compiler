@@ -6,6 +6,7 @@
 
 namespace LA {
 
+
     void generate_code(Program& p) {
 
         if (!p.verify()) {
@@ -17,15 +18,27 @@ namespace LA {
 
         for (auto& f : p.functions) {
 
-            CodeGenerator::currentFunction = &f;
 
-            // ----- function start -----
             const auto& params = f.getParams();
+            const auto& paramTypes = f.getParamTypes();
+            for (size_t i = 0; i < params.size(); ++i) {
+                f.declTypes[params[i].name] = paramTypes[i].base;
+            }
+            f.declTypes.insert(p.declTypes.begin(), p.declTypes.end());
+
+            std::set<std::string> funcNames;
+            for (auto& f : p.functions)
+                funcNames.insert(f.getName());
+            CodeGenerator::functionNames = funcNames;
+
+
+            CodeGenerator::currentFunction = &f;
 
             outputFile << "define " << f.getReturnType().to_string()
                        << " @" << f.getName() << "(";
             for (size_t i = 0; i < params.size(); ++i) {
-                outputFile << "%" << params[i].name;
+                outputFile << paramTypes[i].to_string() << " %" << params[i].name;
+                
                 if (i + 1 < params.size()) {
                     outputFile << ", ";
                 }

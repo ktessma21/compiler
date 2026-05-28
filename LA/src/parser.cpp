@@ -26,7 +26,7 @@ using namespace pegtl;
 
 namespace LA {
 
-
+    // static lineNumber = 0;
  
 
   /* ===== shared lexical rules (unchanged from your L3) ===== */
@@ -244,21 +244,27 @@ namespace LA {
     struct insVarAssign :
         pegtl::seq<var, spaces, pstring("<-"), spaces, t> {};
 
+    // Keywords must not be followed by a name character.
+    struct kw_return :
+        pegtl::seq< pstring("return"),
+                    pegtl::not_at< pegtl::sor< pegtl::alpha, pegtl::one<'_'>, pegtl::digit > > > {};
+
+    struct kw_br :
+        pegtl::seq< pstring("br"),
+                    pegtl::not_at< pegtl::sor< pegtl::alpha, pegtl::one<'_'>, pegtl::digit > > > {};
+
     // return t
     struct insReturnT :
-        pegtl::seq<pstring("return"), spaces, t> {};
+        pegtl::seq<kw_return, spaces, t> {};
 
-    // return
     struct insReturn :
-        pstring("return") {};
+        kw_return {};
 
-    // br t label
     struct insBrT :
-        pegtl::seq<pstring("br"), spaces, t, spaces, label, spaces, label> {};
+        pegtl::seq<kw_br, spaces, t, spaces, label, spaces, label> {};
 
-    // br label
     struct insBr :
-        pegtl::seq<pstring("br"), spaces, label> {};
+        pegtl::seq<kw_br, spaces, label> {};
 
     // label (as standalone instruction)
     struct insLabel : label {};
@@ -459,6 +465,10 @@ namespace LA {
             }
             tk.expect(")");
 
+            for (size_t i = 0; i < f.getParams().size(); ++i) {
+                f.declTypes[f.getParams()[i].name] = f.getParamTypes()[i].base;
+            }
+
             p.functions.push_back(std::move(f));
         }
     };
@@ -475,8 +485,18 @@ namespace LA {
             instr->setType(var_type);
             instr->setVar(makeVar(name_str));
             p.functions.back().instructions.push_back(std::move(instr));
+            p.functions.back().declTypes[name_str] = var_type.base;  // record
         }
     };
+
+    // pegtl::eol
+
+    // template<> struct action<pegtl::eol || pegtl::eolf> {
+    //     template<typename Input>
+    //     static void apply(const Input& in, Program& p){
+    //         lineNumber++;
+    //     }
+    // }
 
     // name <- t          (generic assignment fallback)
     template<> struct action<insVarAssign> {
@@ -487,7 +507,7 @@ namespace LA {
             tk.expect("<-");
             std::string src_str = tk.next();   // t
 
-            auto instr = std::make_unique<AssignInstruction>();
+            auto instr = std::make_unique<AssignInstruction>(in.position().line);
             instr->setDst(makeVar(dst_str));
             instr->setSrc(makeT(src_str));
             p.functions.back().instructions.push_back(std::move(instr));
@@ -500,13 +520,24 @@ namespace LA {
         template<typename Input>
         static void apply(const Input& in, Program& p) {
             Tokenizer tk(in.string());
-            std::string dst_str = tk.next();   // name
+            std::string dst_str = tk.next();
             tk.expect("<-");
-            std::string lhs_str = tk.next();   // t
-            std::string op_str  = tk.next();   // op: + - * & << >> < <= = >= >
-            std::string rhs_str = tk.next();   // t
+            std::string lhs_str = tk.next();
+            std::string op_str  = tk.next();
 
-            auto instr = std::make_unique<OpInstruction>();
+            // If the tokenizer collapsed "- 1" or "-1" into a signed number token,
+            // split it: the leading sign is the op, the rest is the rhs.
+            std::string rhs_str;
+            if ((op_str.size() > 1) &&
+                (op_str[0] == '-' || op_str[0] == '+') &&
+                std::isdigit(static_cast<unsigned char>(op_str[1]))) {
+                rhs_str = op_str.substr(1);
+                op_str  = op_str.substr(0, 1);
+            } else {
+                rhs_str = tk.next();
+            }
+
+            auto instr = std::make_unique<OpInstruction>(in.position().line);
             instr->setDst(makeVar(dst_str));
             instr->setLhs(makeT(lhs_str));
             instr->setOp(stringToOp(op_str));
@@ -532,7 +563,7 @@ namespace LA {
                 tk.expect("]");
             }
 
-            auto instr = std::make_unique<ArrayLoadInstruction>();
+            auto instr = std::make_unique<ArrayLoadInstruction>(in.position().line);
             instr->setDst(makeVar(dst_str));
             instr->setSrc(makeVar(src_str));
             for (auto& ix : idx_strs) instr->addIndex(makeT(ix));
@@ -557,10 +588,22 @@ namespace LA {
             tk.expect("<-");
             std::string src_str = tk.next();   // t
 
-            auto instr = std::make_unique<ArrayStoreInstruction>();
+            // std::cerr << in.position().line << "from array store func parser \n";
+            
+
+            auto instr = std::make_unique<ArrayStoreInstruction>(in.position().line);
+
             instr->setDst(makeVar(dst_str));
             for (auto& ix : idx_strs) instr->addIndex(makeT(ix));
-            instr->setSrc(makeT(src_str));
+            auto& f = p.functions.back();
+                auto it = p.declTypes.find(src_str);
+                // std::cerr << src_str << '\n';
+                if (it != p.declTypes.end() && it->second == VarType::Code) {
+                    instr->setSrcCallee(makeFunctionName(src_str));
+                    // assert(false);
+                } else {
+                    instr->setSrc(makeT(src_str));
+            }
             p.functions.back().instructions.push_back(std::move(instr));
         }
     };
@@ -576,7 +619,7 @@ namespace LA {
             tk.expect("length");
             std::string arr_str = tk.next();   // name
 
-            auto instr = std::make_unique<LengthInstruction>();
+            auto instr = std::make_unique<LengthInstruction>(in.position().line);
             instr->setDst(makeVar(dst_str));
             instr->setArray(makeVar(arr_str));
             if (!tk.done())                    // optional dimension t
@@ -607,7 +650,7 @@ namespace LA {
             }
             tk.expect(")");
 
-            auto instr = std::make_unique<NewArrayInstruction>();
+            auto instr = std::make_unique<NewArrayInstruction>(in.position().line);
             instr->setDst(makeVar(dst_str));
             for (auto& a : arg_strs) instr->addArg(makeT(a));
             p.functions.back().instructions.push_back(std::move(instr));
@@ -628,7 +671,7 @@ namespace LA {
             std::string size_str = tk.next();   // t
             tk.expect(")");
 
-            auto instr = std::make_unique<NewTupleInstruction>();
+            auto instr = std::make_unique<NewTupleInstruction>(in.position().line);
             instr->setDst(makeVar(dst_str));
             instr->setSize(makeT(size_str));
             p.functions.back().instructions.push_back(std::move(instr));
@@ -656,9 +699,16 @@ namespace LA {
             }
             tk.expect(")");
 
-            auto instr = std::make_unique<VarCallInstruction>();
+            auto instr = std::make_unique<VarCallInstruction>(in.position().line);
             instr->setDst(makeVar(dst_str));
-            instr->setCallee(makeFunctionName(callee_str));
+
+            auto& f = p.functions.back();
+            auto it = f.declTypes.find(callee_str);
+            if (it != f.declTypes.end() && it->second == VarType::Code) {
+                instr->setCallee(makeVar(callee_str));      
+            } else {
+                instr->setCallee(makeFunctionName(callee_str));
+            }
             for (auto& a : arg_strs) instr->addArg(makeT(a));
             p.functions.back().instructions.push_back(std::move(instr));
         }
@@ -683,8 +733,16 @@ namespace LA {
             }
             tk.expect(")");
 
-            auto instr = std::make_unique<CallInstruction>();
-            instr->setCallee(makeFunctionName(callee_str));
+            auto instr = std::make_unique<CallInstruction>(in.position().line);
+            
+            auto& f = p.functions.back();
+            auto it = f.declTypes.find(callee_str);
+            if (it != f.declTypes.end() && it->second == VarType::Code) {
+                instr->setCallee(makeVar(callee_str));      // indirect call through a code variable
+            } else {
+                instr->setCallee(makeFunctionName(callee_str));
+            }
+
             for (auto& a : arg_strs) instr->addArg(makeT(a));
             p.functions.back().instructions.push_back(std::move(instr));
         }
@@ -699,7 +757,7 @@ namespace LA {
             tk.expect("return");
             std::string val_str = tk.next();   // t
 
-            auto instr = std::make_unique<ReturnTInstruction>();
+            auto instr = std::make_unique<ReturnTInstruction>(in.position().line);
             instr->setValue(makeT(val_str));
             p.functions.back().instructions.push_back(std::move(instr));
         }
@@ -711,7 +769,7 @@ namespace LA {
         template<typename Input>
         static void apply(const Input& in, Program& p) {
             // no operands
-            auto instr = std::make_unique<ReturnInstruction>();
+            auto instr = std::make_unique<ReturnInstruction>(in.position().line);
             p.functions.back().instructions.push_back(std::move(instr));
         }
     };
@@ -727,7 +785,7 @@ namespace LA {
             std::string true_label_str = tk.next();   // :name
             std::string false_label_str = tk.next();   // :name
 
-            auto instr = std::make_unique<BrTInstruction>();
+            auto instr = std::make_unique<BrTInstruction>(in.position().line);
             instr->setCond(makeT(cond_str));
             instr->setTrueTarget(makeLabel(true_label_str));
             instr->setFalseTarget(makeLabel(false_label_str));
@@ -744,7 +802,7 @@ namespace LA {
             tk.expect("br");
             std::string label_str = tk.next();   // :name
 
-            auto instr = std::make_unique<BrInstruction>();
+            auto instr = std::make_unique<BrInstruction>(in.position().line);
             instr->setTarget(makeLabel(label_str));
             p.functions.back().instructions.push_back(std::move(instr));
         }
@@ -789,21 +847,6 @@ namespace LA {
 
 
 
-    static LA::Function parsefunction(const std::string& source) {
-        std::string contents = source;
-        size_t close = contents.rfind(')');
-        if (close == std::string::npos)
-            throw std::runtime_error("parsefunction: no closing ')'");
-        std::string prog_part = contents.substr(0, close + 1);
-
-        LA::Program tmp;                                  // was: LA::Function result
-        pegtl::memory_input<> in(prog_part, "la_function");
-        pegtl::parse<grammar_function, action, my_tracer>(in, tmp);
-
-        if (tmp.functions.size() != 1)
-            throw std::runtime_error("parsefunction: expected exactly one function");
-        return std::move(tmp.functions.front());
-    }
 
     LA::Program parse_file(const char* fileName) {
         std::ifstream f(fileName);
@@ -812,8 +855,14 @@ namespace LA {
         std::string contents = ss.str();
 
         LA::Program result;
+
         pegtl::memory_input<> in(contents, fileName);
         pegtl::parse<grammar_program, action, my_tracer>(in, result);
+
+        for (auto& f: result.functions){
+            std::string fn = f.getName();
+            result.declTypes[fn] = VarType::Code;
+        }
         return result;
     }
 

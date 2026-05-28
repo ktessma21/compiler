@@ -1,31 +1,56 @@
 define void @main() {
 	:label_never_used_please_0
-	int64 %v1
-	int64 %v2
-	int64 %check
-	int64 %v3
+	int64[][] %a
+	%a <- new Array(5, 5)
+	call print(%a)
+	call @initArray(%a)
+	return
+}
+define void @initArray(int64[][] %A) {
+	:label_never_used_please_1
+	int64 %checkVar_0
+	int64 %checkVar_3
+	int64 %checkVar_4
+	int64 %checkVar_7
+	int64 %checkVar_10
+	int64 %checkVar_11
+	int64 %checkVar_14
 	int64 %decodeVar_0
 	int64 %decodeVar_1
-	int64 %decodeVar_2
-	int64 %decodeVar_3
-	int64 %decodeVar_4
-	%v1 <- 3
-	%v2 <- 5
-	%decodeVar_0 <- %v1 >> 1
-	%decodeVar_1 <- %v2 >> 1
-	%v3 <- %decodeVar_0 + %decodeVar_1
-	%v3 <- %v3 << 1
-	%v3 <- %v3 + 1
-	%decodeVar_2 <- %v3 >> 1
-	%decodeVar_3 <- 1
-	%check <- %decodeVar_2 > %decodeVar_3
-	%check <- %check << 1
-	%check <- %check + 1
-	%decodeVar_4 <- %check >> 1
-	br %decodeVar_4 :true :false
-	:true
-	call print(%v3)
-	br :false
-	:false
+	%decodeVar_0 <- 0
+	%decodeVar_1 <- 1
+	%checkVar_0 <- %A = 0
+	br %checkVar_0 :checkLabel_alloc_err_1 :checkLabel_alloc_ok_2
+	:checkLabel_alloc_err_1
+	call tensor-error(13)
+	br :checkLabel_alloc_ok_2
+	:checkLabel_alloc_ok_2
+	%checkVar_3 <- length %A
+	%checkVar_4 <- 0 < 0
+	br %checkVar_4 :checkLabel_neg_err_5 :checkLabel_neg_ok_6
+	:checkLabel_neg_err_5
+	call tensor-error(13, 0, %checkVar_3, 0)
+	br :checkLabel_neg_ok_6
+	:checkLabel_neg_ok_6
+	%checkVar_7 <- 0 < %checkVar_3
+	br %checkVar_7 :checkLabel_lt_ok_8 :checkLabel_lt_err_9
+	:checkLabel_lt_err_9
+	call tensor-error(13, 0, %checkVar_3, 0)
+	br :checkLabel_lt_ok_8
+	:checkLabel_lt_ok_8
+	%checkVar_10 <- length %A 1
+	%checkVar_11 <- 2 < 0
+	br %checkVar_11 :checkLabel_neg_err_12 :checkLabel_neg_ok_13
+	:checkLabel_neg_err_12
+	call tensor-error(13, 1, %checkVar_10, 2)
+	br :checkLabel_neg_ok_13
+	:checkLabel_neg_ok_13
+	%checkVar_14 <- 2 < %checkVar_10
+	br %checkVar_14 :checkLabel_lt_ok_15 :checkLabel_lt_err_16
+	:checkLabel_lt_err_16
+	call tensor-error(13, 1, %checkVar_10, 2)
+	br :checkLabel_lt_ok_15
+	:checkLabel_lt_ok_15
+	%A[0][2] <- 1
 	return
 }

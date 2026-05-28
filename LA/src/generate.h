@@ -36,8 +36,14 @@ namespace LA {
         static std::string tStr(const T& v) {
             return std::visit([](const auto& x) -> std::string {
                 using V = std::decay_t<decltype(x)>;
-                if constexpr (std::is_same_v<V, Variable>) return "%" + x.name;
-                else                                       return x.to_string();
+                if constexpr (std::is_same_v<V, Variable>) {
+                    // A bare reference to a real function is its address: @name
+                    if (functionNames.count(x.name))
+                        return "@" + x.name;
+                    return "%" + x.name;
+                } else {
+                    return x.to_string();
+                }
             }, v);
         }
 
@@ -80,14 +86,39 @@ namespace LA {
             std::string subs;
             for (const auto& ix : instr.getIndices())
                 subs += "[" + tStr(ix) + "]";
-            return "\t" + vStr(*instr.getDst()) + subs + " <- " + tStr(*instr.getSrc()) + "\n";
+
+            std::string rhs;
+
+            // Decide based on whether the source name is declared Code.
+            bool isCode = false;
+            std::string srcName;
+
+            if (instr.getSrc().has_value() && std::holds_alternative<Variable>(*instr.getSrc())) {
+                srcName = std::get<Variable>(*instr.getSrc()).name;
+                auto it = currentFunction->declTypes.find(srcName);
+                if (it != currentFunction->declTypes.end() && it->second == VarType::Code) {
+                    isCode = true;
+                }
+            }
+
+            if (isCode) {
+                Variable v;
+                v.name = srcName;
+                rhs = callStr(Callee{v});
+            } else {
+                rhs = tStr(*instr.getSrc());
+            }
+
+            return "\t" + vStr(*instr.getDst()) + subs + " <- " + rhs + "\n";
         }
 
         static std::string generate(const LengthInstruction& instr) {
             // %dst <- length %array [dim]
             std::string out = "\t" + vStr(*instr.getDst()) + " <- length " + vStr(*instr.getArray());
-            if (instr.getDim().has_value())
+            if (instr.getDim().has_value()){
                 out += " " + tStr(*instr.getDim());
+            }
+                
             return out + "\n";
         }
 
@@ -109,7 +140,7 @@ namespace LA {
 
         static std::string generate(const VarCallInstruction& instr) {
             // %dst <- @callee(args)   (callee is a function name)
-            std::string out = "\t" + vStr(*instr.getDst()) + " <- " +
+            std::string out = "\t" + vStr(*instr.getDst()) + " <- call " +
                               callStr(*instr.getCallee()) + "(";
             const auto& args = instr.getArgs();
             for (size_t i = 0; i < args.size(); ++i) {
@@ -199,16 +230,27 @@ namespace LA {
             }
         }
 
+    static inline std::set<std::string> functionNames = {};
+
     private:
         // A callee in IR: user functions are "@name"; the runtime callees
         // (print, input, tensor-error, tuple-error) are bare names per the
         // grammar (callee ::= u | print | input | tuple-error | tensor-error).
-        static std::string callStr(const FunctionName& f) {
-            const std::string& n = f.name;
+       static std::string callStr(const Callee& c) {
+
+            std::string n = std::visit([](const auto& x){ return x.name; }, c);
+
+            // runtime callees: bare name
             if (n == "print" || n == "input" ||
                 n == "tensor-error" || n == "tuple-error")
                 return n;
-            return "@" + n;
+
+            // real function -> @name
+            if (functionNames.count(n))
+                return "@" + n;
+
+            // otherwise it's a call through a code variable -> %name
+            return "%" + n;
         }
     };
 
