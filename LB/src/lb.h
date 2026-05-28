@@ -9,7 +9,7 @@
 #include <cassert>
 #include <optional>
 #include <type_traits>
-#include <ast_leaves.h>
+#include "ast_leaves.h"
 #include <set>
 
 
@@ -17,23 +17,7 @@ namespace LB {
 
     class Function;
 
-    /* ============================================================
-     * Instruction base
-     * ============================================================ */
-    class Instruction : public ASTNode {
-        public:
-            InstructionType type;
-            int64_t lineNumber = 0;
 
-            Instruction() = delete;
-            Instruction(InstructionType t, int64_t line = 0) : type(t), lineNumber(line) {}
-            virtual ~Instruction() = default;
-
-            void setLineNumber(int64_t line) { lineNumber = line; }
-            int64_t getLineNumber() const { return lineNumber; }
-            bool verify() const override { return true; }
-            virtual std::string to_string() const = 0;
-    };
 
 
     /* ============================================================
@@ -534,26 +518,6 @@ namespace LB {
 
 
     /* ============================================================
-     * ScopeOpenInstruction / ScopeCloseInstruction
-     *
-     * LB has nested scopes ('{' i* '}'). We emit one ScopeOpen at '{' and
-     * one ScopeClose at '}' so later passes can walk the tree.
-     * Nesting is implicit in the linear instruction sequence.
-     * ============================================================ */
-    class ScopeOpenInstruction : public Instruction {
-    public:
-        ScopeOpenInstruction(int64_t lineNumber = 0) : Instruction(InstructionType::ScopeOpen, lineNumber) {}
-        std::string to_string() const override { return "\t{\n"; }
-    };
-
-    class ScopeCloseInstruction : public Instruction {
-    public:
-        ScopeCloseInstruction(int64_t lineNumber = 0) : Instruction(InstructionType::ScopeClose, lineNumber) {}
-        std::string to_string() const override { return "\t}\n"; }
-    };
-
-
-    /* ============================================================
      * RawInstruction  —  used by code-generation passes
      * ============================================================ */
     class RawInstruction : public Instruction {
@@ -574,15 +538,17 @@ namespace LB {
     /* ============================================================
      * Function
      * ============================================================ */
-    class Function : public ASTNode {
+        class Function : public ASTNode {
             Type returnType;
             FunctionName name;
-            std::vector<Type>         paramTypes;
+
+            std::vector<Type> paramTypes;
             std::vector<LB::Variable> params;
 
         public:
-            std::vector<std::unique_ptr<Instruction>> instructions;
-            std::map<std::string, VarType> declTypes;
+            std::unique_ptr<Scope> rootScope = nullptr;
+
+            Scope* currentScope = nullptr;
 
             Function() = default;
 
@@ -605,15 +571,78 @@ namespace LB {
             }
 
             std::string to_string() const {
-                std::string out = returnType.to_string() + " " + name.to_string() + "(";
+                std::string out =
+                    returnType.to_string() + " " +
+                    name.to_string() + "(";
+
                 for (size_t i = 0; i < params.size(); ++i) {
                     if (i) out += ", ";
-                    out += paramTypes[i].to_string() + " " + params[i].to_string();
+
+                    out +=
+                        paramTypes[i].to_string() +
+                        " " +
+                        params[i].to_string();
                 }
+
                 out += ")\n";
-                for (const auto& ins : instructions) out += ins->to_string();
+
+                if (rootScope) {
+                    out += rootScope->to_string();
+                }
+
                 return out;
             }
+
+
+            void enterScope() {
+                auto child = std::make_unique<Scope>();
+
+                // FIRST scope ever (root)
+                if (!currentScope) {
+                    rootScope = std::move(child);
+                    currentScope = rootScope.get();
+                    return;
+                }
+
+                // normal nested scope
+                child->parent = currentScope;
+                currentScope->nested_scopes.push_back(std::move(child));
+                currentScope = currentScope->nested_scopes.back().get();
+            }
+
+            void exitScope() {
+                if (!currentScope) return;
+
+                currentScope = currentScope->parent;
+            }
+
+            bool declareVariable(const std::string& name, Type t) {
+
+                auto& table = currentScope->declaredTypes;
+
+                if (table.count(name))
+                    return false;
+
+                table[name] = t;
+
+                return true;
+            }
+
+            std::optional<Type> lookupVariable(const std::string& name) const {
+
+                    Scope* s = currentScope;
+
+                    while (s) {
+                        auto it = s->declaredTypes.find(name);
+
+                        if (it != s->declaredTypes.end())
+                            return it->second;
+
+                        s = s->parent;
+                    }
+
+                    return std::nullopt;
+                }
         };
 
 

@@ -4,6 +4,7 @@
 #include <variant>
 #include <vector>
 #include <set>
+#include <map>
 #include <type_traits>
 #include <stdexcept>
 #include <string>
@@ -60,6 +61,9 @@ namespace LB {
         bool operator==(const FunctionName&) const = default;
         bool operator<(const FunctionName& o) const { return name < o.name; }
     };
+
+   
+    
 
 
 
@@ -155,6 +159,44 @@ namespace LB {
         bool operator<(const Type& o) const {
             if (base != o.base) return base < o.base;
             return dims < o.dims;
+        }
+    };
+
+
+     /* ============================================================
+     * Instruction base
+     * ============================================================ */
+    class Instruction : public ASTNode {
+        public:
+            InstructionType type;
+            int64_t lineNumber = 0;
+
+            Instruction() = delete;
+            Instruction(InstructionType t, int64_t line = 0) : type(t), lineNumber(line) {}
+            virtual ~Instruction() = default;
+
+            void setLineNumber(int64_t line) { lineNumber = line; }
+            int64_t getLineNumber() const { return lineNumber; }
+            bool verify() const override { return true; }
+            virtual std::string to_string() const = 0;
+    };
+
+    using ScopeItem = std::variant
+        std::unique_ptr<Instruction>,
+        std::unique_ptr<Scope>
+    >;
+
+    struct Scope : public ASTNode {
+        Scope* parent = nullptr;
+        std::map<std::string, Type> declaredTypes;
+        std::vector<ScopeItem> items;  
+
+        std::string to_string() const override {
+            std::string out;
+            for (const auto& item : items) {
+                std::visit([&out](const auto& p) { out += p->to_string(); }, item);
+            }
+            return out;
         }
     };
 
