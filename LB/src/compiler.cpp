@@ -66,7 +66,12 @@ int main(int argc, char **argv) {
   if (Utils::verbose) {
     std::cerr << program.to_string() << std::endl;
   }
-  std::cerr << program.to_string() << std::endl;
+
+  LB::organize_functions(program);
+  // std::cerr << program.to_string() << std::endl;
+
+  LB::translate_statements(program);
+  LB::generate_code(program);
   /*
    * Generate the code.
    */

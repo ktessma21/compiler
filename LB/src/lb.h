@@ -125,7 +125,9 @@ namespace LB {
 
         const std::optional<Variable>& getDst()     const { return dst; }
         const std::optional<Variable>& getSrc()     const { return src; }
-        const std::vector<T>&          getIndices() const { return indices; }
+        std::vector<T>& getIndicesMut() { return indices; }
+        const std::vector<T>& getIndices() const { return indices; }
+
 
         bool verify() const override {
             return dst.has_value() && src.has_value() && !indices.empty();
@@ -161,7 +163,8 @@ namespace LB {
 
         const std::optional<Callee>&   getSrcCallee() const { return src_c; }
         const std::optional<Variable>& getDst()       const { return dst; }
-        const std::vector<T>&          getIndices()   const { return indices; }
+        std::vector<T>& getIndicesMut() { return indices; }
+        const std::vector<T>& getIndices() const { return indices; }
         const std::optional<T>&        getSrc()       const { return src; }
 
         bool verify() const override {
@@ -554,7 +557,7 @@ namespace LB {
 
             const std::string& getName() const { return this->name.name; }
             const Type& getReturnType() const { return returnType; }
-            const std::vector<Variable>& getParams() const { return params; }
+            std::vector<Variable>& getParams() { return params; }
             const std::vector<Type>& getParamTypes() const { return paramTypes; }
             int getNumParams() const { return static_cast<int>(params.size()); }
 
@@ -596,18 +599,15 @@ namespace LB {
 
             void enterScope() {
                 auto child = std::make_unique<Scope>();
-
-                // FIRST scope ever (root)
                 if (!currentScope) {
                     rootScope = std::move(child);
                     currentScope = rootScope.get();
                     return;
                 }
-
-                // normal nested scope
                 child->parent = currentScope;
-                currentScope->nested_scopes.push_back(std::move(child));
-                currentScope = currentScope->nested_scopes.back().get();
+                currentScope->items.push_back(std::move(child));
+                // currentScope now points into the item we just pushed
+                currentScope = std::get<std::unique_ptr<Scope>>(currentScope->items.back()).get();
             }
 
             void exitScope() {

@@ -181,7 +181,10 @@ namespace LB {
             virtual std::string to_string() const = 0;
     };
 
-    using ScopeItem = std::variant
+    // forward declaration
+    struct Scope;
+
+    using ScopeItem = std::variant<
         std::unique_ptr<Instruction>,
         std::unique_ptr<Scope>
     >;
@@ -190,13 +193,24 @@ namespace LB {
         Scope* parent = nullptr;
         std::map<std::string, Type> declaredTypes;
         std::vector<ScopeItem> items;  
+        std::map<std::string, std::string> nameMap;  
+
 
         std::string to_string() const override {
-            std::string out;
+            std::string out = "\t{\n";
             for (const auto& item : items) {
                 std::visit([&out](const auto& p) { out += p->to_string(); }, item);
             }
+            out += "\t}\n";
             return out;
+        }
+
+        void add(std::unique_ptr<Instruction> instr) {
+            items.push_back(std::move(instr));
+        }
+
+        void add(std::unique_ptr<Scope> child) {
+            items.push_back(std::move(child));
         }
     };
 
@@ -227,5 +241,9 @@ namespace LB {
         }
         throw std::runtime_error("opToString: unknown Op");
     }
+
+
+    extern int freshCounter;
+    std::string freshName(const std::string& original);
 
 }

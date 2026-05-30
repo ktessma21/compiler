@@ -116,4 +116,7 @@ namespace LB {
 
 
     LB::Program parse_file(const char* fileName);
+    void organize_functions(Program& p);
+    void translate_statements(Program& p);
+    void generate_code(Program& p);
 }

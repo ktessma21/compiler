@@ -1,6 +1,6 @@
 #include <fstream>
 #include "lb.h"
-#include <parser.h>
+#include "parser.h"
 #include <memory>
 #include <vector>
 #include <string>
@@ -525,7 +525,7 @@ namespace LB {
                 instr->setType(var_type);
                 instr->setVar(makeVar(first));
 
-                f.currentScope->instructions.push_back(std::move(instr));
+                f.currentScope->add(std::move(instr));
             }
 
             // additional ", name"
@@ -541,7 +541,7 @@ namespace LB {
                 instr->setType(var_type);
                 instr->setVar(makeVar(nm));
 
-                f.currentScope->instructions.push_back(std::move(instr));
+                f.currentScope->add(std::move(instr));
             }
         }
     };
@@ -560,7 +560,7 @@ namespace LB {
             auto instr = std::make_unique<AssignInstruction>(in.position().line);
             instr->setDst(makeVar(dst_str));
             instr->setSrc(makeT(src_str));
-            f.currentScope->instructions.push_back(std::move(instr));
+            f.currentScope->add(std::move(instr));
         }
     };
 
@@ -592,7 +592,7 @@ namespace LB {
             instr->setLhs(makeT(lhs_str));
             instr->setOp(stringToOp(op_str));
             instr->setRhs(makeT(rhs_str));
-            f.currentScope->instructions.push_back(std::move(instr));
+            f.currentScope->add(std::move(instr));
         }
     };
 
@@ -618,7 +618,7 @@ namespace LB {
             instr->setDst(makeVar(dst_str));
             instr->setSrc(makeVar(src_str));
             for (auto& ix : idx_strs) instr->addIndex(makeT(ix));
-            f.currentScope->instructions.push_back(std::move(instr));
+            f.currentScope->add(std::move(instr));
         }
     };
 
@@ -650,7 +650,7 @@ namespace LB {
             } else {
                 instr->setSrc(makeT(src_str));
             }
-            f.currentScope->instructions.push_back(std::move(instr));
+            f.currentScope->add(std::move(instr));
         }
     };
 
@@ -671,7 +671,7 @@ namespace LB {
             instr->setArray(makeVar(arr_str));
             if (!tk.done())
                 instr->setDim(makeT(tk.next()));
-            f.currentScope->instructions.push_back(std::move(instr));
+            f.currentScope->add(std::move(instr));
         }
     };
 
@@ -701,7 +701,7 @@ namespace LB {
             auto instr = std::make_unique<NewArrayInstruction>(in.position().line);
             instr->setDst(makeVar(dst_str));
             for (auto& a : arg_strs) instr->addArg(makeT(a));
-            f.currentScope->instructions.push_back(std::move(instr));
+            f.currentScope->add(std::move(instr));
         }
     };
 
@@ -723,7 +723,7 @@ namespace LB {
             auto instr = std::make_unique<NewTupleInstruction>(in.position().line);
             instr->setDst(makeVar(dst_str));
             instr->setSize(makeT(size_str));
-            f.currentScope->instructions.push_back(std::move(instr));
+            f.currentScope->add(std::move(instr));
         }
     };
 
@@ -760,7 +760,7 @@ namespace LB {
                 instr->setCallee(makeFunctionName(callee_str));
             }
             for (auto& a : arg_strs) instr->addArg(makeT(a));
-            f.currentScope->instructions.push_back(std::move(instr));
+            f.currentScope->add(std::move(instr));
         }
     };
 
@@ -793,7 +793,7 @@ namespace LB {
                 instr->setCallee(makeFunctionName(callee_str));
             }
             for (auto& a : arg_strs) instr->addArg(makeT(a));
-            f.currentScope->instructions.push_back(std::move(instr));
+            f.currentScope->add(std::move(instr));
         }
     };
 
@@ -809,7 +809,7 @@ namespace LB {
             auto& f = p.functions.back();
             auto instr = std::make_unique<ReturnTInstruction>(in.position().line);
             instr->setValue(makeT(val_str));
-            f.currentScope->instructions.push_back(std::move(instr));
+            f.currentScope->add(std::move(instr));
         }
     };
 
@@ -820,7 +820,7 @@ namespace LB {
         static void apply(const Input& in, Program& p) {
             auto& f = p.functions.back();
             auto instr = std::make_unique<ReturnInstruction>(in.position().line);
-            f.currentScope->instructions.push_back(std::move(instr));
+            f.currentScope->add(std::move(instr));
         }
     };
 
@@ -848,7 +848,7 @@ namespace LB {
             instr->setRhs(makeT(rhs_str));
             instr->setTrueTarget(makeLabel(true_label_str));
             instr->setFalseTarget(makeLabel(false_label_str));
-            f.currentScope->instructions.push_back(std::move(instr));
+            f.currentScope->add(std::move(instr));
         }
     };
 
@@ -864,7 +864,7 @@ namespace LB {
             auto& f = p.functions.back();
             auto instr = std::make_unique<GotoInstruction>(in.position().line);
             instr->setTarget(makeLabel(label_str));
-            f.currentScope->instructions.push_back(std::move(instr));
+            f.currentScope->add(std::move(instr));
         }
     };
 
@@ -890,7 +890,7 @@ namespace LB {
             instr->setRhs(makeT(rhs_str));
             instr->setBodyTarget(makeLabel(body_label_str));
             instr->setExitTarget(makeLabel(exit_label_str));
-            f.currentScope->instructions.push_back(std::move(instr));
+            f.currentScope->add(std::move(instr));
         }
     };
 
@@ -901,7 +901,7 @@ namespace LB {
         static void apply(const Input& in, Program& p) {
             auto instr = std::make_unique<ContinueInstruction>(in.position().line);
             auto& f = p.functions.back();
-            f.currentScope->instructions.push_back(std::move(instr));
+            f.currentScope->add(std::move(instr));
         }
     };
 
@@ -912,7 +912,7 @@ namespace LB {
         static void apply(const Input& in, Program& p) {
             auto instr = std::make_unique<BreakInstruction>(in.position().line);
             auto& f = p.functions.back();
-            f.currentScope->instructions.push_back(std::move(instr));
+            f.currentScope->add(std::move(instr));
         }
     };
 
@@ -927,7 +927,7 @@ namespace LB {
             auto instr = std::make_unique<LabelInstruction>();
             instr->setLabel(makeLabel(label_str));
             auto& f = p.functions.back();
-            f.currentScope->instructions.push_back(std::move(instr));
+            f.currentScope->add(std::move(instr));
         }
     };
 
@@ -946,7 +946,7 @@ namespace LB {
             auto& f = p.functions.back();
 
             bool main_scope = f.currentScope == nullptr;
-
+ 
             f.enterScope();
 
             if (main_scope) {
@@ -957,9 +957,6 @@ namespace LB {
                     f.declareVariable(params[i].name, paramTypes[i]);
                 }
             }
-
-            auto instr = std::make_unique<ScopeOpenInstruction>();
-            f.currentScope->instructions.push_back(std::move(instr));
         }
     };
 
@@ -967,8 +964,14 @@ namespace LB {
         template<typename Input>
         static void apply(const Input& in, Program& p) {
             auto& f = p.functions.back();
-            auto instr = std::make_unique<ScopeCloseInstruction>();
-            f.currentScope->instructions.push_back(std::move(instr));
+            
+            if (f.currentScope->parent) {
+                f.currentScope->declaredTypes.insert(
+                    f.currentScope->parent->declaredTypes.begin(),
+                    f.currentScope->parent->declaredTypes.end()
+                );
+            }
+            
             f.exitScope();
         }
     };
