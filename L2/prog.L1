@@ -1,8 +1,13 @@
-(@main
-	(main
-	 1
-	%p1 <- rdi
-	rax <- %p1
-	return	)
+(@go
+(@go
+	0 0
+	%v1 <- 5
+	%v2 <- -3
+	%v3 <- %v1
+	%v3++
+	%v3 += %v2
+	rdi <- %v3
+	call print 1
+	return
 )
-
+)

@@ -10,7 +10,7 @@
 
 
 namespace L2 {
-    void GraphColoring(L2::Graph& g, Function& f, int idx = 0);
+    void GraphColoring(L2::Graph& g, L2::Function& f);
     
 
 }

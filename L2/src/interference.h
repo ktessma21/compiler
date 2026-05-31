@@ -24,7 +24,9 @@ namespace L2 {
                 Register::r8,  Register::r9,  Register::r10, Register::r11,
                 Register::r12, Register::r13, Register::r14, Register::r15
             };
+
             std::map<VALUE, L2::LiveSet, VALUEComparator> graph;
+
             Graph() {
                 for (auto r1 : allRegs) {
                     graph[VALUE(r1)];
@@ -33,6 +35,9 @@ namespace L2 {
                     }
                 }
             }
+
+            Graph(const Graph& other) : graph(other.graph) {}
+            
             void add(L2::LiveSet& s){
                 for (auto it1 = s.begin(); it1 != s.end(); ++it1){
                     graph[*it1];  // ensure node exists even with no neighbors
@@ -83,10 +88,6 @@ namespace L2 {
                 // Remove v itself
                 graph.erase(it);
             }
-            // void add(VALUE& a, VALUE& b){
-            //     graph[a].insert(b);
-            //     graph[b].insert(a);
-            // }
 
 
             void printItems() const {
